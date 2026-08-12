@@ -1,25 +1,50 @@
-<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Contact World TV</title>
-<style>
-body{margin:0;font-family:system-ui,sans-serif;background:#fff9eb;color:#17130a}.box{width:min(720px,92%);margin:45px auto;background:#fff;border:1px solid #eadfc8;border-radius:22px;padding:30px}.logo{width:130px;display:block;margin:auto}.item{padding:16px;background:#fff8dd;border-radius:12px;margin:12px 0}.btn{display:inline-block;padding:12px 16px;border:0;border-radius:10px;background:#e0a200;color:#17130a;text-decoration:none;font-weight:800;cursor:pointer}.muted{color:#716958}input,textarea{width:100%;box-sizing:border-box;padding:12px;border:1px solid #d8ccb2;border-radius:9px;margin:6px 0 12px;font:inherit}textarea{min-height:130px}
-</style><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#e0a200"><link rel="apple-touch-icon" href="/assets/world-tv-logo.png"><link rel="icon" href="/assets/world-tv-logo.png"><meta property="og:site_name" content="World TV"><meta property="og:type" content="website"><meta property="og:image" content="https://myworldtvlive.com/assets/world-tv-logo.png"><script src="/assets/site-meta.js"></script></head>
-<body><div class="box"><img class="logo" src="assets/world-tv-logo.png"><h1>Contact World TV</h1>
-<div class="item"><b>Subscription / Inquiries</b><p id="waText">WhatsApp: +233 24 490 9092</p></div>
-<h2>Send us a message</h2>
-<form id="supportForm">
-<label>Name</label><input id="name" required>
-<label>Email</label><input id="email" type="email">
-<label>Phone / WhatsApp</label><input id="phone">
-<label>Subject</label><input id="subject" required>
-<label>Message</label><textarea id="message" required></textarea>
-<button class="btn">Send Message</button>
-</form>
-<p id="msg" class="muted"></p>
-<p><a class="btn" href="/">Back to Home</a></p>
-</div>
 <script>
-(async()=>{const s=await fetch("/api/site-settings").then(r=>r.json()).catch(()=>({}));if(s.support_whatsapp)waText.textContent="WhatsApp: "+s.support_whatsapp})();
-supportForm.onsubmit=async e=>{e.preventDefault();msg.textContent="Sending...";
-const r=await fetch("/api/support",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:name.value,email:email.value,phone:phone.value,subject:subject.value,message:message.value})});
-const d=await r.json();msg.textContent=d.message||d.error||"Done";if(r.ok)supportForm.reset();}
-</script><script src="/assets/pwa.js"></script></body></html>
+(async () => {
+  const s = await fetch("/api/site-settings")
+    .then(r => r.json())
+    .catch(() => ({}));
+
+  if (s.support_whatsapp) {
+    document.getElementById("waText").textContent =
+      "WhatsApp: " + s.support_whatsapp;
+  }
+})();
+
+document.getElementById("supportForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const msg = document.getElementById("msg");
+  msg.textContent = "Sending...";
+
+  const payload = {
+    name: document.getElementById("name").value.trim(),
+    email: document.getElementById("email").value.trim(),
+    phone: document.getElementById("phone").value.trim(),
+    subject: document.getElementById("subject").value.trim(),
+    message: document.getElementById("message").value.trim()
+  };
+
+  try {
+    const r = await fetch("/api/support", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await r.json();
+
+    if (!r.ok) {
+      msg.textContent = data.error || "Message could not be sent.";
+      return;
+    }
+
+    msg.textContent = data.message || "Message sent successfully.";
+    document.getElementById("supportForm").reset();
+
+  } catch (err) {
+    msg.textContent = "Something went wrong. Please try again.";
+  }
+});
+</script>
