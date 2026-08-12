@@ -310,5 +310,21 @@ async function loadEmailQueue(){const d=await api("/api/admin/email-queue");$("e
 async function broadcastEmail(){if(!confirm("Queue this email for all registered customers?"))return;try{const d=await api("/api/admin/email/broadcast",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subject:$("emailSubject").value,message:$("emailMessage").value})});$("emailMsg").textContent=`Queued for ${d.recipients} customers.`;$("emailSubject").value="";$("emailMessage").value="";await loadEmailQueue()}catch(e){$("emailMsg").textContent=e.message}}
 async function sendCustomerEmail(){const subject=prompt("Email subject");if(!subject)return;const message=prompt("Email message");if(!message)return;try{await api(`/api/admin/customers/${selectedCustomerId}/email`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subject,message})});alert("Email queued.")}catch(e){alert(e.message)}}
 
-if(token)showDashboard();
+(async()=>{
+  if(!token){
+    $("login").classList.remove("hide");
+    $("dashboard").classList.add("hide");
+    return;
+  }
+
+  try{
+    await api("/api/admin/stats");
+    await showDashboard();
+  }catch(e){
+    localStorage.removeItem("wtv_admin_token");
+    token="";
+    $("dashboard").classList.add("hide");
+    $("login").classList.remove("hide");
+  }
+})();
 </script><script src="/assets/pwa.js"></script></body></html>
