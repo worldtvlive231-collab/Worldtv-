@@ -158,13 +158,20 @@ function loginRateLimit(req,res,next){
 
 function adminOnly(req,res,next){
   const token=req.headers["x-admin-token"] || req.query.token;
-  if(!token || !adminSessions.has(token)) return res.status(401).json({error:"Admin authentication required"});
-  next();
-}
-function customerOnly(req,res,next){
-  const token=req.headers["x-customer-token"];
-  if(!token || !customerSessions.has(token)) return res.status(401).json({error:"Customer authentication required"});
-  req.customer=customerSessions.get(token);
+
+  if(!token){
+    return res.status(401).json({error:"Admin authentication required"});
+  }
+
+  const expected=crypto
+    .createHmac("sha256",process.env.ADMIN_PASSWORD)
+    .update(process.env.ADMIN_EMAIL)
+    .digest("hex");
+
+  if(token!==expected){
+    return res.status(401).json({error:"Admin authentication required"});
+  }
+
   next();
 }
 
@@ -237,16 +244,27 @@ app.get("/api/customer/me",customerOnly,(req,res)=>{
 /* Admin auth */
 app.post("/api/admin/login",loginRateLimit,(req,res)=>{
   const {email,password}=req.body||{};
-  if(email!==process.env.ADMIN_EMAIL || password!==process.env.ADMIN_PASSWORD){
-    return res.status(401).json({error:"Invalid admin credentials"});
+
+  if(
+    email!==process.env.ADMIN_EMAIL ||
+    password!==process.env.ADMIN_PASSWORD
+  ){
+    return res.status(401).json({
+      error:"Invalid admin credentials"
+    });
   }
-  const token=crypto.randomBytes(32).toString("hex");
-  adminSessions.set(token,{createdAt:Date.now()});
+
+  const token=crypto
+    .createHmac("sha256",process.env.ADMIN_PASSWORD)
+    .update(process.env.ADMIN_EMAIL)
+    .digest("hex");
+
   res.json({token});
 });
+
 app.post("/api/admin/logout",adminOnly,(req,res)=>{
-  adminSessions.delete(req.headers["x-admin-token"]);
   res.json({ok:true});
+});
 });
 
 /* Code manager */
