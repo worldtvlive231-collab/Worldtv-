@@ -188,6 +188,17 @@ app.get("/api/products",(req,res)=>{
   res.json(rows);
 });
 
+function customerOnly(req,res,next){
+  const token=req.headers["x-customer-token"];
+
+  if(!token || !customerSessions.has(token)){
+    return res.status(401).json({error:"Customer authentication required"});
+  }
+
+  req.customer=customerSessions.get(token);
+  next();
+}
+
 /* Customer auth */
 app.post("/api/customer/register",async(req,res)=>{
   try{
