@@ -1213,6 +1213,6 @@ app.get("/api/launch-readiness",(req,res)=>{
 
 app.use((req,res,next)=>{
   if(req.path.startsWith("/api/")) return res.status(404).json({error:"Not found"});
-  res.status(404).sendFile(path.join(__dirname,"public","404.html"));
+  res.status(404).sendFile(path.join(__dirname,"404.html"));
 });
 app.listen(PORT,"0.0.0.0",()=>console.log(`World TV running on port ${PORT}`));
