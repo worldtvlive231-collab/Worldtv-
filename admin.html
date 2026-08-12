@@ -37,6 +37,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <button class="btn tab" onclick="showTab('productsTab',this)">Products</button>
 <button class="btn tab" onclick="showTab('codesTab',this)">Subscription Codes</button>
 <button class="btn tab" onclick="showTab('promotionsTab',this)">Promotions</button>
+<button class="btn tab" onclick="showTab('servicesTab',this)">Services</button>
 <button class="btn tab" onclick="showTab('supportTab',this)">Support Inbox</button>
 <button class="btn tab" onclick="showTab('settingsTab',this)">Site Settings</button>
 <button class="btn tab" onclick="showTab('notificationsTab',this)">Notifications</button>
@@ -83,6 +84,16 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <button class="btn primary" onclick="addPromotion()">Add Promotion</button><p id="promoMsg" class="muted"></p>
 </div>
 <div class="card"><div style="overflow:auto"><table><thead><tr><th>Title</th><th>Message</th><th>Active</th><th>Action</th></tr></thead><tbody id="promoRows"></tbody></table></div></div>
+</section>
+<section id="servicesTab" class="hide">
+<div class="card"><h2>Services</h2><p class="muted">These appear on the front page Services section.</p>
+<input id="serviceIcon" placeholder="Icon (emoji, optional)">
+<input id="serviceTitle" placeholder="Service title">
+<textarea id="serviceDescription" placeholder="Service description"></textarea>
+<input id="serviceOrder" type="number" value="0" placeholder="Display order">
+<button class="btn primary" onclick="addService()">Add Service</button><p id="serviceMsg" class="muted"></p>
+</div>
+<div class="card"><div style="overflow:auto"><table><thead><tr><th>Icon</th><th>Title</th><th>Description</th><th>Action</th></tr></thead><tbody id="serviceRows"></tbody></table></div></div>
 </section>
 
 <section id="supportTab" class="hide">
@@ -192,9 +203,9 @@ async function api(url,o={}){
 }
 async function loginAdmin(){const r=await fetch("/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:$("email").value,password:$("password").value})});const d=await r.json();if(!r.ok){$("loginMsg").textContent=d.error;return}token=d.token;localStorage.setItem("wtv_admin_token",token);showDashboard()}
 function logout(){localStorage.removeItem("wtv_admin_token");token="";location.reload()}
-function showTab(id,btn){["customersTab","productsTab","codesTab","promotionsTab","supportTab","settingsTab","notificationsTab","reportsTab","backupTab","contentTab","productOrdersTab","couponsTab","referralsTab","subscriptionsTab","alertsTab","auditTab","emailTab"].forEach(x=>$(x).classList.add("hide"));$(id).classList.remove("hide");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active")}
+function showTab(id,btn){["customersTab","productsTab","codesTab","promotionsTab","servicesTab","supportTab","settingsTab","notificationsTab","reportsTab","backupTab","contentTab","productOrdersTab","couponsTab","referralsTab","subscriptionsTab","alertsTab","auditTab","emailTab"].forEach(x=>$(x).classList.add("hide"));$(id).classList.remove("hide");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active")}
 async function showDashboard(){$("login").classList.add("hide");$("dashboard").classList.remove("hide");$("logoutBtn").classList.remove("hide");const plans=await fetch("/api/plans").then(r=>r.json());$("plan").innerHTML=plans.map(p=>`<option value="${p.id}">${p.name} — GH₵${p.price_ghs}</option>`).join("");await refreshAll()}
-async function refreshAll(){const s=await api("/api/admin/stats");$("total").textContent=s.total;$("unused").textContent=s.unused;$("used").textContent=s.used;$("customersCount").textContent=s.customers;$("productsCount").textContent=s.products;await loadCustomers();await loadProducts();await loadCodes();await loadPromotions();await loadSupport();await loadSettings();await loadReports();await loadContent();await loadProductOrders();await loadCoupons();await loadReferrals();await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue()}
+async function refreshAll(){const s=await api("/api/admin/stats");$("total").textContent=s.total;$("unused").textContent=s.unused;$("used").textContent=s.used;$("customersCount").textContent=s.customers;$("productsCount").textContent=s.products;await loadCustomers();await loadProducts();await loadCodes();await loadPromotions();await loadServices();await loadSupport();await loadSettings();await loadReports();await loadContent();await loadProductOrders();await loadCoupons();await loadReferrals();await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue()}
 
 async function loadCustomers(){const q=$("customerSearch").value.trim();const d=await api("/api/admin/customers"+(q?`?q=${encodeURIComponent(q)}`:""));$("customerRows").innerHTML=d.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.email}</td><td>${c.order_count}</td><td>${c.paid_orders}</td><td>${c.latest_expiry?new Date(c.latest_expiry).toLocaleDateString():"—"}</td><td><button class="btn secondary" onclick="openCustomer(${c.id})">Manage</button></td></tr>`).join("")}
 async function openCustomer(id){selectedCustomerId=id;const d=await api(`/api/admin/customers/${id}`);$("customerDetail").innerHTML=`<h2>${d.user.name}</h2><p class="muted">${d.user.email}</p>
@@ -227,6 +238,18 @@ async function addPromotion(){
  }catch(e){$("promoMsg").textContent=e.message}
 }
 async function deletePromotion(id){if(!confirm("Delete this promotion?"))return;await api(`/api/admin/promotions/${id}`,{method:"DELETE"});await loadPromotions()}
+
+async function loadServices(){
+ const d=await api("/api/admin/services");
+ $("serviceRows").innerHTML=d.map(s=>`<tr><td>${s.icon||"—"}</td><td><b>${s.title}</b></td><td>${s.description}</td><td><button class="btn danger" onclick="deleteService(${s.id})">Delete</button></td></tr>`).join("");
+}
+async function addService(){
+ try{
+  await api("/api/admin/services",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({icon:$("serviceIcon").value,title:$("serviceTitle").value,description:$("serviceDescription").value,sort_order:$("serviceOrder").value,active:1})});
+  $("serviceMsg").textContent="Service added.";$("serviceIcon").value="";$("serviceTitle").value="";$("serviceDescription").value="";$("serviceOrder").value="0";await loadServices();
+ }catch(e){$("serviceMsg").textContent=e.message}
+}
+async function deleteService(id){if(!confirm("Delete this service?"))return;await api(`/api/admin/services/${id}`,{method:"DELETE"});await loadServices()}
 async function loadSupport(){
  const st=$("supportFilter")?.value||"";
  const d=await api("/api/admin/support"+(st?`?status=${encodeURIComponent(st)}`:""));

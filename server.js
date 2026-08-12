@@ -97,6 +97,16 @@ CREATE TABLE IF NOT EXISTS promotions(
  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS services(
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ icon TEXT NOT NULL DEFAULT '',
+ title TEXT NOT NULL,
+ description TEXT NOT NULL DEFAULT '',
+ sort_order INTEGER NOT NULL DEFAULT 0,
+ active INTEGER NOT NULL DEFAULT 1,
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS support_messages(
  id INTEGER PRIMARY KEY AUTOINCREMENT,
  name TEXT NOT NULL,
@@ -698,6 +708,15 @@ app.get("/api/promotions",(req,res)=>{
   `).all());
 });
 
+app.get("/api/services",(req,res)=>{
+  res.json(db.prepare(`
+    SELECT id,icon,title,description
+    FROM services
+    WHERE active=1
+    ORDER BY sort_order,id
+  `).all());
+});
+
 app.post("/api/support",(req,res)=>{
   const {name,email,phone,subject,message}=req.body||{};
   if(!name || !subject || !message) return res.status(400).json({error:"Name, subject and message are required"});
@@ -763,6 +782,51 @@ app.put("/api/admin/promotions/:id",adminOnly,(req,res)=>{
 app.delete("/api/admin/promotions/:id",adminOnly,(req,res)=>{
   const r=db.prepare("DELETE FROM promotions WHERE id=?").run(req.params.id);
   if(!r.changes) return res.status(404).json({error:"Promotion not found"});
+  res.json({ok:true});
+});
+
+/* Admin services */
+app.get("/api/admin/services",adminOnly,(req,res)=>{
+  res.json(db.prepare("SELECT * FROM services ORDER BY sort_order,id").all());
+});
+
+app.post("/api/admin/services",adminOnly,(req,res)=>{
+  const {icon,title,description,sort_order,active}=req.body||{};
+  if(!title) return res.status(400).json({error:"Service title is required"});
+  const info=db.prepare(`
+    INSERT INTO services(icon,title,description,sort_order,active)
+    VALUES(?,?,?,?,?)
+  `).run(
+    String(icon||"").trim(),
+    String(title).trim(),
+    String(description||"").trim(),
+    Number(sort_order||0),
+    String(active)==="0"?0:1
+  );
+  res.json(db.prepare("SELECT * FROM services WHERE id=?").get(info.lastInsertRowid));
+});
+
+app.put("/api/admin/services/:id",adminOnly,(req,res)=>{
+  const old=db.prepare("SELECT * FROM services WHERE id=?").get(req.params.id);
+  if(!old) return res.status(404).json({error:"Service not found"});
+  db.prepare(`
+    UPDATE services
+    SET icon=?,title=?,description=?,sort_order=?,active=?,updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).run(
+    String(req.body.icon??old.icon).trim(),
+    String(req.body.title??old.title).trim(),
+    String(req.body.description??old.description).trim(),
+    Number(req.body.sort_order??old.sort_order),
+    String(req.body.active)==="0"?0:1,
+    req.params.id
+  );
+  res.json(db.prepare("SELECT * FROM services WHERE id=?").get(req.params.id));
+});
+
+app.delete("/api/admin/services/:id",adminOnly,(req,res)=>{
+  const r=db.prepare("DELETE FROM services WHERE id=?").run(req.params.id);
+  if(!r.changes) return res.status(404).json({error:"Service not found"});
   res.json({ok:true});
 });
 

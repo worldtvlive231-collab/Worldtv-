@@ -67,6 +67,29 @@ footer{background:#111;color:#ddd;padding:45px 0}.footer-grid{display:grid;grid-
   </div>
 </section>
 
+<section id="what-you-get" style="background:var(--white)">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>What You Get</h2>
+      <p>Core entertainment coverage with the compatibility and performance profile of WORLD TV.</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <h3>📡 Global Live TV</h3>
+        <p>4,000+ live TV channels across African, Arabic, American, British, European, Brazilian, Pakistani and other markets.</p>
+      </div>
+      <div class="card">
+        <h3>🎬 Movies + Series</h3>
+        <p>A broad catalog of movies and series with multiple picture quality options where available.</p>
+      </div>
+      <div class="card">
+        <h3>📲 Simple App Workflow</h3>
+        <p>Download the WORLD TV app, install it on Android and start the available trial journey.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="subscription">
   <div class="wrap">
     <div class="section-head">
@@ -145,7 +168,7 @@ footer{background:#111;color:#ddd;padding:45px 0}.footer-grid{display:grid;grid-
       <h2>Services</h2>
       <p>Use World TV as a business hub to advertise additional services to customers.</p>
     </div>
-    <div class="feature-grid">
+    <div id="serviceCards" class="feature-grid">
       <div class="feature"><h3>📺 Subscription Support</h3><p>Help customers with subscription and renewal questions.</p></div>
       <div class="feature"><h3>⚙️ Device Setup</h3><p>Advertise TV box setup and configuration services.</p></div>
       <div class="feature"><h3>🚚 Delivery</h3><p>Promote delivery options for your physical products.</p></div>
@@ -153,29 +176,15 @@ footer{background:#111;color:#ddd;padding:45px 0}.footer-grid{display:grid;grid-
     </div>
   </div>
 </section>
-
-<section id="what-you-get" style="background:var(--white)">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>What You Get</h2>
-      <p>Core entertainment coverage with the compatibility and performance profile of WORLD TV.</p>
-    </div>
-    <div class="cards">
-      <div class="card">
-        <h3>📡 Global Live TV</h3>
-        <p>4,000+ live TV channels across African, Arabic, American, British, European, Brazilian, Pakistani and other markets.</p>
-      </div>
-      <div class="card">
-        <h3>🎬 Movies + Series</h3>
-        <p>A broad catalog of movies and series with multiple picture quality options where available.</p>
-      </div>
-      <div class="card">
-        <h3>📲 Simple App Workflow</h3>
-        <p>Download the WORLD TV app, install it on Android and start the available trial journey.</p>
-      </div>
-    </div>
-  </div>
-</section>
+<script>
+(async()=>{
+  const services=await fetch("/api/services").then(r=>r.json()).catch(()=>[]);
+  const box=document.getElementById("serviceCards");
+  if(!box)return;
+  if(!services.length)return;
+  box.innerHTML=services.slice(0,4).map(s=>`<div class="feature"><h3>${s.icon?s.icon+' ':''}${s.title}</h3><p>${s.description||''}</p></div>`).join('');
+})();
+</script>
 
 
 <section id="promotions" style="background:#fff9eb">
