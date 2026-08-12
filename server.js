@@ -275,6 +275,7 @@ app.get("/api/admin/stats",adminOnly,(req,res)=>{
     disabled:q("SELECT COUNT(*) n FROM subscription_codes WHERE status='disabled'"),
     customers:q("SELECT COUNT(*) n FROM users"),
     products:q("SELECT COUNT(*) n FROM products WHERE active=1")
+  }); 
   });
 app.get("/api/admin/codes",adminOnly,(req,res)=>{
   res.json(db.prepare(`
