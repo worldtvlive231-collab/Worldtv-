@@ -1,3 +1,124 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Contact World TV</title>
+
+  <style>
+    body{
+      margin:0;
+      font-family:system-ui,sans-serif;
+      background:#fff9eb;
+      color:#17130a;
+    }
+
+    .box{
+      width:min(850px,92%);
+      margin:45px auto;
+      background:#fff;
+      border:1px solid #eadfc8;
+      border-radius:22px;
+      padding:35px;
+    }
+
+    .logo{
+      width:160px;
+      display:block;
+      margin:0 auto 25px;
+    }
+
+    .item{
+      background:#fff6d7;
+      padding:20px;
+      border-radius:15px;
+      margin-bottom:25px;
+    }
+
+    label{
+      display:block;
+      font-weight:700;
+      margin-top:14px;
+    }
+
+    input,textarea{
+      width:100%;
+      box-sizing:border-box;
+      padding:14px;
+      margin-top:7px;
+      border:1px solid #d8ccb2;
+      border-radius:10px;
+      font-size:16px;
+    }
+
+    textarea{
+      min-height:150px;
+    }
+
+    .btn{
+      display:inline-block;
+      background:#e0a200;
+      color:#17130a;
+      border:0;
+      border-radius:12px;
+      padding:14px 20px;
+      font-weight:800;
+      margin-top:18px;
+      text-decoration:none;
+      cursor:pointer;
+    }
+
+    .muted{
+      color:#716958;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+
+  <img class="logo" src="/world-tv-logo.png" alt="World TV">
+
+  <h1>Contact World TV</h1>
+
+  <div class="item">
+    <h3>Subscription / Inquiries</h3>
+    <p id="waText">
+      WhatsApp:
+      <a href="https://wa.me/233244909092">+233 24 490 9092</a>
+    </p>
+  </div>
+
+  <h2>Send us a message</h2>
+
+  <form id="supportForm">
+
+    <label>Name</label>
+    <input id="name" required>
+
+    <label>Email</label>
+    <input id="email" type="email">
+
+    <label>Phone / WhatsApp</label>
+    <input id="phone">
+
+    <label>Subject</label>
+    <input id="subject" required>
+
+    <label>Message</label>
+    <textarea id="message" required></textarea>
+
+    <button class="btn" type="submit">Send Message</button>
+
+  </form>
+
+  <p id="msg" class="muted"></p>
+
+  <a class="btn" href="/">Back to Home</a>
+
+</div>
+
 <script>
 (async () => {
   const s = await fetch("/api/site-settings")
@@ -48,3 +169,6 @@ document.getElementById("supportForm").addEventListener("submit", async (e) => {
   }
 });
 </script>
+
+</body>
+</html>
