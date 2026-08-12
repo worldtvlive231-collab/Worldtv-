@@ -1338,7 +1338,7 @@ app.listen(PORT,"0.0.0.0",()=>console.log(`World TV running on port ${PORT}`));
 
 const footballCache = new Map();
 
-const FOOTBALL_API_BASE = "https://v3.football.api-sports.io";
+const FOOTBALL_API_BASE = `https://${process.env.FOOTBALL_API_HOST}`;
 
 async function callFootballApi(endpoint) {
   if (!process.env.FOOTBALL_API_KEY) {
@@ -1347,7 +1347,8 @@ async function callFootballApi(endpoint) {
 
   const response = await fetch(`${FOOTBALL_API_BASE}${endpoint}`, {
     headers: {
-      "x-apisports-key": process.env.FOOTBALL_API_KEY
+"x-rapidapi-key": process.env.FOOTBALL_API_KEY,
+"x-rapidapi-host": process.env.FOOTBALL_API_HOST
     }
   });
 
