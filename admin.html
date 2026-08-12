@@ -168,7 +168,25 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 
 <script>
 let token=localStorage.getItem("wtv_admin_token")||"";let editingProductId=null;let selectedCustomerId=null;const $=id=>document.getElementById(id);
-async function api(url,o={}){o.headers=Object.assign({},o.headers,{"x-admin-token":token});const r=await fetch(url,o);const d=await r.json().catch(()=>({}));if(r.status===401){logout();throw Error("Session expired")}if(!r.ok)throw Error(d.error||"Request failed");return d}
+async function api(url,o={}){
+  o.headers=Object.assign({},o.headers,{"x-admin-token":token});
+  const r=await fetch(url,o);
+
+  if(r.status===401){
+    localStorage.removeItem("wtv_admin_token");
+    token="";
+    location.reload();
+    throw new Error("Admin session expired");
+  }
+
+  const d=await r.json();
+
+  if(!r.ok){
+    throw new Error(d.error||"Request failed");
+  }
+
+  return d;
+}
 async function loginAdmin(){const r=await fetch("/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:$("email").value,password:$("password").value})});const d=await r.json();if(!r.ok){$("loginMsg").textContent=d.error;return}token=d.token;localStorage.setItem("wtv_admin_token",token);showDashboard()}
 function logout(){localStorage.removeItem("wtv_admin_token");token="";location.reload()}
 function showTab(id,btn){["customersTab","productsTab","codesTab","promotionsTab","supportTab","settingsTab","notificationsTab","reportsTab","backupTab","contentTab","productOrdersTab","couponsTab","referralsTab","subscriptionsTab","alertsTab","auditTab","emailTab"].forEach(x=>$(x).classList.add("hide"));$(id).classList.remove("hide");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active")}
