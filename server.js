@@ -526,6 +526,31 @@ app.post("/api/admin/customers/:id/reset-password", adminOnly, async (req,res)=>
   res.json({ok:true});
 });
 
+app.post("/api/admin/orders/:id/delete", adminOnly, (req,res)=>{
+  const order=db.prepare("SELECT * FROM orders WHERE id=?").get(req.params.id);
+  if(!order) return res.status(404).json({error:"Order not found"});
+  const code=order.code_id?db.prepare("SELECT * FROM subscription_codes WHERE id=?").get(order.code_id):null;
+  const tx=db.transaction(()=>{
+    if(code && code.status==="used"){
+      db.prepare("UPDATE subscription_codes SET status='unused',user_id=NULL,expires_at=NULL WHERE id=?").run(code.id);
+    }
+    const cr=db.prepare("SELECT * FROM checkout_requests WHERE reference=?").get(order.reference);
+    if(cr){
+      db.prepare("UPDATE checkout_requests SET status='cancelled',updated_at=CURRENT_TIMESTAMP WHERE id=?").run(cr.id);
+      if(cr.coupon_code) db.prepare("UPDATE coupons SET used_count=CASE WHEN used_count>0 THEN used_count-1 ELSE 0 END WHERE code=?").run(cr.coupon_code);
+    }
+    db.prepare("DELETE FROM orders WHERE id=?").run(order.id);
+    db.prepare("INSERT INTO notifications(user_id,title,message) VALUES(?,?,?)").run(order.user_id,"Subscription Removed",`Your subscription order (${order.reference}) was removed by an administrator. Please contact support if you believe this is a mistake.`);
+    const mailUser=db.prepare("SELECT email FROM users WHERE id=?").get(order.user_id);
+    queueEmail(order.user_id,mailUser?.email,"Your World TV subscription order was removed",`Your subscription order (${order.reference}) was removed by an administrator. Please contact support if you believe this is a mistake.`);
+  });
+  try{
+    tx();
+    audit("order_deleted","order",order.id,`Reference ${order.reference}${code?` — code ${code.code} freed`:""}`);
+    res.json({ok:true,message:"Order deleted"+(code?" and subscription code freed for reuse":"")});
+  }catch(e){res.status(409).json({error:e.message})}
+});
+
 
 
 db.exec(`
@@ -1095,6 +1120,31 @@ app.post("/api/admin/checkout-requests/:id/fulfill",adminOnly,(req,res)=>{
    queueEmail(cr.user_id,mailUser?.email,"Your World TV subscription is active",`Your World TV subscription has been activated. Subscription code: ${code.code}. Expiry: ${expiresAt}.`);
  });
  try{tx();audit("subscription_request_fulfilled","checkout_request",cr.id,`Code ${code.code}`);res.json({ok:true,code:code.code,expires_at:expiresAt})}catch(e){res.status(409).json({error:e.message})}
+});
+
+app.post("/api/admin/checkout-requests/:id/revoke",adminOnly,(req,res)=>{
+ const cr=db.prepare(`SELECT c.*,p.name plan_name FROM checkout_requests c JOIN plans p ON p.id=c.plan_id WHERE c.id=?`).get(req.params.id);
+ if(!cr)return res.status(404).json({error:"Checkout request not found"});
+ if(cr.status!=="fulfilled")return res.status(409).json({error:"Only fulfilled subscriptions can be revoked"});
+ const order=db.prepare("SELECT * FROM orders WHERE reference=?").get(cr.reference);
+ if(!order)return res.status(404).json({error:"No subscription order found for this request"});
+ const code=order.code_id?db.prepare("SELECT * FROM subscription_codes WHERE id=?").get(order.code_id):null;
+ const tx=db.transaction(()=>{
+   if(code){
+     db.prepare("UPDATE subscription_codes SET status='unused',user_id=NULL,expires_at=NULL WHERE id=?").run(code.id);
+   }
+   db.prepare("UPDATE orders SET status='cancelled' WHERE id=?").run(order.id);
+   db.prepare("UPDATE checkout_requests SET status='cancelled',updated_at=CURRENT_TIMESTAMP WHERE id=?").run(cr.id);
+   if(cr.coupon_code)db.prepare("UPDATE coupons SET used_count=CASE WHEN used_count>0 THEN used_count-1 ELSE 0 END WHERE code=?").run(cr.coupon_code);
+   db.prepare("INSERT INTO notifications(user_id,title,message) VALUES(?,?,?)").run(cr.user_id,"Subscription Revoked",`Your World TV subscription (${cr.plan_name}) has been revoked by an administrator. Please contact support if you believe this is a mistake.`);
+   const mailUser=db.prepare("SELECT email FROM users WHERE id=?").get(cr.user_id);
+   queueEmail(cr.user_id,mailUser?.email,"Your World TV subscription was revoked",`Your World TV subscription (${cr.plan_name}) has been revoked by an administrator. Please contact support if you believe this is a mistake.`);
+ });
+ try{
+   tx();
+   audit("subscription_request_revoked","checkout_request",cr.id,`Code ${code?code.code:"unknown"} freed`);
+   res.json({ok:true,message:"Subscription revoked and code freed for reuse",code:code?code.code:null});
+ }catch(e){res.status(409).json({error:e.message})}
 });
 
 
