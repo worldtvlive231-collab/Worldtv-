@@ -203,7 +203,8 @@ app.post("/api/customer/register",async(req,res)=>{
     if(referral_code){
       const ref=db.prepare("SELECT id FROM users WHERE referral_code=?").get(String(referral_code).trim().toUpperCase());
       if(ref && ref.id!==result.lastInsertRowid){
-        try{db.prepare("INSERT INTO referrals(referrer_user_id,referred_user_id,referral_code) VALUES(?,?,?)").run(ref.id,result.lastInsertRowid,String(referral_code).trim().toUpperCase())}catch(e){}
+    try{db.prepare("INSERT INTO referrals(referrer_user_id,referred_user_id,referral_code) VALUES(?,?,?)").run(ref.id,result.lastInsertRowid,String(referral_code).trim().toUpperCase())} 
+    }catch(e){}
       }
     const token=crypto.randomBytes(32).toString("hex");
     customerSessions.set(token,{userId:result.lastInsertRowid,email:cleanEmail});
