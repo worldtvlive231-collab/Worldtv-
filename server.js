@@ -516,6 +516,26 @@ app.post("/api/admin/customers/:id/renew", adminOnly, (req,res)=>{
   res.json({ok:true,reference,code:code.code,expires_at:expiresAt});
 });
 
+app.delete("/api/admin/orders/:orderId", adminOnly, (req,res)=>{
+  const order=db.prepare("SELECT * FROM orders WHERE id=?").get(req.params.orderId);
+  if(!order) return res.status(404).json({error:"Order not found"});
+
+  const tx=db.transaction(()=>{
+    db.prepare("UPDATE orders SET status='revoked' WHERE id=?").run(order.id);
+    if(order.code_id){
+      db.prepare(`
+        UPDATE subscription_codes
+        SET status='unused',user_id=NULL,expires_at=NULL
+        WHERE id=?
+      `).run(order.code_id);
+    }
+  });
+
+  try{tx();}catch(e){return res.status(500).json({error:e.message})}
+  audit("subscription_order_revoked","order",order.id,`Reference ${order.reference}`);
+  res.json({ok:true});
+});
+
 app.post("/api/admin/customers/:id/reset-password", adminOnly, async (req,res)=>{
   const {newPassword}=req.body||{};
   if(!newPassword || String(newPassword).length<8) return res.status(400).json({error:"Password must be at least 8 characters"});
