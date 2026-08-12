@@ -1455,9 +1455,11 @@ app.get("/api/football/upcoming", async (req, res) => {
 });
 
 
-    res.status(500).json({
-      ok: false,
-      error: "Unable to load today's football matches"
-    });
-  }
+// 404 Handler
+app.use((req,res,next)=>{
+  if(req.path.startsWith("/api/")) return res.status(404).json({error:"Not found"});
+  res.status(404).sendFile(path.join(__dirname,"404.html"));
 });
+
+// Start server
+app.listen(PORT,"0.0.0.0",()=>console.log(`World TV running on port ${PORT}`));
