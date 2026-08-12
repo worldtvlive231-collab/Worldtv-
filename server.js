@@ -200,12 +200,16 @@ app.post("/api/customer/register",async(req,res)=>{
     const result=db.prepare("INSERT INTO users(name,email,password_hash) VALUES(?,?,?)")
       .run(String(name).trim(),cleanEmail,hash);
     ensureReferralCode(result.lastInsertRowid);
-    if(referral_code){
-      const ref=db.prepare("SELECT id FROM users WHERE referral_code=?").get(String(referral_code).trim().toUpperCase());
-      if(ref && ref.id!==result.lastInsertRowid){
-    try{db.prepare("INSERT INTO referrals(referrer_user_id,referred_user_id,referral_code) VALUES(?,?,?)").run(ref.id,result.lastInsertRowid,String(referral_code).trim().toUpperCase())} 
+   if(referral_code){
+  const ref=db.prepare("SELECT id FROM users WHERE referral_code=?").get(String(referral_code).trim().toUpperCase());
+
+  if(ref && ref.id!==result.lastInsertRowid){
+    try{
+      db.prepare("INSERT INTO referrals(referrer_user_id,referred_user_id,referral_code) VALUES(?,?,?)")
+        .run(ref.id,result.lastInsertRowid,String(referral_code).trim().toUpperCase());
     }catch(e){}
-      }
+  }
+}
     const token=crypto.randomBytes(32).toString("hex");
     customerSessions.set(token,{userId:result.lastInsertRowid,email:cleanEmail});
     res.json({token});
