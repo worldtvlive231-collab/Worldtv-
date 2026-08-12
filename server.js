@@ -1332,3 +1332,144 @@ app.use((req,res,next)=>{
   res.status(404).sendFile(path.join(__dirname,"404.html"));
 });
 app.listen(PORT,"0.0.0.0",()=>console.log(`World TV running on port ${PORT}`));
+// ===============================
+// WORLD TV FOOTBALL LIVE SCORES
+// ===============================
+
+const footballCache = new Map();
+
+const FOOTBALL_API_BASE = "https://v3.football.api-sports.io";
+
+async function callFootballApi(endpoint) {
+  if (!process.env.FOOTBALL_API_KEY) {
+    throw new Error("FOOTBALL_API_KEY is not configured");
+  }
+
+  const response = await fetch(`${FOOTBALL_API_BASE}${endpoint}`, {
+    headers: {
+      "x-apisports-key": process.env.FOOTBALL_API_KEY
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Football API returned ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function getCachedFootball(key, endpoint, ttl = 30000) {
+  const cached = footballCache.get(key);
+
+  if (cached && Date.now() - cached.time < ttl) {
+    return cached.data;
+  }
+
+  const data = await callFootballApi(endpoint);
+
+  footballCache.set(key, {
+    time: Date.now(),
+    data
+  });
+
+  return data;
+}
+
+
+// LIVE MATCHES
+app.get("/api/football/live", async (req, res) => {
+  try {
+    const data = await getCachedFootball(
+      "football-live",
+      "/fixtures?live=all",
+      30000
+    );
+
+    const matches = (data.response || []).map(game => ({
+      fixture_id: game.fixture.id,
+
+      league: game.league.name,
+      league_logo: game.league.logo,
+
+      home_team: game.teams.home.name,
+      home_logo: game.teams.home.logo,
+
+      away_team: game.teams.away.name,
+      away_logo: game.teams.away.logo,
+
+      home_score: game.goals.home,
+      away_score: game.goals.away,
+
+      minute: game.fixture.status.elapsed,
+      status: game.fixture.status.short,
+      status_long: game.fixture.status.long,
+
+      kickoff: game.fixture.date
+    }));
+
+    res.json({
+      ok: true,
+      updated_at: new Date().toISOString(),
+      count: matches.length,
+      matches
+    });
+
+  } catch (error) {
+    console.error("Football live error:", error);
+
+    res.status(500).json({
+      ok: false,
+      error: "Unable to load live football matches"
+    });
+  }
+});
+
+
+// TODAY'S MATCHES
+app.get("/api/football/today", async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const data = await getCachedFootball(
+      `football-today-${today}`,
+      `/fixtures?date=${today}`,
+      120000
+    );
+
+    const matches = (data.response || []).map(game => ({
+      fixture_id: game.fixture.id,
+
+      league: game.league.name,
+      league_logo: game.league.logo,
+
+      home_team: game.teams.home.name,
+      home_logo: game.teams.home.logo,
+
+      away_team: game.teams.away.name,
+      away_logo: game.teams.away.logo,
+
+      home_score: game.goals.home,
+      away_score: game.goals.away,
+
+      minute: game.fixture.status.elapsed,
+      status: game.fixture.status.short,
+
+      kickoff: game.fixture.date
+    }));
+
+    res.json({
+      ok: true,
+      date: today,
+      count: matches.length,
+      matches
+    });
+
+  } catch (error) {
+    console.error("Football today error:", error);
+
+    res.status(500).json({
+      ok: false,
+      error: "Unable to load today's football matches"
+    });
+  }
+});
