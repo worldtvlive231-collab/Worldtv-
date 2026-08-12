@@ -1,4 +1,4 @@
-require("dotenv").config();
+prequire("dotenv").config();
 const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
@@ -278,7 +278,6 @@ app.get("/api/admin/stats",adminOnly,(req,res)=>{
     customers:q("SELECT COUNT(*) n FROM users"),
     products:q("SELECT COUNT(*) n FROM products WHERE active=1")
   });
-});
 app.get("/api/admin/codes",adminOnly,(req,res)=>{
   res.json(db.prepare(`
     SELECT c.id,c.code,c.status,c.expires_at,c.created_at,p.name plan_name,u.email user_email
