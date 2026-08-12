@@ -1382,38 +1382,14 @@ app.get("/api/football/live", async (req, res) => {
   try {
     const data = await getCachedFootball(
       "football-live",
-      "/fixtures?live=all",
+      "/football-current-live",
       30000
     );
 
-    const matches = (data.response || []).map(game => ({
-      fixture_id: game.fixture.id,
-
-      league: game.league.name,
-      league_logo: game.league.logo,
-
-      home_team: game.teams.home.name,
-      home_logo: game.teams.home.logo,
-
-      away_team: game.teams.away.name,
-      away_logo: game.teams.away.logo,
-
-      home_score: game.goals.home,
-      away_score: game.goals.away,
-
-      minute: game.fixture.status.elapsed,
-      status: game.fixture.status.short,
-      status_long: game.fixture.status.long,
-
-      kickoff: game.fixture.date
-    }));
-
-    res.json({
-      ok: true,
-      updated_at: new Date().toISOString(),
-      count: matches.length,
-      matches
-    });
+res.json({
+  ok: true,
+  data
+});
 
   } catch (error) {
     console.error("Football live error:", error);
