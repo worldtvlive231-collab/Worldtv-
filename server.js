@@ -1455,6 +1455,37 @@ app.get("/api/football/upcoming", async (req, res) => {
 });
 
 
+// Finished matches (past 7 days)
+app.get("/api/football/finished", async (req, res) => {
+  try {
+    const today = new Date();
+    const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const todayStr = today.toISOString().split('T')[0];
+    const data = await getCachedFootball("football-finished", `/matches?dateFrom=${sevenDaysAgo}&dateTo=${todayStr}&status=FT`, 600000);
+    const matches = (data.response || [])
+      .filter(m => m && m.fixture && m.teams && m.fixture.status.short === 'FT')
+      .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
+      .slice(0, 20)
+      .map(m => ({
+        fixture_id: m.fixture?.id,
+        league: m.league?.name || "Unknown",
+        league_logo: m.league?.logo,
+        home_team: m.teams?.home?.name,
+        home_logo: m.teams?.home?.logo,
+        away_team: m.teams?.away?.name,
+        away_logo: m.teams?.away?.logo,
+        home_score: m.goals?.home,
+        away_score: m.goals?.away,
+        minute: "FT",
+        status: "FT",
+        kickoff: m.fixture?.date
+      }));
+    res.json({ ok: true, period: `Last 7 days (${sevenDaysAgo} to ${todayStr})`, count: matches.length, matches });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
 // 404 Handler
 app.use((req,res,next)=>{
   if(req.path.startsWith("/api/")) return res.status(404).json({error:"Not found"});
