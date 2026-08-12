@@ -205,7 +205,6 @@ app.post("/api/customer/register",async(req,res)=>{
       if(ref && ref.id!==result.lastInsertRowid){
         try{db.prepare("INSERT INTO referrals(referrer_user_id,referred_user_id,referral_code) VALUES(?,?,?)").run(ref.id,result.lastInsertRowid,String(referral_code).trim().toUpperCase())}catch(e){}
       }
-    }
     const token=crypto.randomBytes(32).toString("hex");
     customerSessions.set(token,{userId:result.lastInsertRowid,email:cleanEmail});
     res.json({token});
@@ -265,8 +264,7 @@ app.post("/api/admin/login",loginRateLimit,(req,res)=>{
 app.post("/api/admin/logout",adminOnly,(req,res)=>{
   res.json({ok:true});
 });
-});
-
+ 
 /* Code manager */
 app.get("/api/admin/stats",adminOnly,(req,res)=>{
   const q=s=>db.prepare(s).get().n;
