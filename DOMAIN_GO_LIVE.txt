@@ -1,0 +1,25 @@
+WORLD TV — MYWORLDTvLIVE.COM GO-LIVE STEPS
+
+This project is ready for the hosting stage.
+
+1. Create a Node.js hosting account that provides persistent disk/storage.
+2. Upload the World TV project.
+3. Set the start command to: npm start
+4. Add the production environment variables from .env.example.
+5. Set PUBLIC_BASE_URL=https://myworldtvlive.com
+6. Deploy and first test using the temporary URL supplied by the host.
+7. Open /health and confirm ok:true.
+8. Open /status.html and check the public service status.
+9. Add MyWorldTVLive.com and www.MyWorldTVLive.com as custom domains.
+10. Copy the DNS records supplied by the host into the domain registrar's DNS settings.
+11. Wait for DNS propagation and HTTPS certificate activation.
+12. Test registration, login, subscription requests, product orders, support and admin tools.
+13. Confirm database persistence by restarting/redeploying the service and checking that test data remains.
+14. Connect transactional email delivery.
+15. Only after all of the above, connect Paystack.
+
+PAYSTACK
+Online payment remains intentionally disabled in this build.
+
+SECURITY
+Never put admin passwords, Paystack secret keys or email-provider secret keys in public HTML or JavaScript.

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>World TV — Entertainment, Products & Services</title>
+<meta name="description" content="World TV subscriptions, products, services and customer account portal.">
+<style>
+:root{--gold:#d89a00;--gold2:#f4c542;--dark:#17130a;--muted:#716958;--line:#eadfc8;--cream:#fff9eb;--white:#fff}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--dark);background:#fff}
+a{text-decoration:none;color:inherit}.wrap{width:min(1180px,92%);margin:auto}
+header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav{height:78px;display:flex;align-items:center;justify-content:space-between;gap:20px}.logo{height:64px;width:116px;object-fit:contain}
+nav{display:flex;gap:22px;font-size:14px;font-weight:750}.actions{display:flex;gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:12px;padding:12px 18px;font-weight:800;cursor:pointer}
+.primary{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#211800}.secondary{background:#fff;border:1px solid #d8c9a7}
+.hero{padding:80px 0;background:radial-gradient(circle at 83% 18%,#ffe29a,#fff7df 28%,#fff 58%)}.hero-grid{display:grid;grid-template-columns:1.08fr .92fr;gap:45px;align-items:center}
+.badge{display:inline-block;background:#fff1bd;border:1px solid #efcf72;border-radius:99px;padding:7px 12px;font-size:12px;font-weight:850}
+h1{font-size:clamp(44px,6vw,72px);line-height:1.02;margin:16px 0}.gold{color:var(--gold)}
+.hero p,.lead{font-size:18px;line-height:1.7;color:var(--muted)}.hero-card{background:#fff;border:1px solid var(--line);border-radius:26px;padding:28px;box-shadow:0 22px 65px rgba(50,35,0,.12);text-align:center}.hero-card img{width:min(100%,390px)}
+section{padding:76px 0}.section-head{text-align:center;max-width:720px;margin:0 auto 35px}.section-head h2{font-size:38px;margin:0 0 10px}.section-head p{color:var(--muted);line-height:1.65}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.card{border:1px solid var(--line);border-radius:22px;padding:26px;background:#fff;box-shadow:0 12px 35px rgba(35,25,0,.05)}
+.price{font-size:42px;font-weight:900;margin:12px 0}.product-visual{height:180px;border-radius:16px;background:linear-gradient(135deg,#fff0b5,#f8d35c);display:grid;place-items:center;font-size:62px;margin-bottom:18px}
+.feature-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.feature{padding:20px;border-radius:18px;background:var(--cream);border:1px solid var(--line)}
+.cta{background:#18130a;color:#fff;border-radius:28px;padding:46px;display:flex;justify-content:space-between;gap:25px;align-items:center}.cta p{color:#d8d0bf}
+footer{background:#111;color:#ddd;padding:45px 0}.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:30px}footer p,footer a{color:#aaa;font-size:14px;line-height:1.7}
+@media(max-width:900px){nav{display:none}.hero-grid{grid-template-columns:1fr}.cards,.feature-grid{grid-template-columns:1fr 1fr}.cta{flex-direction:column;align-items:flex-start}}
+@media(max-width:600px){.cards,.feature-grid{grid-template-columns:1fr}.actions .secondary{display:none}.footer-grid{grid-template-columns:1fr}.hero{padding-top:45px}}
+</style>
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#e0a200"><link rel="apple-touch-icon" href="/assets/world-tv-logo.png"><link rel="icon" href="/assets/world-tv-logo.png"><meta property="og:site_name" content="World TV"><meta property="og:type" content="website"><meta property="og:image" content="https://myworldtvlive.com/assets/world-tv-logo.png"><script src="/assets/site-meta.js"></script></head>
+<body>
+<header>
+  <div class="wrap nav">
+    <a href="/"><img class="logo" src="assets/world-tv-logo.png" alt="World TV"></a>
+    <nav>
+      <a href="#home">Home</a>
+      <a href="#subscription">Subscription</a>
+      <a href="#products">Products</a>
+      <a href="#services">Services</a>
+      <a href="#support">Support</a><a href="/download.html">App</a>
+    </nav>
+    <div class="actions">
+      <a class="btn secondary" href="/login.html">Login</a>
+      <a class="btn primary" href="/subscribe.html">Subscribe Now</a><br><a href="/register.html">Create Account</a>
+    </div>
+  </div>
+</header>
+
+<main>
+<section class="hero" id="home">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="badge">WORLD TV • ENTERTAINMENT & MORE</span>
+      <h1>Everything you love.<br><span class="gold">One place.</span></h1>
+      <p>World TV brings your subscription account, products and services together in one simple customer website.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:25px">
+        <a class="btn primary" href="/register.html">Create Your Account</a>
+        <a class="btn secondary" href="#products">Browse Products</a>
+      </div>
+    </div>
+    <div class="hero-card">
+      <img src="assets/world-tv-logo.png" alt="World TV logo">
+      <h3>1 Year World TV</h3>
+      <div class="price">GH₵299.00</div>
+      <p class="lead" style="font-size:15px">Payment setup will be connected later. Customers can already create an account and use the portal structure.</p>
+    </div>
+  </div>
+</section>
+
+<section id="subscription">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Simple subscription</h2>
+      <p>Start with our annual World TV plan. More plans can be added from the admin side later.</p>
+    </div>
+    <div class="card" style="max-width:650px;margin:auto;text-align:center">
+      <h3>World TV — 1 Year</h3>
+      <div class="price">GH₵299.00</div>
+      <p>365-day access • Customer account • Subscription code • Renewal history</p>
+      <a class="btn primary" href="/register.html">Create Account to Subscribe</a>
+    </div>
+  </div>
+</section>
+
+<section id="products" style="background:var(--cream)">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Products</h2>
+      <p>Advertise your physical products directly to World TV customers.</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="product-visual">📺</div>
+        <h3>Android TV Box</h3>
+        <p>Promote compatible TV boxes, accessories and entertainment devices.</p>
+        <a class="btn primary" href="/products.html">View Product</a>
+      </div>
+      <div class="card">
+        <div class="product-visual">📡</div>
+        <h3>Entertainment Accessories</h3>
+        <p>Add remotes, cables, adapters and other accessories to your store.</p>
+        <a class="btn secondary" href="/products.html">Browse</a>
+      </div>
+      <div class="card">
+        <div class="product-visual">🛍️</div>
+        <h3>More Products</h3>
+        <p>The admin area can later be expanded to add product images, prices and stock.</p>
+        <a class="btn secondary" href="/products.html">See More</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section id="live-products" style="background:#fff">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Featured Products</h2>
+      <p>Products added from the World TV Admin Dashboard appear here automatically.</p>
+    </div>
+    <div id="featuredProducts" class="cards"></div>
+    <div style="text-align:center;margin-top:25px"><a class="btn secondary" href="/products.html">View All Products</a></div>
+  </div>
+</section>
+<script>
+(async()=>{
+  const ps=await fetch("/api/products").then(r=>r.json()).catch(()=>[]);
+  const box=document.getElementById("featuredProducts");
+  if(!box)return;
+  const chosen=ps.filter(p=>p.featured).slice(0,3);
+  const shown=chosen.length?chosen:ps.slice(0,3);
+  if(!shown.length){box.innerHTML='<div class="card"><h3>No products yet</h3><p>Add your first product from the Admin Dashboard.</p></div>';return}
+  box.innerHTML=shown.map(p=>`<div class="card">
+    <div class="product-visual" style="overflow:hidden">${p.image_url?`<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover">`:'📦'}</div>
+    <h3>${p.name}</h3><p>${p.description||''}</p>
+    ${p.price_ghs!=null?`<div class="price" style="font-size:26px">GH₵${Number(p.price_ghs).toFixed(2)}</div>`:''}
+    <a class="btn primary" href="/products.html">View Product</a>
+  </div>`).join('');
+})();
+</script>
+
+<section id="services">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Services</h2>
+      <p>Use World TV as a business hub to advertise additional services to customers.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature"><h3>📺 Subscription Support</h3><p>Help customers with subscription and renewal questions.</p></div>
+      <div class="feature"><h3>⚙️ Device Setup</h3><p>Advertise TV box setup and configuration services.</p></div>
+      <div class="feature"><h3>🚚 Delivery</h3><p>Promote delivery options for your physical products.</p></div>
+      <div class="feature"><h3>💬 Customer Care</h3><p>Direct customers to your support channels.</p></div>
+    </div>
+  </div>
+</section>
+
+
+<section id="promotions" style="background:#fff9eb">
+  <div class="wrap">
+    <div class="section-head"><h2>Latest from World TV</h2><p>Promotions and announcements from World TV.</p></div>
+    <div id="promoCards" class="cards"></div>
+  </div>
+</section>
+<script>
+(async()=>{
+ const promos=await fetch("/api/promotions").then(r=>r.json()).catch(()=>[]);
+ const box=document.getElementById("promoCards");
+ if(!box)return;
+ if(!promos.length){box.innerHTML='<div class="card"><h3>No announcements right now</h3><p>Check back later for World TV offers and updates.</p></div>';return}
+ box.innerHTML=promos.slice(0,3).map(p=>`<div class="card"><h3>${p.title}</h3><p>${p.message||''}</p>${p.button_text&&p.button_url?`<a class="btn primary" href="${p.button_url}">${p.button_text}</a>`:''}</div>`).join('');
+})();
+</script>
+
+<section id="support">
+  <div class="wrap">
+    <div class="cta">
+      <div><h2>Need help?</h2><p>Customers can contact World TV for subscription, product and service inquiries.</p></div>
+      <a class="btn primary" href="/contact.html">Contact World TV</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap footer-grid">
+    <div><h3>WORLD TV</h3><p>Entertainment, products, services and customer subscriptions in one place.</p></div>
+    <div><h4>Quick Links</h4><p><a href="/products.html">Products</a><br><a href="/download.html">Download App</a><br><a href="/about.html">About</a><br><a href="/faq.html">FAQ</a><br><a href="/contact.html">Contact</a></p></div>
+    <div><h4>Account</h4><p><a href="/subscribe.html">Subscribe Now</a><br><a href="/register.html">Create Account</a><br><a href="/account.html">My Account</a><br><a href="/terms.html">Terms</a><br><a href="/privacy.html">Privacy</a></p></div>
+  </div>
+</footer>
+<script src="/assets/pwa.js"></script></body>
+</html>

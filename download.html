@@ -1,0 +1,12 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Download World TV App</title>
+<style>
+body{margin:0;font-family:system-ui,sans-serif;background:#fff9eb;color:#17130a}.box{width:min(680px,92%);margin:55px auto;background:#fff;border:1px solid #eadfc8;border-radius:22px;padding:30px;text-align:center}.logo{width:170px}.btn{display:inline-block;padding:13px 18px;border-radius:10px;background:#e0a200;color:#17130a;text-decoration:none;font-weight:800}.disabled{opacity:.55;pointer-events:none}.muted{color:#716958;line-height:1.6}
+</style><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#e0a200"><link rel="apple-touch-icon" href="/assets/world-tv-logo.png"><link rel="icon" href="/assets/world-tv-logo.png"><meta property="og:site_name" content="World TV"><meta property="og:type" content="website"><meta property="og:image" content="https://myworldtvlive.com/assets/world-tv-logo.png"><script src="/assets/site-meta.js"></script></head>
+<body><div class="box"><img class="logo" src="assets/world-tv-logo.png"><h1>World TV App</h1><p id="version" class="muted">Official app download page.</p><a id="downloadBtn" class="btn disabled" href="#">App Download Coming Soon</a><p class="muted">Only download the World TV app from this official page once the final app file is published.</p><p><a href="/">Back to Home</a></p></div>
+<script>
+(async()=>{const s=await fetch("/api/site-settings").then(r=>r.json()).catch(()=>({}));
+if(s.app_version)version.textContent="Current version: "+s.app_version;
+if(s.app_download_url){downloadBtn.href=s.app_download_url;downloadBtn.textContent="Download World TV App";downloadBtn.classList.remove("disabled");}
+})();
+</script><script src="/assets/pwa.js"></script></body></html>

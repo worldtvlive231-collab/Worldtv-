@@ -1,0 +1,12 @@
+services:
+  worldtv:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - worldtv_data:/app/data
+volumes:
+  worldtv_data:

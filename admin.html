@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>World TV Admin</title>
+<style>
+:root{--gold:#d89a00;--line:#eadfc8;--cream:#fff9eb;--muted:#716958}
+*{box-sizing:border-box}body{margin:0;background:#f8f6f0;color:#17130a;font-family:system-ui,sans-serif}.wrap{width:min(1200px,94%);margin:auto}
+header{background:#fff;border-bottom:1px solid var(--line)}.nav{height:74px;display:flex;align-items:center;justify-content:space-between}.logo{height:60px;width:108px;object-fit:contain}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;margin:20px 0;box-shadow:0 8px 25px #3323000b}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.stat{font-size:28px;font-weight:900}.muted{color:var(--muted);font-size:13px}
+input,textarea,select{width:100%;padding:12px;border:1px solid #d8ccb2;border-radius:9px;margin:6px 0 12px;font:inherit}textarea{min-height:110px;resize:vertical}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}.primary{background:#e0a200}.secondary{background:#fff;border:1px solid #d8c9a7}.danger{background:#f2ded8}.hide{display:none}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}.tab{background:#fff;border:1px solid #d8c9a7}.tab.active{background:#e0a200}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px;border-bottom:1px solid #eee6d6;vertical-align:top}.thumb{width:70px;height:55px;object-fit:cover;border-radius:8px;background:#eee}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.pill{display:inline-block;padding:4px 8px;border-radius:99px;background:#f4edda}
+.modal{display:none;position:fixed;inset:0;background:#0008;z-index:50;align-items:center;justify-content:center;padding:20px}.modal.open{display:flex}.modalbox{background:#fff;width:min(760px,100%);max-height:90vh;overflow:auto;border-radius:20px;padding:24px;position:relative}.close{position:absolute;right:16px;top:12px;border:0;background:none;font-size:26px;cursor:pointer}
+@media(max-width:850px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}table{display:block;overflow:auto;white-space:nowrap}}
+</style><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#e0a200"><link rel="apple-touch-icon" href="/assets/world-tv-logo.png"><link rel="icon" href="/assets/world-tv-logo.png"><meta property="og:site_name" content="World TV"><meta property="og:type" content="website"><meta property="og:image" content="https://myworldtvlive.com/assets/world-tv-logo.png"><script src="/assets/site-meta.js"></script><meta name="robots" content="noindex,nofollow"></head>
+<body><header><div class="wrap nav"><img class="logo" src="assets/world-tv-logo.png"><button id="logoutBtn" class="btn danger hide" onclick="logout()">Logout</button></div></header>
+<main class="wrap">
+<section id="login" class="card" style="max-width:460px;margin:30px auto"><h2>Admin Login</h2><input id="email" type="email" placeholder="Admin email"><input id="password" type="password" placeholder="Password"><button class="btn primary" onclick="loginAdmin()">Login</button><p id="loginMsg" class="muted"></p></section>
+
+<section id="dashboard" class="hide">
+<h1>World TV Admin Dashboard</h1>
+<div class="grid">
+<div class="card"><div class="muted">Codes</div><div id="total" class="stat">0</div></div>
+<div class="card"><div class="muted">Unused</div><div id="unused" class="stat">0</div></div>
+<div class="card"><div class="muted">Used</div><div id="used" class="stat">0</div></div>
+<div class="card"><div class="muted">Customers</div><div id="customersCount" class="stat">0</div></div>
+<div class="card"><div class="muted">Products</div><div id="productsCount" class="stat">0</div></div>
+</div>
+
+<div class="tabs">
+<button class="btn tab active" onclick="showTab('customersTab',this)">Customers</button>
+<button class="btn tab" onclick="showTab('productsTab',this)">Products</button>
+<button class="btn tab" onclick="showTab('codesTab',this)">Subscription Codes</button>
+<button class="btn tab" onclick="showTab('promotionsTab',this)">Promotions</button>
+<button class="btn tab" onclick="showTab('supportTab',this)">Support Inbox</button>
+<button class="btn tab" onclick="showTab('settingsTab',this)">Site Settings</button>
+<button class="btn tab" onclick="showTab('notificationsTab',this)">Notifications</button>
+<button class="btn tab" onclick="showTab('reportsTab',this)">Reports</button>
+<button class="btn tab" onclick="showTab('backupTab',this)">Backup & Export</button>
+<button class="btn tab" onclick="showTab('contentTab',this)">Website Content</button>
+<button class="btn tab" onclick="showTab('productOrdersTab',this)">Product Orders</button>
+<button class="btn tab" onclick="showTab('couponsTab',this)">Coupons</button>
+<button class="btn tab" onclick="showTab('referralsTab',this)">Referrals</button>
+<button class="btn tab" onclick="showTab('subscriptionsTab',this)">Subscription Requests</button>
+<button class="btn tab" onclick="showTab('alertsTab',this)">Alerts</button>
+<button class="btn tab" onclick="showTab('auditTab',this)">Audit Log</button>
+<button class="btn tab" onclick="showTab('emailTab',this)">Email Center</button>
+</div>
+
+<section id="customersTab">
+<div class="card">
+<h2>Customer Management</h2>
+<div class="formgrid"><div><label>Search customers</label><input id="customerSearch" placeholder="Name or email"></div><div style="align-self:end"><button class="btn secondary" onclick="loadCustomers()">Search</button></div></div>
+<div style="overflow:auto"><table><thead><tr><th>Name</th><th>Email</th><th>Orders</th><th>Paid</th><th>Latest Expiry</th><th>Action</th></tr></thead><tbody id="customerRows"></tbody></table></div>
+</div>
+</section>
+
+<section id="productsTab" class="hide">
+<div class="card">
+<h2 id="productFormTitle">Add Product</h2>
+<form id="productForm" class="formgrid">
+<div><label>Product name</label><input id="pName" required><label>Price (GH₵)</label><input id="pPrice" type="number" min="0" step="0.01"><label>Category</label><input id="pCategory" value="General"><label>Stock status</label><select id="pStock"><option value="in_stock">In stock</option><option value="preorder">Pre-order</option><option value="out_of_stock">Out of stock</option></select></div>
+<div><label>Description</label><textarea id="pDescription"></textarea><label>WhatsApp number</label><input id="pWhatsapp" value="+233244909092"><label>Product image</label><input id="pImage" type="file" accept="image/*"><label><input id="pFeatured" type="checkbox" style="width:auto"> Featured product</label></div>
+<div style="grid-column:1/-1"><button class="btn primary" type="submit">Save Product</button> <button class="btn secondary" type="button" onclick="resetProductForm()">Clear</button> <span id="pMsg" class="muted"></span></div>
+</form></div>
+<div class="card"><h2>Manage Products</h2><div style="overflow:auto"><table><thead><tr><th>Image</th><th>Name</th><th>Price</th><th>Stock</th><th>Featured</th><th>Actions</th></tr></thead><tbody id="productRows"></tbody></table></div></div>
+</section>
+
+<section id="codesTab" class="hide">
+<div class="card"><h2>Upload Subscription Codes</h2><select id="plan"></select><input id="csv" type="file" accept=".csv,text/csv"><button class="btn primary" onclick="uploadCsv()">Upload CSV</button><textarea id="codes" placeholder="Paste codes, one per line"></textarea><button class="btn primary" onclick="pasteCodes()">Add Codes</button><p id="codeMsg" class="muted"></p></div>
+<div class="card"><h2>Codes</h2><div style="overflow:auto"><table><thead><tr><th>Code</th><th>Plan</th><th>Status</th><th>Customer</th><th>Expires</th></tr></thead><tbody id="codeRows"></tbody></table></div></div>
+
+<section id="promotionsTab" class="hide">
+<div class="card"><h2>Promotions & Announcements</h2>
+<input id="promoTitle" placeholder="Promotion title">
+<textarea id="promoMessage" placeholder="Promotion message"></textarea>
+<div class="formgrid"><div><input id="promoButtonText" placeholder="Button text (optional)"></div><div><input id="promoButtonUrl" placeholder="Button URL (optional)"></div></div>
+<button class="btn primary" onclick="addPromotion()">Add Promotion</button><p id="promoMsg" class="muted"></p>
+</div>
+<div class="card"><div style="overflow:auto"><table><thead><tr><th>Title</th><th>Message</th><th>Active</th><th>Action</th></tr></thead><tbody id="promoRows"></tbody></table></div></div>
+</section>
+
+<section id="supportTab" class="hide">
+<div class="card"><h2>Support Inbox</h2>
+<select id="supportFilter" onchange="loadSupport()"><option value="">All</option><option value="new">New</option><option value="open">Open</option><option value="resolved">Resolved</option></select>
+<div style="overflow:auto"><table><thead><tr><th>Customer</th><th>Subject</th><th>Message</th><th>Status</th><th>Action</th></tr></thead><tbody id="supportRows"></tbody></table></div>
+</div>
+</section>
+
+<section id="settingsTab" class="hide">
+<div class="card"><h2>Site Settings</h2>
+<label>Support WhatsApp</label><input id="settingWhatsapp" placeholder="+233 24 490 9092">
+<label>Support Email</label><input id="settingEmail" placeholder="support@example.com">
+<label>App Version</label><input id="settingAppVersion" placeholder="1.0.0">
+<label>App Download URL</label><input id="settingAppUrl" placeholder="https://.../worldtv.apk">
+<label>Homepage Notice</label><textarea id="settingNotice" placeholder="Optional notice"></textarea>
+<button class="btn primary" onclick="saveSettings()">Save Settings</button><p id="settingsMsg" class="muted"></p>
+</div>
+</section>
+
+
+<section id="notificationsTab" class="hide">
+<div class="card"><h2>Broadcast Notification</h2><p class="muted">Send an announcement to every registered World TV customer account.</p>
+<input id="broadcastTitle" placeholder="Notification title"><textarea id="broadcastMessage" placeholder="Message"></textarea>
+<button class="btn primary" onclick="broadcastNotification()">Send to All Customers</button><p id="broadcastMsg" class="muted"></p></div>
+</section>
+<section id="reportsTab" class="hide">
+<div class="card"><h2>Business Overview</h2><div id="reportStats" class="grid"></div></div>
+<div class="card"><h2>Recent Subscription Activity</h2><div style="overflow:auto"><table><thead><tr><th>Customer</th><th>Plan</th><th>Reference</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead><tbody id="reportRows"></tbody></table></div></div>
+</section>
+
+
+<section id="backupTab" class="hide">
+<div class="card"><h2>Backup & Export</h2><p class="muted">Download copies of important World TV business data before making major changes or moving hosting.</p>
+<div style="display:flex;gap:10px;flex-wrap:wrap">
+<button class="btn primary" onclick="downloadAdminFile('/api/admin/backup/database','world-tv-backup.sqlite')">Download Database Backup</button>
+<button class="btn secondary" onclick="downloadAdminFile('/api/admin/export/customers.csv','world-tv-customers.csv')">Export Customers CSV</button>
+<button class="btn secondary" onclick="downloadAdminFile('/api/admin/export/codes.csv','world-tv-codes.csv')">Export Codes CSV</button>
+<button class="btn secondary" onclick="downloadAdminFile('/api/admin/export/orders.csv','world-tv-orders.csv')">Export Orders CSV</button>
+</div><p id="backupMsg" class="muted"></p></div>
+<div class="card"><h3>Before Public Launch</h3><p class="muted">Use HTTPS, a strong unique admin password, persistent secure sessions, managed database backups, server monitoring, and secure environment variables. Paystack can be connected after these deployment basics are ready.</p></div>
+</section>
+
+
+<section id="contentTab" class="hide">
+<div class="card"><h2>FAQ Manager</h2><p class="muted">Add questions and answers without editing website files.</p>
+<input id="faqQuestion" placeholder="Question"><textarea id="faqAnswer" placeholder="Answer"></textarea>
+<input id="faqOrder" type="number" value="0" placeholder="Display order">
+<button class="btn primary" onclick="addFaq()">Add FAQ</button><p id="faqMsg" class="muted"></p>
+<div style="overflow:auto"><table><thead><tr><th>Question</th><th>Answer</th><th>Action</th></tr></thead><tbody id="faqRows"></tbody></table></div></div>
+<div class="card"><h2>Custom Page Content</h2><p class="muted">Save reusable website text such as About, Help, Delivery or Installation information.</p>
+<input id="pageSlug" placeholder="Page key, e.g. installation"><input id="pageTitle" placeholder="Page title"><textarea id="pageContent" placeholder="Page content"></textarea>
+<button class="btn primary" onclick="savePage()">Save Content</button><p id="pageMsg" class="muted"></p>
+<div style="overflow:auto"><table><thead><tr><th>Key</th><th>Title</th><th>Updated</th></tr></thead><tbody id="pageRows"></tbody></table></div></div>
+</section>
+
+
+<section id="productOrdersTab" class="hide"><div class="card"><h2>Product Orders</h2>
+<select id="orderFilter" onchange="loadProductOrders()"><option value="">All Orders</option><option value="new">New</option><option value="confirmed">Confirmed</option><option value="processing">Processing</option><option value="ready">Ready</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select>
+<div style="overflow:auto"><table><thead><tr><th>Order</th><th>Customer</th><th>Product</th><th>Total</th><th>Delivery</th><th>Status</th><th>Update</th></tr></thead><tbody id="productOrderRows"></tbody></table></div></div></section>
+
+
+<section id="couponsTab" class="hide"><div class="card"><h2>Coupon Manager</h2><div class="formgrid"><div><input id="couponCode" placeholder="Coupon code e.g. WORLD20"><select id="couponType"><option value="fixed">Fixed GH₵ discount</option><option value="percent">Percentage discount</option></select><input id="couponValue" type="number" min="0" step="0.01" placeholder="Discount value"></div><div><select id="couponApplies"><option value="subscription">Subscriptions</option><option value="product">Products</option><option value="all">All</option></select><input id="couponUses" type="number" min="1" placeholder="Maximum uses (optional)"><input id="couponExpiry" type="datetime-local"></div></div><button class="btn primary" onclick="addCoupon()">Create Coupon</button><p id="couponMsg" class="muted"></p></div><div class="card"><div style="overflow:auto"><table><thead><tr><th>Code</th><th>Discount</th><th>Applies</th><th>Used</th><th>Active</th><th>Actions</th></tr></thead><tbody id="couponRows"></tbody></table></div></div></section>
+<section id="referralsTab" class="hide"><div class="card"><h2>Customer Referrals</h2><div style="overflow:auto"><table><thead><tr><th>Referral Code</th><th>Referrer</th><th>New Customer</th><th>Date</th></tr></thead><tbody id="referralRows"></tbody></table></div></div></section>
+
+
+<section id="subscriptionsTab" class="hide"><div class="card"><h2>Subscription Requests</h2><p class="muted">Until Paystack is connected, you can confirm an offline payment here and then issue a code.</p><div style="overflow:auto"><table><thead><tr><th>Reference</th><th>Customer</th><th>Plan</th><th>Amount</th><th>Coupon</th><th>Status</th><th>Actions</th></tr></thead><tbody id="subscriptionRequestRows"></tbody></table></div></div></section>
+
+
+<section id="alertsTab" class="hide"><div class="card"><h2>Admin Alerts</h2><p class="muted">Important items that may need your attention.</p><div id="alertsList"></div></div></section>
+<section id="auditTab" class="hide"><div class="card"><h2>Admin Audit Log</h2><p class="muted">A record of important administrative subscription actions.</p><input id="auditSearch" placeholder="Search action or details"><button class="btn secondary" onclick="loadAudit()">Search</button><div style="overflow:auto"><table><thead><tr><th>Date</th><th>Action</th><th>Type</th><th>ID</th><th>Details</th></tr></thead><tbody id="auditRows"></tbody></table></div></div></section>
+
+
+<section id="emailTab" class="hide">
+<div class="card"><h2>Email Center</h2><p class="muted">Prepare customer emails now. After hosting, an email provider can automatically send this queue.</p>
+<input id="emailSubject" placeholder="Email subject"><textarea id="emailMessage" placeholder="Message"></textarea>
+<button class="btn primary" onclick="broadcastEmail()">Queue Email for All Customers</button><p id="emailMsg" class="muted"></p></div>
+<div class="card"><h2>Email Queue</h2><div style="overflow:auto"><table><thead><tr><th>Date</th><th>Recipient</th><th>Subject</th><th>Status</th></tr></thead><tbody id="emailRows"></tbody></table></div></div>
+</section>
+
+</section>
+</section>
+</main>
+
+<div id="customerModal" class="modal"><div class="modalbox"><button class="close" onclick="closeCustomer()">×</button><div id="customerDetail"></div></div></div>
+
+<script>
+let token=localStorage.getItem("wtv_admin_token")||"";let editingProductId=null;let selectedCustomerId=null;const $=id=>document.getElementById(id);
+async function api(url,o={}){o.headers=Object.assign({},o.headers,{"x-admin-token":token});const r=await fetch(url,o);const d=await r.json().catch(()=>({}));if(r.status===401){logout();throw Error("Session expired")}if(!r.ok)throw Error(d.error||"Request failed");return d}
+async function loginAdmin(){const r=await fetch("/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:$("email").value,password:$("password").value})});const d=await r.json();if(!r.ok){$("loginMsg").textContent=d.error;return}token=d.token;localStorage.setItem("wtv_admin_token",token);showDashboard()}
+function logout(){localStorage.removeItem("wtv_admin_token");token="";location.reload()}
+function showTab(id,btn){["customersTab","productsTab","codesTab","promotionsTab","supportTab","settingsTab","notificationsTab","reportsTab","backupTab","contentTab","productOrdersTab","couponsTab","referralsTab","subscriptionsTab","alertsTab","auditTab","emailTab"].forEach(x=>$(x).classList.add("hide"));$(id).classList.remove("hide");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active")}
+async function showDashboard(){$("login").classList.add("hide");$("dashboard").classList.remove("hide");$("logoutBtn").classList.remove("hide");const plans=await fetch("/api/plans").then(r=>r.json());$("plan").innerHTML=plans.map(p=>`<option value="${p.id}">${p.name} — GH₵${p.price_ghs}</option>`).join("");await refreshAll()}
+async function refreshAll(){const s=await api("/api/admin/stats");$("total").textContent=s.total;$("unused").textContent=s.unused;$("used").textContent=s.used;$("customersCount").textContent=s.customers;$("productsCount").textContent=s.products;await loadCustomers();await loadProducts();await loadCodes();await loadPromotions();await loadSupport();await loadSettings();await loadReports();await loadContent();await loadProductOrders();await loadCoupons();await loadReferrals();await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue()}
+
+async function loadCustomers(){const q=$("customerSearch").value.trim();const d=await api("/api/admin/customers"+(q?`?q=${encodeURIComponent(q)}`:""));$("customerRows").innerHTML=d.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.email}</td><td>${c.order_count}</td><td>${c.paid_orders}</td><td>${c.latest_expiry?new Date(c.latest_expiry).toLocaleDateString():"—"}</td><td><button class="btn secondary" onclick="openCustomer(${c.id})">Manage</button></td></tr>`).join("")}
+async function openCustomer(id){selectedCustomerId=id;const d=await api(`/api/admin/customers/${id}`);$("customerDetail").innerHTML=`<h2>${d.user.name}</h2><p class="muted">${d.user.email}</p>
+<div class="card"><h3>Subscription Actions</h3><p>Manual activation or renewal uses one unused code from your code inventory.</p><button class="btn primary" onclick="activateCustomer()">Activate 1 Year</button> <button class="btn secondary" onclick="renewCustomer()">Renew 1 Year</button> <button class="btn secondary" onclick="sendCustomerNotification()">Send Notification</button> <button class="btn secondary" onclick="sendCustomerEmail()">Queue Email</button></div>
+<div class="card"><h3>Reset Customer Password</h3><input id="newCustomerPassword" type="password" minlength="8" placeholder="New password (8+ characters)"><button class="btn secondary" onclick="resetCustomerPassword()">Reset Password</button><p id="customerMsg" class="muted"></p></div>
+<div class="card"><h3>Subscription / Order History</h3><div style="overflow:auto"><table><thead><tr><th>Reference</th><th>Plan</th><th>Status</th><th>Code</th><th>Expiry</th></tr></thead><tbody>${d.orders.map(o=>`<tr><td>${o.reference}</td><td>${o.plan_name}</td><td><span class="pill">${o.status}</span></td><td>${o.code||"—"}</td><td>${o.expires_at?new Date(o.expires_at).toLocaleString():"—"}</td></tr>`).join("")}</tbody></table></div></div>`;$("customerModal").classList.add("open")}
+function closeCustomer(){$("customerModal").classList.remove("open");selectedCustomerId=null}
+async function activateCustomer(){if(!confirm("Activate this customer for 1 year and use one unused code?"))return;try{const d=await api(`/api/admin/customers/${selectedCustomerId}/activate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({planId:1})});alert(`Activated. Code: ${d.code}`);await refreshAll();await openCustomer(selectedCustomerId)}catch(e){alert(e.message)}}
+async function renewCustomer(){if(!confirm("Renew this customer for 1 year and use one unused code?"))return;try{const d=await api(`/api/admin/customers/${selectedCustomerId}/renew`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({planId:1})});alert(`Renewed. New code: ${d.code}`);await refreshAll();await openCustomer(selectedCustomerId)}catch(e){alert(e.message)}}
+async function resetCustomerPassword(){const p=$("newCustomerPassword").value;if(p.length<8){$("customerMsg").textContent="Password must be at least 8 characters.";return}try{await api(`/api/admin/customers/${selectedCustomerId}/reset-password`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({newPassword:p})});$("customerMsg").textContent="Password reset successfully.";$("newCustomerPassword").value=""}catch(e){$("customerMsg").textContent=e.message}}
+
+async function loadProducts(){const ps=await api("/api/admin/products");window._products=ps;$("productRows").innerHTML=ps.map(p=>`<tr><td>${p.image_url?`<img class="thumb" src="${p.image_url}">`:"—"}</td><td><b>${p.name}</b><br><span class="muted">${p.category}</span></td><td>${p.price_ghs!=null?`GH₵${Number(p.price_ghs).toFixed(2)}`:"—"}</td><td>${p.stock_status}</td><td>${p.featured?"Yes":"No"}</td><td><button class="btn secondary" onclick="editProduct(${p.id})">Edit</button> <button class="btn danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`).join("")}
+function resetProductForm(){editingProductId=null;$("productFormTitle").textContent="Add Product";$("productForm").reset();$("pCategory").value="General";$("pWhatsapp").value="+233244909092";$("pStock").value="in_stock";$("pMsg").textContent=""}
+function editProduct(id){const p=window._products.find(x=>x.id===id);if(!p)return;editingProductId=id;$("productFormTitle").textContent="Edit Product";$("pName").value=p.name;$("pPrice").value=p.price_ghs??"";$("pCategory").value=p.category||"General";$("pStock").value=p.stock_status||"in_stock";$("pDescription").value=p.description||"";$("pWhatsapp").value=p.whatsapp_number||"+233244909092";$("pFeatured").checked=!!p.featured;window.scrollTo({top:0,behavior:"smooth"})}
+$("productForm").onsubmit=async e=>{e.preventDefault();const fd=new FormData();fd.append("name",$("pName").value);fd.append("price_ghs",$("pPrice").value);fd.append("category",$("pCategory").value);fd.append("stock_status",$("pStock").value);fd.append("description",$("pDescription").value);fd.append("whatsapp_number",$("pWhatsapp").value);fd.append("featured",$("pFeatured").checked?"1":"0");fd.append("active","1");if($("pImage").files[0])fd.append("image",$("pImage").files[0]);try{await api(editingProductId?`/api/admin/products/${editingProductId}`:"/api/admin/products",{method:editingProductId?"PUT":"POST",body:fd});resetProductForm();await refreshAll()}catch(err){$("pMsg").textContent=err.message}};
+async function deleteProduct(id){if(!confirm("Delete this product?"))return;await api(`/api/admin/products/${id}`,{method:"DELETE"});await refreshAll()}
+async function loadCodes(){const rows=await api("/api/admin/codes");$("codeRows").innerHTML=rows.map(x=>`<tr><td>${x.code}</td><td>${x.plan_name}</td><td>${x.status}</td><td>${x.user_email||"—"}</td><td>${x.expires_at||"—"}</td></tr>`).join("")}
+async function uploadCsv(){const f=$("csv").files[0];if(!f)return;const fd=new FormData();fd.append("file",f);fd.append("planId",$("plan").value);const d=await api("/api/admin/codes/csv",{method:"POST",body:fd});$("codeMsg").textContent=`Added ${d.added}; skipped ${d.duplicates} duplicates.`;await refreshAll()}
+async function pasteCodes(){const d=await api("/api/admin/codes/text",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({planId:$("plan").value,codes:$("codes").value})});$("codeMsg").textContent=`Added ${d.added}; skipped ${d.duplicates} duplicates.`;$("codes").value="";await refreshAll()}
+
+async function loadPromotions(){
+ const d=await api("/api/admin/promotions");
+ $("promoRows").innerHTML=d.map(p=>`<tr><td><b>${p.title}</b></td><td>${p.message}</td><td>${p.active?"Yes":"No"}</td><td><button class="btn danger" onclick="deletePromotion(${p.id})">Delete</button></td></tr>`).join("");
+}
+async function addPromotion(){
+ try{
+  await api("/api/admin/promotions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:$("promoTitle").value,message:$("promoMessage").value,button_text:$("promoButtonText").value,button_url:$("promoButtonUrl").value,active:1})});
+  $("promoMsg").textContent="Promotion added.";$("promoTitle").value="";$("promoMessage").value="";$("promoButtonText").value="";$("promoButtonUrl").value="";await loadPromotions();
+ }catch(e){$("promoMsg").textContent=e.message}
+}
+async function deletePromotion(id){if(!confirm("Delete this promotion?"))return;await api(`/api/admin/promotions/${id}`,{method:"DELETE"});await loadPromotions()}
+async function loadSupport(){
+ const st=$("supportFilter")?.value||"";
+ const d=await api("/api/admin/support"+(st?`?status=${encodeURIComponent(st)}`:""));
+ $("supportRows").innerHTML=d.map(m=>`<tr><td><b>${m.name}</b><br><span class="muted">${m.email||""}<br>${m.phone||""}</span></td><td>${m.subject}</td><td style="max-width:320px;white-space:normal">${m.message}</td><td>${m.status}</td><td><button class="btn secondary" onclick="setSupportStatus(${m.id},'open')">Open</button> <button class="btn primary" onclick="setSupportStatus(${m.id},'resolved')">Resolve</button> <button class="btn danger" onclick="deleteSupport(${m.id})">Delete</button></td></tr>`).join("");
+}
+async function setSupportStatus(id,status){await api(`/api/admin/support/${id}/status`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status})});await loadSupport()}
+async function deleteSupport(id){if(!confirm("Delete this support message?"))return;await api(`/api/admin/support/${id}`,{method:"DELETE"});await loadSupport()}
+async function loadSettings(){
+ const s=await api("/api/admin/site-settings");
+ if($("settingWhatsapp"))$("settingWhatsapp").value=s.support_whatsapp||"+233 24 490 9092";
+ if($("settingEmail"))$("settingEmail").value=s.support_email||"";
+ if($("settingAppVersion"))$("settingAppVersion").value=s.app_version||"";
+ if($("settingAppUrl"))$("settingAppUrl").value=s.app_download_url||"";
+ if($("settingNotice"))$("settingNotice").value=s.homepage_notice||"";
+}
+async function saveSettings(){
+ try{
+  await api("/api/admin/site-settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({support_whatsapp:$("settingWhatsapp").value,support_email:$("settingEmail").value,app_version:$("settingAppVersion").value,app_download_url:$("settingAppUrl").value,homepage_notice:$("settingNotice").value})});
+  $("settingsMsg").textContent="Settings saved.";
+ }catch(e){$("settingsMsg").textContent=e.message}
+}
+
+
+async function broadcastNotification(){
+ if(!confirm("Send this notification to all registered customers?"))return;
+ try{const d=await api("/api/admin/notifications/broadcast",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:$("broadcastTitle").value,message:$("broadcastMessage").value})});$("broadcastMsg").textContent=`Sent to ${d.recipients} customers.`;$("broadcastTitle").value="";$("broadcastMessage").value=""}catch(e){$("broadcastMsg").textContent=e.message}
+}
+async function loadReports(){
+ const r=await api("/api/admin/reports");
+ $("reportStats").innerHTML=[
+ ["Customers",r.totalCustomers],["Active Subscriptions",r.activeSubscriptions],["Expired",r.expiredSubscriptions],["Unused Codes",r.unusedCodes],["Products",r.totalProducts],["New Support",r.newSupport],["Recorded Revenue","GH₵"+Number(r.revenue_ghs).toFixed(2)]
+ ].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="stat">${x[1]}</div></div>`).join("");
+ $("reportRows").innerHTML=r.recentOrders.map(o=>`<tr><td><b>${o.name}</b><br><span class="muted">${o.email}</span></td><td>${o.plan_name}</td><td>${o.reference}</td><td>GH₵${(o.amount_pesewas/100).toFixed(2)}</td><td>${o.status}</td><td>${new Date(o.created_at).toLocaleString()}</td></tr>`).join("");
+}
+async function sendCustomerNotification(){
+ const title=prompt("Notification title");if(!title)return;
+ const message=prompt("Message");if(!message)return;
+ try{await api(`/api/admin/customers/${selectedCustomerId}/notification`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title,message})});alert("Notification sent.")}catch(e){alert(e.message)}
+}
+
+
+async function downloadAdminFile(url,filename){
+ $("backupMsg").textContent="Preparing download...";
+ try{
+  const r=await fetch(url,{headers:{"x-admin-token":token}});
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw Error(d.error||"Download failed")}
+  const b=await r.blob();const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u);$("backupMsg").textContent="Download ready.";
+ }catch(e){$("backupMsg").textContent=e.message}
+}
+
+
+async function loadContent(){
+ const f=await api("/api/admin/faqs");$("faqRows").innerHTML=f.map(x=>`<tr><td><b>${x.question}</b></td><td style="white-space:normal">${x.answer}</td><td><button class="btn danger" onclick="deleteFaq(${x.id})">Delete</button></td></tr>`).join("");
+ const p=await api("/api/admin/pages");$("pageRows").innerHTML=p.map(x=>`<tr><td>${x.slug}</td><td>${x.title}</td><td>${new Date(x.updated_at).toLocaleString()}</td></tr>`).join("");
+}
+async function addFaq(){try{await api("/api/admin/faqs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:$("faqQuestion").value,answer:$("faqAnswer").value,sort_order:$("faqOrder").value})});$("faqQuestion").value="";$("faqAnswer").value="";$("faqMsg").textContent="FAQ added.";await loadContent();await loadProductOrders();await loadCoupons();await loadReferrals();await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue()}catch(e){$("faqMsg").textContent=e.message}}
+async function deleteFaq(id){if(!confirm("Delete this FAQ?"))return;await api(`/api/admin/faqs/${id}`,{method:"DELETE"});await loadContent();await loadProductOrders();await loadCoupons();await loadReferrals();await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue()}
+async function savePage(){try{await api("/api/admin/pages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slug:$("pageSlug").value,title:$("pageTitle").value,content:$("pageContent").value})});$("pageMsg").textContent="Content saved.";$("pageSlug").value="";$("pageTitle").value="";$("pageContent").value="";await loadContent();await loadProductOrders();await loadCoupons();await loadReferrals();await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue()}catch(e){$("pageMsg").textContent=e.message}}
+
+
+async function loadProductOrders(){
+ const st=$("orderFilter")?.value||"";const d=await api("/api/admin/product-orders"+(st?`?status=${st}`:""));
+ $("productOrderRows").innerHTML=d.map(o=>`<tr><td><b>${o.order_number}</b><br><span class="muted">${new Date(o.created_at).toLocaleString()}</span></td><td>${o.customer_name}<br><span class="muted">${o.phone}<br>${o.email||""}</span></td><td>${o.product_name} × ${o.quantity}</td><td>${o.total_ghs!=null?"GH₵"+Number(o.total_ghs).toFixed(2):"—"}</td><td style="white-space:normal">${o.delivery_location||"—"}</td><td>${o.status}</td><td><select onchange="updateProductOrder(${o.id},this.value)"><option value="">Change...</option>${["new","confirmed","processing","ready","delivered","cancelled"].map(x=>`<option value="${x}">${x}</option>`).join("")}</select></td></tr>`).join("");
+}
+async function updateProductOrder(id,status){if(!status)return;await api(`/api/admin/product-orders/${id}/status`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status})});await loadProductOrders();await loadCoupons();await loadReferrals();await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue()}
+
+
+async function loadCoupons(){const d=await api("/api/admin/coupons");$("couponRows").innerHTML=d.map(c=>`<tr><td><b>${c.code}</b></td><td>${c.discount_type==="percent"?c.discount_value+"%":"GH₵"+Number(c.discount_value).toFixed(2)}</td><td>${c.applies_to}</td><td>${c.used_count}${c.max_uses!=null?"/"+c.max_uses:""}</td><td>${c.active?"Yes":"No"}</td><td><button class="btn secondary" onclick="toggleCoupon(${c.id})">${c.active?"Disable":"Enable"}</button> <button class="btn danger" onclick="deleteCoupon(${c.id})">Delete</button></td></tr>`).join("")}
+async function addCoupon(){try{await api("/api/admin/coupons",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:$("couponCode").value,discount_type:$("couponType").value,discount_value:$("couponValue").value,applies_to:$("couponApplies").value,max_uses:$("couponUses").value,expires_at:$("couponExpiry").value||null})});$("couponMsg").textContent="Coupon created.";await loadCoupons()}catch(e){$("couponMsg").textContent=e.message}}
+async function toggleCoupon(id){await api(`/api/admin/coupons/${id}/toggle`,{method:"POST"});await loadCoupons()}
+async function deleteCoupon(id){if(!confirm("Delete coupon?"))return;await api(`/api/admin/coupons/${id}`,{method:"DELETE"});await loadCoupons()}
+async function loadReferrals(){const d=await api("/api/admin/referrals");$("referralRows").innerHTML=d.map(r=>`<tr><td><b>${r.referral_code}</b></td><td>${r.referrer_name}<br><span class="muted">${r.referrer_email}</span></td><td>${r.referred_name}<br><span class="muted">${r.referred_email}</span></td><td>${new Date(r.created_at).toLocaleString()}</td></tr>`).join("")}
+
+
+async function loadSubscriptionRequests(){const d=await api("/api/admin/checkout-requests");$("subscriptionRequestRows").innerHTML=d.map(x=>`<tr><td><b>${x.reference}</b></td><td>${x.customer_name}<br><span class="muted">${x.email}</span></td><td>${x.plan_name}</td><td>GH₵${Number(x.final_amount_ghs).toFixed(2)}</td><td>${x.coupon_code||"—"}</td><td>${x.status}</td><td>${x.status==="awaiting_payment"?`<button class="btn secondary" onclick="confirmSubPayment(${x.id})">Confirm Payment</button>`:""} ${x.status==="payment_confirmed"?`<button class="btn primary" onclick="fulfillSub(${x.id})">Issue Code</button>`:""}</td></tr>`).join("")}
+async function confirmSubPayment(id){if(!confirm("Confirm that you have received this customer's payment?"))return;await api(`/api/admin/checkout-requests/${id}/status`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"payment_confirmed"})});await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue()}
+async function fulfillSub(id){if(!confirm("Issue one unused subscription code to this customer?"))return;try{const d=await api(`/api/admin/checkout-requests/${id}/fulfill`,{method:"POST"});alert("Subscription activated. Code: "+d.code);await refreshAll()}catch(e){alert(e.message)}}
+
+
+async function loadAlerts(){const d=await api("/api/admin/alerts");$("alertsList").innerHTML=d.alerts.length?d.alerts.map(x=>`<div class="card"><b>${x.title}</b><p class="muted">${x.message}</p></div>`).join(""):`<div class="card"><b>Everything looks good</b><p class="muted">There are no current admin alerts.</p></div>`}
+async function loadAudit(){const q=$("auditSearch")?.value||"";const d=await api("/api/admin/audit-logs"+(q?`?q=${encodeURIComponent(q)}`:""));$("auditRows").innerHTML=d.map(x=>`<tr><td>${new Date(x.created_at).toLocaleString()}</td><td><b>${x.action}</b></td><td>${x.entity_type||"—"}</td><td>${x.entity_id||"—"}</td><td>${x.details||"—"}</td></tr>`).join("")}
+
+
+async function loadEmailQueue(){const d=await api("/api/admin/email-queue");$("emailRows").innerHTML=d.map(x=>`<tr><td>${new Date(x.created_at).toLocaleString()}</td><td>${x.recipient_email}</td><td>${x.subject}</td><td>${x.status}</td></tr>`).join("")}
+async function broadcastEmail(){if(!confirm("Queue this email for all registered customers?"))return;try{const d=await api("/api/admin/email/broadcast",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subject:$("emailSubject").value,message:$("emailMessage").value})});$("emailMsg").textContent=`Queued for ${d.recipients} customers.`;$("emailSubject").value="";$("emailMessage").value="";await loadEmailQueue()}catch(e){$("emailMsg").textContent=e.message}}
+async function sendCustomerEmail(){const subject=prompt("Email subject");if(!subject)return;const message=prompt("Email message");if(!message)return;try{await api(`/api/admin/customers/${selectedCustomerId}/email`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subject,message})});alert("Email queued.")}catch(e){alert(e.message)}}
+
+if(token)showDashboard();
+</script><script src="/assets/pwa.js"></script></body></html>

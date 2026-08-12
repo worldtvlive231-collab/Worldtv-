@@ -1,0 +1,53 @@
+WORLD TV — FINAL LAUNCH TEST PLAN
+
+Before announcing the website publicly:
+
+CUSTOMER
+[ ] Home page opens on phone and desktop
+[ ] Create Account works
+[ ] Sign In works
+[ ] Forgot Password request works
+[ ] Subscription page shows 1 Year — GH₵299
+[ ] Coupon validation works
+[ ] Customer can create subscription request
+[ ] Customer can view subscription/code after activation
+[ ] Product ordering works
+[ ] Order tracking works
+[ ] Contact/support form works
+[ ] FAQ, Terms and Privacy pages open
+[ ] App download button works only after official APK URL is configured
+
+ADMIN
+[ ] Admin login works with production credentials
+[ ] Upload codes
+[ ] Search/manage codes
+[ ] Search/manage customers
+[ ] Confirm subscription payment manually
+[ ] Issue subscription code
+[ ] Product order status updates
+[ ] Support inbox works
+[ ] Promotions work
+[ ] Notifications work
+[ ] Reports work
+[ ] Backup downloads successfully
+[ ] CSV exports open correctly
+[ ] Alerts and audit log work
+[ ] Email queue works
+
+SERVER
+[ ] /health returns ok:true
+[ ] HTTPS certificate is valid
+[ ] MyWorldTVLive.com points to the correct host
+[ ] Database survives a server restart/redeploy
+[ ] Production backup is stored separately
+[ ] ADMIN_PASSWORD is strong and not committed to files
+[ ] PUBLIC_BASE_URL is https://myworldtvlive.com
+[ ] Transactional email delivery is connected before relying on password reset
+
+PAYMENTS
+[ ] Paystack remains OFF until you choose to connect it
+[ ] Never expose a Paystack secret key in browser JavaScript
+
+LEGAL
+[ ] Review Terms and Privacy text for your actual business
+[ ] Confirm required rights/licenses for content and services offered

@@ -1,0 +1,23 @@
+WORLD TV — EMAIL DELIVERY SETUP
+
+The website now has an email queue, but it does NOT send external email yet.
+
+After hosting, connect a transactional email provider. The server can then process
+rows in the email_queue table and mark each as sent or failed.
+
+Recommended production behavior:
+- Send welcome email after registration.
+- Send subscription activation email with the customer's assigned code.
+- Send renewal reminders before expiry.
+- Send order-status updates.
+- Send password-reset links rather than passwords.
+- Keep API credentials only in environment variables, never in public HTML.
+
+Do not use a personal mailbox password directly in the website code.
+
+
+PASSWORD RESET
+- Set PUBLIC_BASE_URL to the final HTTPS website address, for example:
+  https://your-domain.example
+- Password reset links expire after 1 hour and are single-use.
+- The reset link is queued in Email Center until an external email provider is connected.

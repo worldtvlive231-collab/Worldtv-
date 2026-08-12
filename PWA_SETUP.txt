@@ -1,0 +1,21 @@
+WORLD TV — INSTALLABLE WEBSITE / PWA
+
+This build can be installed to a customer's phone or tablet home screen after it is hosted over HTTPS.
+
+Included:
+- manifest.webmanifest
+- service worker
+- offline fallback page
+- installable standalone display configuration
+- World TV logo icon
+- cached basic website shell
+
+IMPORTANT
+The PWA does not make streaming, account data, subscription activation, orders or other server data work offline. Those features still require internet access.
+
+After deployment:
+1. Open https://myworldtvlive.com on Android/Chrome and test Add to Home Screen / Install App.
+2. On iPhone/iPad, use Safari > Share > Add to Home Screen.
+3. Verify the logo, app title and launch screen.
+4. Test the offline page by temporarily disabling internet access.
+5. The native Android World TV APK remains separate from this website/PWA.

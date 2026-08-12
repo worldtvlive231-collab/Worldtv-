@@ -1,0 +1,34 @@
+WORLD TV — HOSTING & DOMAIN GUIDE
+Target domain: MyWorldTVLive.com
+
+1. Choose a host that supports Node.js and persistent storage.
+2. Upload this project or connect the project repository.
+3. Build/install command:
+   npm install
+4. Start command:
+   npm start
+5. Set environment variables using .env.example as the guide.
+6. Set PUBLIC_BASE_URL=https://myworldtvlive.com
+7. Set a strong ADMIN_EMAIL and ADMIN_PASSWORD in the host's secret/environment settings.
+8. Make sure the SQLite database is stored on persistent storage. Do not use an ephemeral filesystem for production customer/order data.
+9. Open /health on the deployed website. It should return ok:true.
+10. Add MyWorldTVLive.com as the custom domain in the hosting dashboard.
+11. At the domain registrar, add the DNS records supplied by the hosting company.
+12. Enable/verify HTTPS before accepting customer accounts or payments.
+13. Test:
+    - Home page
+    - Registration and login
+    - Forgot password
+    - Admin login
+    - Upload subscription codes
+    - Subscription request
+    - Product order
+    - Support form
+    - Backup/export
+14. Connect an external transactional email provider so password-reset and activation emails leave the email queue.
+15. Paystack remains disabled. Connect it only after HTTPS, email, backups, and the public domain are working.
+
+IMPORTANT
+- Never publish Paystack secret keys, admin passwords, or email API keys in public HTML/JavaScript.
+- Keep production secrets only in hosting environment variables.
+- Make a database backup before each major upgrade.

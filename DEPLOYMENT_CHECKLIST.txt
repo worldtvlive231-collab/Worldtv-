@@ -1,0 +1,36 @@
+WORLD TV — PRE-LAUNCH CHECKLIST
+
+1. Hosting
+- Use a Node.js host with persistent storage/database support.
+- Enable HTTPS.
+- Configure your final domain after hosting is working.
+
+2. Admin Security
+- Use a unique ADMIN_EMAIL.
+- Use a long random ADMIN_PASSWORD.
+- Never place passwords or secret API keys in public website files.
+
+3. Database
+- Download a database backup before upgrades.
+- Configure automatic hosting-level backups for production.
+- Keep a second backup outside the server.
+
+4. Customer Accounts
+- Current build hashes passwords with bcrypt.
+- Before large-scale public launch, move sessions from server memory to
+  persistent secure HTTP-only cookie sessions.
+- Add email verification and self-service password reset.
+
+5. App Download
+- Add only your official APK download URL in Admin > Site Settings.
+- Test the APK before publishing it.
+
+6. Payments
+- Paystack is intentionally not connected in this stage.
+- Connect it only after the site is deployed over HTTPS and your webhook
+  endpoint can be reached publicly.
+
+7. Legal/Content
+- Finalize Terms and Privacy Policy.
+- Ensure you have the necessary rights/permissions for content and services
+  advertised or distributed through World TV.
