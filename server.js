@@ -1486,6 +1486,38 @@ app.get("/api/football/finished", async (req, res) => {
   }
 });
 
+
+// Tomorrow matches
+app.get("/api/football/tomorrow", async (req, res) => {
+  try {
+    const today = new Date();
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const data = await getCachedFootball("football-tomorrow", `/matches?dateFrom=${tomorrowStr}&dateTo=${tomorrowStr}`, 600000);
+    const matches = (data.response || [])
+      .filter(m => m && m.fixture && m.teams)
+      .sort((a, b) => new Date(a.fixture.date) - new Date(b.fixture.date))
+      .slice(0, 20)
+      .map(m => ({
+        fixture_id: m.fixture?.id,
+        league: m.league?.name || "Unknown",
+        league_logo: m.league?.logo,
+        home_team: m.teams?.home?.name,
+        home_logo: m.teams?.home?.logo,
+        away_team: m.teams?.away?.name,
+        away_logo: m.teams?.away?.logo,
+        home_score: m.goals?.home,
+        away_score: m.goals?.away,
+        minute: null,
+        status: m.fixture?.status?.short || "NS",
+        kickoff: m.fixture?.date
+      }));
+    res.json({ ok: true, date: tomorrowStr, count: matches.length, matches });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
 // 404 Handler
 app.use((req,res,next)=>{
   if(req.path.startsWith("/api/")) return res.status(404).json({error:"Not found"});
