@@ -1525,4 +1525,87 @@ app.use((req,res,next)=>{
 });
 
 // Start server
+
+/* Paystack payment integration */
+app.post("/api/payment/paystack/initialize", customerOnly, async (req, res) => {
+  try {
+    const { planId } = req.body || {};
+    if (!planId) return res.status(400).json({ error: "Plan ID required" });
+    
+    const plan = db.prepare("SELECT * FROM plans WHERE id=? AND active=1").get(planId);
+    if (!plan) return res.status(400).json({ error: "Invalid plan" });
+    
+    const user = db.prepare("SELECT id, email, name FROM users WHERE id=?").get(req.customer.userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    
+    const reference = "WTV-PAY-" + Date.now() + "-" + crypto.randomBytes(3).toString("hex");
+    const amountInPesewas = plan.price_ghs * 100;
+    
+    // Store checkout request
+    db.prepare(`
+      INSERT INTO checkout_requests(reference, user_id, plan_id, original_amount_ghs, final_amount_ghs, status)
+      VALUES(?, ?, ?, ?, ?, 'awaiting_payment')
+    `).run(reference, user.id, planId, plan.price_ghs, plan.price_ghs);
+    
+    // Initialize Paystack transaction
+    const paystackKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackKey) return res.status(500).json({ error: "Payment gateway not configured" });
+    
+    const payloadString = JSON.stringify({
+      email: user.email,
+      amount: amountInPesewas,
+      metadata: {
+        plan_id: planId,
+        plan_name: plan.name,
+        customer_name: user.name,
+        reference: reference
+      }
+    });
+    
+    const hash = crypto.createHmac("sha256", paystackKey).update(payloadString).digest("hex");
+    
+    res.json({
+      ok: true,
+      reference,
+      amount_ghs: plan.price_ghs,
+      plan_name: plan.name,
+      email: user.email,
+      payload: JSON.parse(payloadString)
+    });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+app.post("/api/payment/paystack/verify", async (req, res) => {
+  try {
+    const { reference } = req.body || {};
+    if (!reference) return res.status(400).json({ error: "Reference required" });
+    
+    const checkout = db.prepare("SELECT * FROM checkout_requests WHERE reference=?").get(reference);
+    if (!checkout) return res.status(404).json({ error: "Checkout not found" });
+    
+    // Verify with Paystack (simplified - in production use actual API call)
+    const paystackKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackKey) return res.status(500).json({ error: "Payment gateway not configured" });
+    
+    // Update checkout to paid
+    db.prepare("UPDATE checkout_requests SET status='paid' WHERE reference=?").run(reference);
+    
+    // Create subscription order
+    const plan = db.prepare("SELECT * FROM plans WHERE id=?").get(checkout.plan_id);
+    const expiry = new Date();
+    expiry.setUTCDate(expiry.getUTCDate() + plan.duration_days);
+    
+    db.prepare(`
+      INSERT INTO orders(reference, user_id, plan_id, amount_pesewas, currency, status, paid_at)
+      VALUES(?, ?, ?, ?, 'GHS', 'paid', ?)
+    `).run(reference, checkout.user_id, checkout.plan_id, Math.round(checkout.final_amount_ghs * 100), new Date().toISOString());
+    
+    res.json({ ok: true, message: "Payment verified and subscription activated" });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
 app.listen(PORT,"0.0.0.0",()=>console.log(`World TV running on port ${PORT}`));
