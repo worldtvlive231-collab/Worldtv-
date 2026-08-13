@@ -3,7 +3,7 @@
 :root{--gold:#d89a00;--line:#eadfc8;--cream:#fff9eb;--muted:#716958}.wrap{width:min(1050px,92%);margin:auto}body{margin:0;font-family:system-ui,sans-serif;background:#f8f6f0;color:#17130a}header{background:#fff;border-bottom:1px solid var(--line)}.nav{height:72px;display:flex;align-items:center;justify-content:space-between}.logo{height:58px;width:105px;object-fit:contain}.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:800;cursor:pointer;background:#e0a200}.secondary{background:#fff;border:1px solid #d8c9a7}.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;margin:20px 0}.code{font-size:26px;font-weight:900;background:var(--cream);padding:16px;border-radius:12px;word-break:break-all}.muted{color:var(--muted)}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #eee6d6;font-size:13px}</style><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#e0a200"><link rel="apple-touch-icon" href="/assets/world-tv-logo.png"><link rel="icon" href="/assets/world-tv-logo.png"><meta property="og:site_name" content="World TV"><meta property="og:type" content="website"><meta property="og:image" content="https://myworldtvlive.com/assets/world-tv-logo.png"><script src="/assets/site-meta.js"></script><meta name="robots" content="noindex,nofollow"></head>
 <body><header><div class="wrap nav"><a href="/"><img class="logo" src="/world-tv-logo.png"></a><button class="btn secondary" onclick="logout()">Logout</button></div></header>
 <main class="wrap"><h1>My Account</h1><div id="profile" class="card"></div><div id="subscription" class="card"></div>
-<div class="card"><h2>World TV Subscription</h2><p><b>1 Year — GH₵299.00</b></p><p class="muted">Online payment will be connected later. For now, this area is ready for subscription activation and code display.</p><a class="btn" href="/contact.html" style="display:inline-block;text-decoration:none;color:#17130a">Contact to Subscribe</a></div>
+<div class="card"><h2>World TV Subscription</h2><p id="planDisplay"><b>Loading plan...</b></p><p class="muted">Online payment will be connected later. For now, this area is ready for subscription activation and code display.</p><a class="btn" href="/subscribe.html" style="display:inline-block;text-decoration:none;color:#17130a">Subscribe Now</a></div>
 <div class="card"><h2>Refer a Friend</h2><p class="muted">Share your World TV referral code with friends.</p><div id="referralBox">Loading...</div></div>
 <div class="card"><h2>Notifications</h2><div id="notifications"><p class="muted">Loading notifications...</p></div></div>
 <div class="card"><h2>Payment / Order History</h2><div style="overflow:auto"><table><thead><tr><th>Reference</th><th>Plan</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead><tbody id="history"></tbody></table></div></div></main>
@@ -20,4 +20,18 @@ let ns=await api("/api/customer/notifications");notifications.innerHTML=ns.lengt
 history.innerHTML=d.orders.map(o=>`<tr><td>${o.reference}</td><td>${o.plan_name}</td><td>GH₵${(o.amount_pesewas/100).toFixed(2)}</td><td>${o.status}</td><td>${new Date(o.created_at).toLocaleString()}</td></tr>`).join("")}
 async function markRead(id){await api("/api/customer/notifications/"+id+"/read",{method:"POST"});load()}
 async function logout(){try{await api("/api/customer/logout",{method:"POST"})}catch(e){}localStorage.removeItem("wtv_customer_token");location.href="/login.html"}if(!token)location.href="/login.html";else load();
+// Load and display subscription plan
+(async()=>{
+  try{
+    const plans=await fetch("/api/plans").then(r=>r.json());
+    if(plans.length>0){
+      const plan=plans[0];
+      const durationDays=plan.duration_days;
+      const duration=durationDays===365?"1 Year":durationDays===30?"1 Month":`${durationDays} days`;
+      document.getElementById("planDisplay").innerHTML=`<b>${duration} — GH₵${Number(plan.price_ghs).toFixed(2)}</b>`;
+    }
+  }catch(e){
+    console.error("Failed to load plan:",e);
+  }
+})();
 </script><script src="/assets/pwa.js"></script></body></html>
