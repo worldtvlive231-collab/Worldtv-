@@ -52,6 +52,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <button class="btn tab" onclick="showTab('auditTab',this)">Audit Log</button>
 <button class="btn tab" onclick="showTab('emailTab',this)">Email Center</button>
 <button class="btn tab" onclick="showTab('pricingTab',this)">Pricing Manager</button>
+<button class="btn tab" onclick="showTab('salesDashboardTab',this)">Live Sales Dashboard</button>
 </div>
 
 <section id="customersTab">
@@ -218,6 +219,148 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 </section>
 
 
+<section id="salesDashboardTab" class="hide">
+<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px;">
+  <div class="card">
+    <div class="muted">Today's Revenue</div>
+    <div id="todayRevenue" class="stat">GH₵0</div>
+    <div class="muted" style="font-size:11px">Subscriptions + Products</div>
+  </div>
+  <div class="card">
+    <div class="muted">Today's Expenses</div>
+    <div id="todayExpenses" class="stat" style="color:#f2ded8">GH₵0</div>
+  </div>
+  <div class="card">
+    <div class="muted">Today's Profit</div>
+    <div id="todayProfit" class="stat" style="color:#28a745">GH₵0</div>
+  </div>
+  <div class="card">
+    <div class="muted">Month's Profit</div>
+    <div id="monthProfit" class="stat">GH₵0</div>
+  </div>
+  <div class="card">
+    <div class="muted">In Stock</div>
+    <div id="inStockCount" class="stat">0</div>
+  </div>
+  <div class="card">
+    <div class="muted">Out of Stock</div>
+    <div id="outOfStockCount" class="stat" style="color:#f2ded8">0</div>
+  </div>
+</div>
+
+<div class="tabs" style="margin-bottom:20px">
+  <button class="btn tab active" onclick="showSalesTab('recentSalesTab',this)">Recent Sales</button>
+  <button class="btn tab" onclick="showSalesTab('dailyReportTab',this)">Daily Report</button>
+  <button class="btn tab" onclick="showSalesTab('stockStatusTab',this)">Stock Status</button>
+  <button class="btn tab" onclick="showSalesTab('expensesTab',this)">Expenses</button>
+</div>
+
+<section id="recentSalesTab">
+  <div class="card">
+    <h2>Recent Sales (Last 50)</h2>
+    <p class="muted">Live transaction log from subscriptions and product orders</p>
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Reference</th>
+            <th>Customer</th>
+            <th>Product</th>
+            <th>Amount (GH₵)</th>
+            <th>Status</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="recentSalesRows"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="dailyReportTab" class="hide">
+  <div class="card">
+    <h2>Daily Report (Last 30 Days)</h2>
+    <p class="muted">Revenue, expenses, and profit breakdown by day</p>
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Subscription Revenue</th>
+            <th>Product Revenue</th>
+            <th>Total Revenue</th>
+            <th>Expenses</th>
+            <th>Profit</th>
+            <th>Customers</th>
+          </tr>
+        </thead>
+        <tbody id="dailyReportRows"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="stockStatusTab" class="hide">
+  <div class="card">
+    <h2>Product Stock Status</h2>
+    <p class="muted">Current inventory and sales performance</p>
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th>Price (GH₵)</th>
+            <th>Status</th>
+            <th>Units Sold</th>
+            <th>Featured</th>
+          </tr>
+        </thead>
+        <tbody id="stockStatusRows"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="expensesTab" class="hide">
+  <div class="card">
+    <h2>Record Expense</h2>
+    <div class="formgrid">
+      <div>
+        <label>Category</label>
+        <input id="expenseCategory" placeholder="e.g., Utilities, Advertising, Rent">
+      </div>
+      <div>
+        <label>Amount (GH₵)</label>
+        <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+    <label>Description (optional)</label>
+    <textarea id="expenseDescription" placeholder="Details about this expense" style="margin-bottom:12px"></textarea>
+    <button class="btn primary" onclick="addExpense()">Record Expense</button>
+    <p id="expenseMsg" class="muted"></p>
+  </div>
+  
+  <div class="card">
+    <h2>Expense History</h2>
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Amount (GH₵)</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody id="expenseHistoryRows"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+</section>
+
+
 <section id="couponsTab" class="hide"><div class="card"><h2>Coupon Manager</h2><div class="formgrid"><div><input id="couponCode" placeholder="Coupon code e.g. WORLD20"><select id="couponType"><option value="fixed">Fixed GH₵ discount</option><option value="percent">Percentage discount</option></select><input id="couponValue" type="number" min="0" step="0.01" placeholder="Discount value"></div><div><select id="couponApplies"><option value="subscription">Subscriptions</option><option value="product">Products</option><option value="all">All</option></select><input id="couponUses" type="number" min="1" placeholder="Maximum uses (optional)"><input id="couponExpiry" type="datetime-local"></div></div><button class="btn primary" onclick="addCoupon()">Create Coupon</button><p id="couponMsg" class="muted"></p></div><div class="card"><div style="overflow:auto"><table><thead><tr><th>Code</th><th>Discount</th><th>Applies</th><th>Used</th><th>Active</th><th>Actions</th></tr></thead><tbody id="couponRows"></tbody></table></div></div></section>
 <section id="referralsTab" class="hide"><div class="card"><h2>Customer Referrals</h2><div style="overflow:auto"><table><thead><tr><th>Referral Code</th><th>Referrer</th><th>New Customer</th><th>Date</th></tr></thead><tbody id="referralRows"></tbody></table></div></div></section>
 
@@ -265,9 +408,9 @@ async function api(url,o={}){
 }
 async function loginAdmin(){const r=await fetch("/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:$("email").value,password:$("password").value})});const d=await r.json();if(!r.ok){$("loginMsg").textContent=d.error;return}token=d.token;localStorage.setItem("wtv_admin_token",token);showDashboard()}
 function logout(){localStorage.removeItem("wtv_admin_token");token="";location.reload()}
-function showTab(id,btn){["customersTab","productsTab","codesTab","promotionsTab","servicesTab","supportTab","settingsTab","notificationsTab","reportsTab","backupTab","contentTab","productOrdersTab","couponsTab","referralsTab","subscriptionsTab","alertsTab","auditTab","emailTab","pricingTab"].forEach(x=>$(x).classList.add("hide"));$(id).classList.remove("hide");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active")}
+function showTab(id,btn){["customersTab","productsTab","codesTab","promotionsTab","servicesTab","supportTab","settingsTab","notificationsTab","reportsTab","backupTab","contentTab","productOrdersTab","couponsTab","referralsTab","subscriptionsTab","alertsTab","auditTab","emailTab","pricingTab","salesDashboardTab"].forEach(x=>$(x).classList.add("hide"));$(id).classList.remove("hide");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active")}
 async function showDashboard(){$("login").classList.add("hide");$("dashboard").classList.remove("hide");$("logoutBtn").classList.remove("hide");const plans=await fetch("/api/plans").then(r=>r.json());$("plan").innerHTML=plans.map(p=>`<option value="${p.id}">${p.name} — GH₵${p.price_ghs}</option>`).join("");await refreshAll()}
-async function refreshAll(){const s=await api("/api/admin/stats");$("total").textContent=s.total;$("unused").textContent=s.unused;$("used").textContent=s.used;$("customersCount").textContent=s.customers;$("productsCount").textContent=s.products;await loadCustomers();await loadProducts();await loadCodes();await loadPromotions();await loadServices();await loadSupport();await loadSettings();await loadReports();await loadContent();await loadProductOrders();await loadCoupons();await loadReferrals();await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue();await loadPricingData()}
+async function refreshAll(){const s=await api("/api/admin/stats");$("total").textContent=s.total;$("unused").textContent=s.unused;$("used").textContent=s.used;$("customersCount").textContent=s.customers;$("productsCount").textContent=s.products;await loadCustomers();await loadProducts();await loadCodes();await loadPromotions();await loadServices();await loadSupport();await loadSettings();await loadReports();await loadContent();await loadProductOrders();await loadCoupons();await loadReferrals();await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue();await loadPricingData();await loadSalesDashboard()}
 
 async function loadCustomers(){const q=$("customerSearch").value.trim();const d=await api("/api/admin/customers"+(q?`?q=${encodeURIComponent(q)}`:""));$("customerRows").innerHTML=d.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.email}</td><td>${c.order_count}</td><td>${c.paid_orders}</td><td>${c.latest_expiry?new Date(c.latest_expiry).toLocaleDateString():"—"}</td><td><button class="btn secondary" onclick="openCustomer(${c.id})">Manage</button></td></tr>`).join("")}
 async function openCustomer(id){selectedCustomerId=id;const d=await api(`/api/admin/customers/${id}`);$("customerDetail").innerHTML=`<h2>${d.user.name}</h2><p class="muted">${d.user.email}</p>
@@ -497,6 +640,117 @@ async function applyBulkPriceUpdate() {
     await loadPricingData();
   } catch(e) {
     $("bulkPriceMsg").textContent = "Error: " + e.message;
+  }
+}
+
+function showSalesTab(id,btn){
+  ["recentSalesTab","dailyReportTab","stockStatusTab","expensesTab"].forEach(x=>$(x).classList.add("hide"));
+  $(id).classList.remove("hide");
+  document.querySelectorAll("#salesDashboardTab .tabs .tab").forEach(x=>x.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+async function loadSalesDashboard(){
+  try {
+    const summary = await api("/api/admin/dashboard/live-summary");
+    const profit = await api("/api/admin/dashboard/profit-summary");
+    const recent = await api("/api/admin/dashboard/recent-sales");
+    const daily = await api("/api/admin/dashboard/daily-report");
+    const stock = await api("/api/admin/dashboard/stock-status");
+    const expenses = await api("/api/admin/dashboard/expenses");
+    
+    // Update summary cards
+    const todayRev = (summary.today.subscriptions?.total_revenue || 0) + (summary.today.product_orders?.total_sales || 0);
+    const todayExp = summary.today.expenses?.total_expenses || 0;
+    const todayProf = profit.today?.profit || 0;
+    const monthProf = profit.this_month?.profit || 0;
+    
+    $("todayRevenue").textContent = "GH₵" + todayRev.toFixed(2);
+    $("todayExpenses").textContent = "GH₵" + todayExp.toFixed(2);
+    $("todayProfit").textContent = "GH₵" + todayProf.toFixed(2);
+    $("monthProfit").textContent = "GH₵" + monthProf.toFixed(2);
+    $("inStockCount").textContent = summary.inventory?.in_stock_count || 0;
+    $("outOfStockCount").textContent = summary.inventory?.out_of_stock_count || 0;
+    
+    // Recent sales table
+    $("recentSalesRows").innerHTML = recent.map(s => `
+      <tr>
+        <td><span class="pill">${s.type}</span></td>
+        <td><b>${s.ref_id}</b></td>
+        <td>${s.customer_name}</td>
+        <td>${s.product_name || '—'}</td>
+        <td>GH₵${s.amount_ghs.toFixed(2)}</td>
+        <td><span class="pill">${s.status}</span></td>
+        <td>${new Date(s.timestamp).toLocaleString().split(',')[1] || s.timestamp}</td>
+      </tr>
+    `).join("");
+    
+    // Daily report table
+    $("dailyReportRows").innerHTML = daily.map(d => {
+      const totalRev = d.subscription_revenue + d.product_revenue;
+      const profit = totalRev - d.expenses;
+      return `
+        <tr>
+          <td><b>${d.date}</b></td>
+          <td>GH₵${d.subscription_revenue.toFixed(2)}</td>
+          <td>GH₵${d.product_revenue.toFixed(2)}</td>
+          <td><b>GH₵${totalRev.toFixed(2)}</b></td>
+          <td>GH₵${d.expenses.toFixed(2)}</td>
+          <td style="color:${profit >= 0 ? '#28a745' : '#dc3545'}"><b>GH₵${profit.toFixed(2)}</b></td>
+          <td>${d.customers}</td>
+        </tr>
+      `;
+    }).join("");
+    
+    // Stock status table
+    $("stockStatusRows").innerHTML = stock.map(p => `
+      <tr>
+        <td><b>${p.name}</b></td>
+        <td>GH₵${(p.price_ghs || 0).toFixed(2)}</td>
+        <td><span class="pill">${p.stock_status}</span></td>
+        <td>${p.units_sold}</td>
+        <td>${p.featured ? '⭐ Yes' : 'No'}</td>
+      </tr>
+    `).join("");
+    
+    // Expense history
+    $("expenseHistoryRows").innerHTML = expenses.map(e => `
+      <tr>
+        <td>${e.date}</td>
+        <td><b>${e.category}</b></td>
+        <td>GH₵${e.amount_ghs.toFixed(2)}</td>
+        <td>${e.description || '—'}</td>
+      </tr>
+    `).join("");
+  } catch(e) {
+    console.error("Failed to load sales dashboard:", e);
+  }
+}
+
+async function addExpense(){
+  const category = $("expenseCategory").value.trim();
+  const amount = parseFloat($("expenseAmount").value);
+  const description = $("expenseDescription").value.trim();
+  
+  if(!category || !amount || amount <= 0) {
+    $("expenseMsg").textContent = "Category and valid amount required";
+    return;
+  }
+  
+  try {
+    await api("/api/admin/dashboard/expenses", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({category, amount_ghs: amount, description})
+    });
+    $("expenseMsg").textContent = "✓ Expense recorded";
+    $("expenseCategory").value = "";
+    $("expenseAmount").value = "";
+    $("expenseDescription").value = "";
+    setTimeout(() => { $("expenseMsg").textContent = ""; }, 2000);
+    await loadSalesDashboard();
+  } catch(e) {
+    $("expenseMsg").textContent = "Error: " + e.message;
   }
 }
 
