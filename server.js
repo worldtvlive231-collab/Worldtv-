@@ -85,6 +85,23 @@ CREATE TABLE IF NOT EXISTS products(
 );
 `);
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS expenses(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  category TEXT NOT NULL,
+  amount_ghs REAL NOT NULL,
+  description TEXT,
+  expense_date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS daily_stock_records(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id INTEGER NOT NULL,
+  stock_quantity INTEGER NOT NULL DEFAULT 0,
+  record_date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+`);
+
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS promotions(
@@ -460,6 +477,216 @@ app.post("/api/admin/pricing/bulk-update", adminOnly, (req,res)=>{
   
   audit("bulk_price_update", "product", "multiple", `Applied ${percent}% change to ${category} products`);
   res.json({ok: true, updatedCount});
+});
+
+/* Live Sales Dashboard APIs */
+
+// Get live sales summary stats
+app.get("/api/admin/dashboard/live-summary", adminOnly, (req,res)=>{
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Today's sales
+  const todaySales = db.prepare(`
+    SELECT 
+      COUNT(*) as transaction_count,
+      SUM(amount_pesewas)/100 as total_revenue,
+      COUNT(DISTINCT user_id) as unique_customers
+    FROM orders 
+    WHERE status='paid' AND DATE(paid_at)=?
+  `).get(today);
+  
+  // Today's product orders
+  const todayProductOrders = db.prepare(`
+    SELECT 
+      COUNT(*) as order_count,
+      SUM(total_ghs) as total_sales,
+      SUM(quantity) as items_sold
+    FROM product_orders 
+    WHERE status NOT IN ('cancelled') AND DATE(created_at)=?
+  `).get(today);
+  
+  // Expenses today
+  const todayExpenses = db.prepare(`
+    SELECT SUM(amount_ghs) as total_expenses
+    FROM expenses
+    WHERE DATE(expense_date)=?
+  `).get(today);
+  
+  // Total products in stock
+  const stockCount = db.prepare(`
+    SELECT 
+      COUNT(*) as total_products,
+      SUM(CASE WHEN stock_status='in_stock' THEN 1 ELSE 0 END) as in_stock_count,
+      SUM(CASE WHEN stock_status='out_of_stock' THEN 1 ELSE 0 END) as out_of_stock_count
+    FROM products WHERE active=1
+  `).get();
+  
+  res.json({
+    today: {
+      date: today,
+      subscriptions: todaySales,
+      product_orders: todayProductOrders,
+      expenses: todayExpenses
+    },
+    inventory: stockCount
+  });
+});
+
+// Get recent sales transactions (limit 50)
+app.get("/api/admin/dashboard/recent-sales", adminOnly, (req,res)=>{
+  const sales = db.prepare(`
+    SELECT 
+      'subscription' as type,
+      o.reference as ref_id,
+      o.amount_pesewas/100 as amount_ghs,
+      o.status,
+      o.paid_at as timestamp,
+      u.name as customer_name,
+      p.name as product_name
+    FROM orders o
+    JOIN users u ON u.id = o.user_id
+    JOIN plans p ON p.id = o.plan_id
+    WHERE o.status='paid'
+    
+    UNION ALL
+    
+    SELECT 
+      'product' as type,
+      po.order_number as ref_id,
+      po.total_ghs as amount_ghs,
+      po.status,
+      po.created_at as timestamp,
+      po.customer_name,
+      pr.name as product_name
+    FROM product_orders po
+    LEFT JOIN products pr ON pr.id = po.product_id
+    WHERE po.status NOT IN ('cancelled')
+    
+    ORDER BY timestamp DESC
+    LIMIT 50
+  `).all();
+  
+  res.json(sales);
+});
+
+// Get daily summary for last 30 days
+app.get("/api/admin/dashboard/daily-report", adminOnly, (req,res)=>{
+  const daily = db.prepare(`
+    WITH RECURSIVE dates(date) AS (
+      SELECT DATE('now', '-30 days')
+      UNION ALL
+      SELECT DATE(date, '+1 day') FROM dates 
+      WHERE date < DATE('now')
+    )
+    SELECT 
+      d.date,
+      COALESCE(SUM(CASE WHEN o.status='paid' THEN o.amount_pesewas/100 ELSE 0 END), 0) as subscription_revenue,
+      COALESCE(SUM(CASE WHEN po.status NOT IN ('cancelled') THEN po.total_ghs ELSE 0 END), 0) as product_revenue,
+      COALESCE(SUM(e.amount_ghs), 0) as expenses,
+      COALESCE(COUNT(DISTINCT CASE WHEN o.status='paid' THEN o.user_id END), 0) as customers
+    FROM dates d
+    LEFT JOIN orders o ON DATE(o.paid_at) = d.date
+    LEFT JOIN product_orders po ON DATE(po.created_at) = d.date
+    LEFT JOIN expenses e ON DATE(e.expense_date) = d.date
+    GROUP BY d.date
+    ORDER BY d.date DESC
+  `).all();
+  
+  res.json(daily);
+});
+
+// Get product stock status
+app.get("/api/admin/dashboard/stock-status", adminOnly, (req,res)=>{
+  const stock = db.prepare(`
+    SELECT 
+      id,
+      name,
+      price_ghs,
+      stock_status,
+      featured,
+      (SELECT COUNT(*) FROM product_orders WHERE product_id=p.id AND status NOT IN ('cancelled')) as units_sold
+    FROM products p
+    WHERE active=1
+    ORDER BY stock_status ASC, featured DESC
+  `).all();
+  
+  res.json(stock);
+});
+
+// Add expense record
+app.post("/api/admin/dashboard/expenses", adminOnly, (req,res)=>{
+  const {category, amount_ghs, description} = req.body || {};
+  
+  if(!category || !amount_ghs || amount_ghs <= 0) {
+    return res.status(400).json({error: "Category and valid amount are required"});
+  }
+  
+  const result = db.prepare(`
+    INSERT INTO expenses(category, amount_ghs, description)
+    VALUES(?, ?, ?)
+  `).run(String(category).trim(), Number(amount_ghs), String(description || '').trim());
+  
+  audit("expense_recorded", "expense", result.lastInsertRowid, `${category}: GH₵${amount_ghs}`);
+  
+  res.json({ok: true, id: result.lastInsertRowid});
+});
+
+// Get expenses for a date range
+app.get("/api/admin/dashboard/expenses", adminOnly, (req,res)=>{
+  const startDate = req.query.start || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+  const endDate = req.query.end || new Date().toISOString().split('T')[0];
+  
+  const expenses = db.prepare(`
+    SELECT 
+      id,
+      category,
+      amount_ghs,
+      description,
+      DATE(expense_date) as date,
+      expense_date as timestamp
+    FROM expenses
+    WHERE DATE(expense_date) BETWEEN ? AND ?
+    ORDER BY expense_date DESC
+  `).all(startDate, endDate);
+  
+  res.json(expenses);
+});
+
+// Get profit calculation (revenue - expenses)
+app.get("/api/admin/dashboard/profit-summary", adminOnly, (req,res)=>{
+  const today = new Date().toISOString().split('T')[0];
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  const monthStart = startOfMonth.toISOString().split('T')[0];
+  
+  // Today
+  const todayProfit = db.prepare(`
+    SELECT 
+      COALESCE(SUM(CASE WHEN o.status='paid' THEN o.amount_pesewas/100 ELSE 0 END), 0) +
+      COALESCE(SUM(CASE WHEN po.status NOT IN ('cancelled') THEN po.total_ghs ELSE 0 END), 0) -
+      COALESCE(SUM(e.amount_ghs), 0) as profit
+    FROM (SELECT 1) dummy
+    LEFT JOIN orders o ON DATE(o.paid_at)=?
+    LEFT JOIN product_orders po ON DATE(po.created_at)=?
+    LEFT JOIN expenses e ON DATE(e.expense_date)=?
+  `).get(today, today, today);
+  
+  // This month
+  const monthProfit = db.prepare(`
+    SELECT 
+      COALESCE(SUM(CASE WHEN o.status='paid' THEN o.amount_pesewas/100 ELSE 0 END), 0) +
+      COALESCE(SUM(CASE WHEN po.status NOT IN ('cancelled') THEN po.total_ghs ELSE 0 END), 0) -
+      COALESCE(SUM(e.amount_ghs), 0) as profit
+    FROM (SELECT 1) dummy
+    LEFT JOIN orders o ON DATE(o.paid_at) >= ?
+    LEFT JOIN product_orders po ON DATE(po.created_at) >= ?
+    LEFT JOIN expenses e ON DATE(e.expense_date) >= ?
+  `).get(monthStart, monthStart, monthStart);
+  
+  res.json({
+    today: todayProfit,
+    this_month: monthProfit
+  });
 });
 
 
