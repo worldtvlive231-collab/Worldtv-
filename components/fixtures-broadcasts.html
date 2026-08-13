@@ -1,0 +1,502 @@
+<!-- 7-Day Fixtures & Broadcasts Section -->
+<section id="fixtures-section" class="fixtures-container">
+  <div class="section-header">
+    <h2>📅 Upcoming Fixtures (Next 7 Days)</h2>
+    <button id="refresh-fixtures" class="btn-refresh" title="Refresh fixtures">
+      <span class="icon">🔄</span> Refresh
+    </button>
+  </div>
+
+  <div class="fixtures-tabs">
+    <button class="tab-btn active" data-view="timeline">Timeline View</button>
+    <button class="tab-btn" data-view="grid">Grid View</button>
+    <button class="tab-btn" data-view="list">List View</button>
+  </div>
+
+  <!-- Timeline View -->
+  <div id="timeline-view" class="view active">
+    <div id="fixtures-timeline" class="timeline">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading upcoming fixtures...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid View -->
+  <div id="grid-view" class="view" style="display: none;">
+    <div id="fixtures-grid" class="fixtures-grid">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading upcoming fixtures...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- List View -->
+  <div id="list-view" class="view" style="display: none;">
+    <div id="fixtures-list" class="fixtures-list">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading upcoming fixtures...</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="no-fixtures" class="empty-state" style="display: none;">
+    <p>No upcoming fixtures in the next 7 days.</p>
+  </div>
+</section>
+
+<style>
+  .fixtures-container {
+    padding: 2rem;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 12px;
+    margin: 2rem 0;
+    color: white;
+  }
+
+  .fixtures-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .tab-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    padding: 0.5rem 1.25rem;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+
+  .tab-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  .tab-btn.active {
+    background: rgba(255, 255, 255, 0.9);
+    color: #f5576c;
+  }
+
+  .view {
+    display: none;
+  }
+
+  .view.active {
+    display: block;
+  }
+
+  /* Timeline View */
+  .timeline {
+    position: relative;
+    padding: 1rem 0;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  .timeline-item {
+    margin-bottom: 2rem;
+    margin-left: 80px;
+    position: relative;
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -60px;
+    top: 10px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border: 3px solid #f5576c;
+    border-radius: 50%;
+  }
+
+  .timeline-date {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+  }
+
+  .fixture-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 10px;
+    padding: 1.25rem;
+    color: #333;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .fixture-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  }
+
+  .fixture-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #eee;
+  }
+
+  .fixture-time {
+    font-weight: 600;
+    color: #f5576c;
+    font-size: 1.1rem;
+  }
+
+  .fixture-venue {
+    font-size: 0.85rem;
+    color: #666;
+    text-align: right;
+  }
+
+  .fixture-match {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .fixture-team {
+    text-align: center;
+  }
+
+  .fixture-team-logo {
+    width: 45px;
+    height: 45px;
+    margin: 0 auto 0.5rem;
+    object-fit: contain;
+  }
+
+  .fixture-team-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    word-break: break-word;
+  }
+
+  .fixture-vs {
+    text-align: center;
+    font-weight: 600;
+    color: #666;
+  }
+
+  .fixture-broadcasts {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+  }
+
+  .broadcast-badge {
+    display: inline-block;
+    background: #f5576c;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Grid View */
+  .fixtures-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .grid-fixture-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 10px;
+    padding: 1.5rem;
+    color: #333;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+  }
+
+  .grid-fixture-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+  }
+
+  /* List View */
+  .fixtures-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .list-fixture-row {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    color: #333;
+    display: grid;
+    grid-template-columns: auto 150px 1fr 150px auto;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .list-fixture-row:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  }
+
+  .list-team-logo {
+    width: 35px;
+    height: 35px;
+    object-fit: contain;
+  }
+
+  .list-fixture-score {
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .list-fixture-time {
+    font-size: 0.85rem;
+    color: #666;
+  }
+
+  .loading-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .list-fixture-row {
+      grid-template-columns: auto 1fr auto;
+    }
+
+    .list-fixture-score,
+    .list-fixture-time {
+      display: none;
+    }
+
+    .fixtures-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .timeline-item {
+      margin-left: 60px;
+    }
+
+    .timeline-item::before {
+      left: -40px;
+    }
+  }
+</style>
+
+<script>
+  const FixturesController = {
+    timelineContainer: document.getElementById('fixtures-timeline'),
+    gridContainer: document.getElementById('fixtures-grid'),
+    listContainer: document.getElementById('fixtures-list'),
+    noFixturesDiv: document.getElementById('no-fixtures'),
+    refreshBtn: document.getElementById('refresh-fixtures'),
+    tabBtns: document.querySelectorAll('.tab-btn'),
+    currentView: 'timeline',
+    allFixtures: [],
+
+    async init() {
+      this.setupTabs();
+      this.refreshBtn.addEventListener('click', () => this.fetchFixtures());
+      await this.fetchFixtures();
+      setInterval(() => this.fetchFixtures(), 3600000); // Refresh every hour
+    },
+
+    setupTabs() {
+      this.tabBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          this.tabBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this.switchView(btn.dataset.view);
+        });
+      });
+    },
+
+    switchView(viewName) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById(`${viewName}-view`).classList.add('active');
+      this.currentView = viewName;
+    },
+
+    async fetchFixtures() {
+      try {
+        const response = await fetch('/api/fixtures/upcoming?days=7');
+        const { success, data, error } = await response.json();
+
+        if (!success) throw new Error(error);
+
+        this.allFixtures = data;
+        if (data.length === 0) {
+          this.showNoFixtures();
+        } else {
+          this.renderAllViews(data);
+        }
+      } catch (err) {
+        console.error('[Fixtures] Error:', err);
+      }
+    },
+
+    showNoFixtures() {
+      this.timelineContainer.innerHTML = '';
+      this.gridContainer.innerHTML = '';
+      this.listContainer.innerHTML = '';
+      this.noFixturesDiv.style.display = 'block';
+    },
+
+    renderAllViews(fixtures) {
+      this.renderTimeline(fixtures);
+      this.renderGrid(fixtures);
+      this.renderList(fixtures);
+      this.noFixturesDiv.style.display = 'none';
+    },
+
+    renderTimeline(fixtures) {
+      const grouped = this.groupByDate(fixtures);
+      let html = '';
+
+      for (const [date, matches] of Object.entries(grouped)) {
+        html += `
+          <div class="timeline-item">
+            <div class="timeline-date">${this.formatDate(new Date(date))}</div>
+            ${matches.map(m => this.createTimelineCard(m)).join('')}
+          </div>
+        `;
+      }
+
+      this.timelineContainer.innerHTML = html;
+    },
+
+    renderGrid(fixtures) {
+      this.gridContainer.innerHTML = fixtures.map(f => `
+        <div class="grid-fixture-card">
+          ${this.createFixtureMatch(f)}
+          ${this.createBroadcastBadges(f.broadcasts)}
+        </div>
+      `).join('');
+    },
+
+    renderList(fixtures) {
+      this.listContainer.innerHTML = fixtures.map(f => `
+        <div class="list-fixture-row">
+          ${f.homeTeam.logo ? `<img src="${f.homeTeam.logo}" class="list-team-logo" alt="">` : '<div style="width:35px;"></div>'}
+          <div class="list-fixture-score">${f.homeTeam.name}</div>
+          <div>
+            <div style="text-align:center; color:#666; font-size:0.85rem;">
+              ${new Date(f.date).toLocaleString()}
+            </div>
+          </div>
+          <div class="list-fixture-score">${f.awayTeam.name}</div>
+          ${f.awayTeam.logo ? `<img src="${f.awayTeam.logo}" class="list-team-logo" alt="">` : '<div style="width:35px;"></div>'}
+        </div>
+      `).join('');
+    },
+
+    createTimelineCard(match) {
+      return `
+        <div class="fixture-card">
+          <div class="fixture-header">
+            <div class="fixture-time">${new Date(match.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+            <div class="fixture-venue">${match.venue}</div>
+          </div>
+          ${this.createFixtureMatch(match)}
+          ${this.createBroadcastBadges(match.broadcasts)}
+        </div>
+      `;
+    },
+
+    createFixtureMatch(match) {
+      return `
+        <div class="fixture-match">
+          <div class="fixture-team">
+            ${match.homeTeam.logo ? `<img src="${match.homeTeam.logo}" class="fixture-team-logo" alt="">` : ''}
+            <div class="fixture-team-name">${match.homeTeam.name}</div>
+          </div>
+          <div class="fixture-vs">VS</div>
+          <div class="fixture-team">
+            ${match.awayTeam.logo ? `<img src="${match.awayTeam.logo}" class="fixture-team-logo" alt="">` : ''}
+            <div class="fixture-team-name">${match.awayTeam.name}</div>
+          </div>
+        </div>
+      `;
+    },
+
+    createBroadcastBadges(broadcasts) {
+      if (!broadcasts || broadcasts.length === 0) return '';
+      return `
+        <div class="fixture-broadcasts">
+          ${broadcasts.map(b => `<span class="broadcast-badge">${b.channel_name}</span>`).join('')}
+        </div>
+      `;
+    },
+
+    groupByDate(fixtures) {
+      const grouped = {};
+      fixtures.forEach(f => {
+        const date = f.date.split('T')[0];
+        if (!grouped[date]) grouped[date] = [];
+        grouped[date].push(f);
+      });
+      return grouped;
+    },
+
+    formatDate(date) {
+      return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    },
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => FixturesController.init());
+  } else {
+    FixturesController.init();
+  }
+</script>
+

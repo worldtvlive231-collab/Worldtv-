@@ -1,0 +1,432 @@
+<!-- Live Scores Section Component -->
+<section id="live-scores-section" class="live-scores-container">
+  <div class="section-header">
+    <h2>⚽ Live Scores & Matches</h2>
+    <button id="refresh-live-scores" class="btn-refresh" title="Refresh live data">
+      <span class="icon">🔄</span> Refresh
+    </button>
+  </div>
+
+  <div id="live-scores-grid" class="scores-grid">
+    <!-- Live score cards will be inserted here -->
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading live matches...</p>
+    </div>
+  </div>
+
+  <div id="no-live-matches" class="empty-state" style="display: none;">
+    <p>No live matches at the moment.</p>
+    <p>Check back soon for upcoming fixtures!</p>
+  </div>
+</section>
+
+<style>
+  .live-scores-container {
+    padding: 2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    margin: 2rem 0;
+    color: white;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+
+  .section-header h2 {
+    margin: 0;
+    font-size: 1.8rem;
+  }
+
+  .btn-refresh {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+
+  .btn-refresh:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.8);
+  }
+
+  .scores-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    min-height: 200px;
+  }
+
+  .score-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 10px;
+    padding: 1.5rem;
+    color: #333;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .score-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  }
+
+  .score-card.live::before {
+    content: "🔴 LIVE";
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: #ff4444;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    animation: pulse 1s infinite;
+  }
+
+  .score-card.halftime::before {
+    content: "⏸ HT";
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: #ffaa00;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+  }
+
+  .score-card.finished::before {
+    content: "✓ FT";
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: #666;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+  }
+
+  .match-meta {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .league-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .league-info img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+  }
+
+  .match-time {
+    font-weight: 600;
+    color: #667eea;
+  }
+
+  .match-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  .team {
+    text-align: center;
+  }
+
+  .team-logo {
+    width: 50px;
+    height: 50px;
+    margin: 0 auto 0.5rem;
+    object-fit: contain;
+  }
+
+  .team-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin: 0.5rem 0;
+    word-break: break-word;
+  }
+
+  .score-display {
+    text-align: center;
+  }
+
+  .score-big {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #667eea;
+    margin: 0;
+  }
+
+  .match-status {
+    font-size: 0.8rem;
+    color: #999;
+    margin-top: 0.25rem;
+  }
+
+  .broadcasts-list {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #eee;
+  }
+
+  .broadcasts-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #667eea;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+
+  .broadcast-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    font-size: 0.85rem;
+  }
+
+  .channel-logo {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    object-fit: contain;
+  }
+
+  .channel-info {
+    flex: 1;
+  }
+
+  .channel-name {
+    font-weight: 600;
+    color: #333;
+  }
+
+  .stream-quality {
+    display: inline-block;
+    background: #667eea;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    margin-left: 0.5rem;
+  }
+
+  .loading-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+  }
+
+  .empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem 1rem;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .empty-state p {
+    margin: 0.5rem 0;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .live-scores-container {
+      padding: 1.5rem;
+    }
+
+    .section-header {
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .section-header h2 {
+      font-size: 1.5rem;
+    }
+
+    .scores-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .score-big {
+      font-size: 2rem;
+    }
+  }
+</style>
+
+<script>
+  // Live Scores Controller
+  const LiveScoresController = {
+    container: document.getElementById('live-scores-grid'),
+    noMatchesDiv: document.getElementById('no-live-matches'),
+    refreshBtn: document.getElementById('refresh-live-scores'),
+    autoRefreshInterval: null,
+
+    async init() {
+      this.refreshBtn.addEventListener('click', () => this.fetchLiveScores());
+      await this.fetchLiveScores();
+      // Auto-refresh every 30 seconds
+      this.autoRefreshInterval = setInterval(() => this.fetchLiveScores(), 30000);
+    },
+
+    async fetchLiveScores() {
+      try {
+        this.showLoading();
+        const response = await fetch('/api/live-scores');
+        const { success, data, error } = await response.json();
+
+        if (!success) throw new Error(error);
+
+        if (data.length === 0) {
+          this.showNoMatches();
+        } else {
+          this.renderMatches(data);
+        }
+      } catch (err) {
+        console.error('[LiveScores] Error:', err);
+        this.showError(err.message);
+      }
+    },
+
+    showLoading() {
+      this.container.innerHTML = `
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading live matches...</p>
+        </div>
+      `;
+      this.noMatchesDiv.style.display = 'none';
+    },
+
+    showNoMatches() {
+      this.container.innerHTML = '';
+      this.noMatchesDiv.style.display = 'block';
+    },
+
+    showError(message) {
+      this.container.innerHTML = `
+        <div class="loading-state">
+          <p style="color: #ff6b6b;">Error: ${message}</p>
+        </div>
+      `;
+    },
+
+    renderMatches(matches) {
+      this.container.innerHTML = matches.map(match => this.createMatchCard(match)).join('');
+      this.noMatchesDiv.style.display = 'none';
+    },
+
+    createMatchCard(match) {
+      const statusClass = match.status === 'LIVE' ? 'live' : match.status === 'HT' ? 'halftime' : 'finished';
+      const broadcastsHtml = match.broadcasts && match.broadcasts.length > 0
+        ? `
+          <div class="broadcasts-list">
+            <div class="broadcasts-label">📡 Broadcasting on:</div>
+            ${match.broadcasts.map(b => `
+              <div class="broadcast-item">
+                ${b.channel_logo ? `<img src="${b.channel_logo}" class="channel-logo" alt="${b.channel_name}">` : ''}
+                <div class="channel-info">
+                  <div class="channel-name">${b.channel_name}</div>
+                </div>
+                <span class="stream-quality">${b.stream_quality || 'HD'}</span>
+              </div>
+            `).join('')}
+          </div>
+        `
+        : '';
+
+      return `
+        <div class="score-card ${statusClass}">
+          <div class="match-meta">
+            <div class="league-info">
+              ${match.league.logo ? `<img src="${match.league.logo}" alt="${match.league.name}">` : ''}
+              <span>${match.league.name}</span>
+            </div>
+            <div class="match-time">${new Date(match.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+          </div>
+
+          <div class="match-container">
+            <div class="team">
+              ${match.homeTeam.logo ? `<img src="${match.homeTeam.logo}" class="team-logo" alt="${match.homeTeam.name}">` : ''}
+              <div class="team-name">${match.homeTeam.name}</div>
+            </div>
+
+            <div class="score-display">
+              <div class="score-big">${match.homeTeam.score} - ${match.awayTeam.score}</div>
+              <div class="match-status">${match.elapsed || 0}'</div>
+            </div>
+
+            <div class="team">
+              ${match.awayTeam.logo ? `<img src="${match.awayTeam.logo}" class="team-logo" alt="${match.awayTeam.name}">` : ''}
+              <div class="team-name">${match.awayTeam.name}</div>
+            </div>
+          </div>
+
+          ${broadcastsHtml}
+        </div>
+      `;
+    },
+  };
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => LiveScoresController.init());
+  } else {
+    LiveScoresController.init();
+  }
+</script>
+
