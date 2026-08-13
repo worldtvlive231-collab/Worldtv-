@@ -402,6 +402,67 @@ app.delete("/api/admin/products/:id",adminOnly,(req,res)=>{
   res.json({ok:true});
 });
 
+/* Pricing Manager API */
+app.get("/api/admin/pricing/plans", adminOnly, (req,res)=>{
+  res.json(db.prepare("SELECT id,name,price_ghs,duration_days,active FROM plans ORDER BY id").all());
+});
+
+app.get("/api/admin/pricing/products", adminOnly, (req,res)=>{
+  res.json(db.prepare("SELECT id,name,price_ghs,stock_status FROM products WHERE active=1 ORDER BY id DESC").all());
+});
+
+app.patch("/api/admin/pricing/plans/:planId", adminOnly, (req,res)=>{
+  const {price_ghs} = req.body || {};
+  if(price_ghs === undefined || price_ghs === null) return res.status(400).json({error: "Price is required"});
+  
+  const plan = db.prepare("SELECT * FROM plans WHERE id=?").get(req.params.planId);
+  if(!plan) return res.status(404).json({error: "Plan not found"});
+  
+  db.prepare("UPDATE plans SET price_ghs=? WHERE id=?").run(Math.max(0, Number(price_ghs)), req.params.planId);
+  audit("plan_price_updated", "plan", req.params.planId, `Price changed from GH₵${plan.price_ghs} to GH₵${price_ghs}`);
+  
+  res.json(db.prepare("SELECT * FROM plans WHERE id=?").get(req.params.planId));
+});
+
+app.patch("/api/admin/pricing/products/:productId", adminOnly, (req,res)=>{
+  const {price_ghs} = req.body || {};
+  if(price_ghs === undefined || price_ghs === null) return res.status(400).json({error: "Price is required"});
+  
+  const product = db.prepare("SELECT * FROM products WHERE id=?").get(req.params.productId);
+  if(!product) return res.status(404).json({error: "Product not found"});
+  
+  db.prepare("UPDATE products SET price_ghs=?, updated_at=CURRENT_TIMESTAMP WHERE id=?").run(Math.max(0, Number(price_ghs)), req.params.productId);
+  audit("product_price_updated", "product", req.params.productId, `Price changed from GH₵${product.price_ghs || 0} to GH₵${price_ghs}`);
+  
+  res.json(db.prepare("SELECT * FROM products WHERE id=?").get(req.params.productId));
+});
+
+app.post("/api/admin/pricing/bulk-update", adminOnly, (req,res)=>{
+  const {category, percent} = req.body || {};
+  if(percent === undefined || percent === null) return res.status(400).json({error: "Percent is required"});
+  
+  let sql = "SELECT id,price_ghs FROM products WHERE active=1";
+  if(category === "featured") sql += " AND featured=1";
+  
+  const products = db.prepare(sql).all();
+  let updatedCount = 0;
+  
+  const tx = db.transaction(()=>{
+    for(const prod of products) {
+      const oldPrice = prod.price_ghs || 0;
+      const newPrice = Math.max(0, oldPrice * (1 + percent/100));
+      db.prepare("UPDATE products SET price_ghs=?, updated_at=CURRENT_TIMESTAMP WHERE id=?").run(newPrice, prod.id);
+      updatedCount++;
+    }
+  });
+  
+  try { tx(); } catch(e) { return res.status(500).json({error: e.message}); }
+  
+  audit("bulk_price_update", "product", "multiple", `Applied ${percent}% change to ${category} products`);
+  res.json({ok: true, updatedCount});
+});
+
+
 
 /* Admin customer management */
 app.get("/api/admin/customers", adminOnly, (req,res)=>{
