@@ -24,7 +24,7 @@ section{padding:76px 0}.section-head{text-align:center;max-width:720px;margin:0 
 .feature-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.feature{padding:20px;border-radius:18px;background:var(--cream);border:1px solid var(--line)}
 .cta{background:#18130a;color:#fff;border-radius:28px;padding:46px;display:flex;justify-content:space-between;gap:25px;align-items:center}.cta p{color:#d8d0bf}
 footer{background:#111;color:#ddd;padding:45px 0}.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:30px}footer p,footer a{color:#aaa;font-size:14px;line-height:1.7}
-.match-card{border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff;text-align:center;box-shadow:0 4px 12px rgba(35,25,0,.06)}.match-card h4{margin:0 0 12px;font-size:13px;font-weight:700;color:#666}.match-logos{display:flex;justify-content:center;align-items:center;gap:12px;margin:12px 0}.team-logo{width:40px;height:40px;border-radius:8px;object-fit:contain;background:#f5f5f5}.match-score{font-size:24px;font-weight:900;line-height:1;color:var(--dark)}.match-teams{font-size:12px;color:var(--muted);margin:8px 0;line-height:1.4}.live-badge{display:inline-block;background:#ff4444;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;font-weight:800;margin:6px 0}.match-meta{font-size:11px;color:#999;margin-top:8px}.refresh-note{text-align:center;font-size:12px;color:#999;margin-top:12px}
+.match-card{border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff;text-align:center;box-shadow:0 4px 12px rgba(35,25,0,.06)}.match-card h4{margin:0 0 12px;font-size:13px;font-weight:700;color:#666}.match-logos{display:flex;justify-content:center;align-items:center;gap:12px;margin:12px 0}.team-logo{width:40px;height:40px;border-radius:8px;object-fit:contain;background:#f5f5f5}.match-score{font-size:24px;font-weight:900;line-height:1;color:var(--dark)}.match-teams{font-size:12px;color:var(--muted);margin:8px 0;line-height:1.4}.live-badge{display:inline-block;background:#ff4444;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;font-weight:800;margin:6px 0}.match-meta{font-size:11px;color:#999;margin-top:8px}.refresh-note{text-align:center;font-size:12px;color:#999;margin-top:12px}.upcoming-badge{display:inline-block;background:#4488ff;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;font-weight:800;margin:6px 0}
 @media(max-width:900px){nav{display:none}.hero-grid{grid-template-columns:1fr}.cards,.feature-grid{grid-template-columns:1fr 1fr}.cta{flex-direction:column;align-items:flex-start}}
 @media(max-width:600px){.cards,.feature-grid{grid-template-columns:1fr}.actions .secondary{display:none}.footer-grid{grid-template-columns:1fr}.hero{padding-top:45px}}
 </style>
@@ -139,6 +139,53 @@ loadLiveScores();
 setInterval(loadLiveScores,30000);
 </script>
 
+<section id="upcoming-matches" style="background:#fff">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>📅 Upcoming Matches</h2>
+      <p>Next 7 days of scheduled football matches.</p>
+    </div>
+    <div id="upcomingBox" class="cards">
+      <div class="card" style="text-align:center;grid-column:1/-1"><p style="color:var(--muted)">Loading upcoming matches...</p></div>
+    </div>
+    <div class="refresh-note">Updates every 30 seconds</div>
+  </div>
+</section>
+<script>
+const loadUpcoming=async()=>{
+  try{
+    const resp=await fetch("/api/football/upcoming");
+    const data=await resp.json();
+    const box=document.getElementById("upcomingBox");
+    if(!data.ok||!data.matches||data.matches.length===0){
+      box.innerHTML='<div class="card" style="text-align:center;grid-column:1/-1"><p style="color:var(--muted)">No upcoming matches</p></div>';
+      return;
+    }
+    box.innerHTML=data.matches.slice(0,6).map(m=>`
+      <div class="match-card">
+        <h4>${m.league||'Football Match'}</h4>
+        <div class="match-logos">
+          <div><img class="team-logo" src="${m.home_logo||'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3C/svg%3E'}" alt="${m.home_team||'Home'}"></div>
+          <div style="text-align:center">
+            <div style="font-size:16px;font-weight:600;color:var(--muted)">vs</div>
+            <div class="upcoming-badge">UPCOMING</div>
+          </div>
+          <div><img class="team-logo" src="${m.away_logo||'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3C/svg%3E'}" alt="${m.away_team||'Away'}"></div>
+        </div>
+        <div class="match-teams"><strong>${m.home_team||'Home'}</strong><br><strong>${m.away_team||'Away'}</strong></div>
+        <div class="match-meta">
+          ${m.kickoff?new Date(m.kickoff).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})+' '+new Date(m.kickoff).toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}
+        </div>
+      </div>
+    `).join('');
+  }catch(e){
+    document.getElementById("upcomingBox").innerHTML='<div class="card" style="text-align:center;grid-column:1/-1"><p style="color:#999">Unable to load upcoming matches</p></div>';
+  }
+};
+loadUpcoming();
+setInterval(loadUpcoming,30000);
+</script>
+
 <section id="subscription">
   <div class="wrap">
     <div class="section-head">
@@ -205,7 +252,8 @@ setInterval(loadLiveScores,30000);
   box.innerHTML=shown.map(p=>`<div class="card">
     <div class="product-visual" style="overflow:hidden">${p.image_url?`<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover">`:'📦'}</div>
     <h3>${p.name}</h3><p>${p.description||''}</p>
-    ${p.price_ghs!=null?`<div class="price" style="font-size:26px">GH₵${Number(p.price_ghs).toFixed(2)}</div>`:''}\n    <a class="btn primary" href="/products.html">View Product</a>
+    ${p.price_ghs!=null?`<div class="price" style="font-size:26px">GH₵${Number(p.price_ghs).toFixed(2)}</div>`:''}
+    <a class="btn primary" href="/products.html">View Product</a>
   </div>`).join('');
 })();
 </script>
