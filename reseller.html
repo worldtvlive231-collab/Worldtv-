@@ -126,6 +126,7 @@
 
 <script>
 const $ = id => document.getElementById(id);
+function logout() { logoutReseller(); }
 let resellerToken = localStorage.getItem('wtv_reseller_token') || '';
 let resellerId = localStorage.getItem('wtv_reseller_id') || '';
 
