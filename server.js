@@ -4,6 +4,7 @@ const path = require("path");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const multer = require("multer");
+const cookieParser = require('cookie-parser');
 const fs = require("fs");
 const Database = require("better-sqlite3");
 
@@ -140,6 +141,38 @@ CREATE TABLE IF NOT EXISTS site_settings(
 );
 `);
 
+// ============ ANALYTICS TABLES ============
+db.exec(`
+CREATE TABLE IF NOT EXISTS analytics_visitors(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  visitor_id TEXT UNIQUE NOT NULL,
+  country TEXT DEFAULT 'Unknown',
+  country_code TEXT DEFAULT '',
+  first_seen TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_analytics_visitors_id ON analytics_visitors(visitor_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_visitors_last_seen ON analytics_visitors(last_seen);
+
+CREATE TABLE IF NOT EXISTS analytics_events(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  visitor_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  page_path TEXT,
+  referrer TEXT,
+  country TEXT DEFAULT 'Unknown',
+  country_code TEXT DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_visitor ON analytics_events(visitor_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_type ON analytics_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_created ON analytics_events(created_at);
+`);
+
+// IP to country cache (in memory)
+const ipGeoCache = new Map();
+
+
 if(!db.prepare("SELECT id FROM plans WHERE name=?").get("1 Year")){
   db.prepare("INSERT INTO plans(name,price_ghs,duration_days) VALUES(?,?,?)").run("1 Year",299,365);
 }
@@ -158,7 +191,9 @@ function ensureReferralCode(userId){
 
 app.use(express.json({limit:"1mb"}));
 app.use(express.urlencoded({extended:true}));
+app.use(cookieParser());
 app.use(express.static(__dirname));
+app.use(recordAnalytics);
 app.get("/reseller", (req,res) => res.sendFile(__dirname + "/reseller.html"));
 app.get("/admin", (req,res) => res.sendFile(__dirname + "/admin.html"));
 
@@ -518,6 +553,208 @@ app.post("/api/reseller/logout", resellerOnly, (req, res) => {
 
 
 app.get("/api/health",(req,res)=>res.json({ok:true,service:"World TV"}));
+
+
+// ============ ANALYTICS MIDDLEWARE & ENDPOINTS ============
+
+// Middleware to track visitor and set cookie
+async function recordAnalytics(req, res, next) {
+  try {
+    const pathname = req.path || '/';
+    // Don't track admin, API routes, or assets
+    if (pathname.startsWith('/api/') || pathname.startsWith('/admin') || /\.(js|css|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2)$/.test(pathname) || pathname === '/robots.txt' || pathname === '/sitemap.xml') {
+      return next();
+    }
+
+    let visitorId = req.cookies.wtv_visitor_id;
+    if (!visitorId) {
+      visitorId = crypto.randomBytes(16).toString('hex');
+      res.cookie('wtv_visitor_id', visitorId, {
+        maxAge: 365 * 24 * 60 * 60 * 1000,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: false
+      });
+    }
+
+    // Get country from cache or fetch
+    let country = 'Unknown';
+    let country_code = '';
+    const realIp = req.headers['x-real-ip'] || req.ip;
+    
+    if (ipGeoCache.has(realIp)) {
+      const cached = ipGeoCache.get(realIp);
+      country = cached.country;
+      country_code = cached.country_code;
+    } else if (realIp && !realIp.includes('127.0.0.1') && !realIp.includes('localhost')) {
+      try {
+        const geoRes = await fetch(`https://ipwho.is/${realIp}`);
+        const geoData = await geoRes.json();
+        if (geoData && geoData.country) {
+          country = geoData.country;
+          country_code = geoData.country_code || '';
+          ipGeoCache.set(realIp, { country, country_code });
+        }
+      } catch (e) {
+        // Silently fail, use Unknown
+      }
+    }
+
+    // Update or create visitor
+    const existing = db.prepare('SELECT id FROM analytics_visitors WHERE visitor_id = ?').get(visitorId);
+    if (existing) {
+      db.prepare('UPDATE analytics_visitors SET last_seen = CURRENT_TIMESTAMP WHERE visitor_id = ?').run(visitorId);
+    } else {
+      db.prepare('INSERT INTO analytics_visitors(visitor_id, country, country_code) VALUES(?, ?, ?)').run(visitorId, country, country_code);
+    }
+
+    // Record event
+    const eventType = pathname === '/download.html' ? 'download_page_view' : 'page_view';
+    db.prepare(
+      'INSERT INTO analytics_events(visitor_id, event_type, page_path, referrer, country, country_code) VALUES(?, ?, ?, ?, ?, ?)'
+    ).run(visitorId, eventType, pathname, req.get('referrer') || '', country, country_code);
+
+    res.locals.visitorId = visitorId;
+    next();
+  } catch (e) {
+    console.error('Analytics error:', e);
+    next();
+  }
+}
+
+// POST /api/analytics/visit - for client-side tracking
+app.post('/api/analytics/visit', express.json(), async (req, res) => {
+  try {
+    const { eventType, pagePath, referrer } = req.body;
+    let visitorId = req.cookies.wtv_visitor_id;
+    
+    if (!visitorId) {
+      visitorId = crypto.randomBytes(16).toString('hex');
+      res.cookie('wtv_visitor_id', visitorId, {
+        maxAge: 365 * 24 * 60 * 60 * 1000,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: false
+      });
+    }
+
+    // Get country
+    let country = 'Unknown';
+    let country_code = '';
+    const realIp = req.headers['x-real-ip'] || req.ip;
+    
+    if (ipGeoCache.has(realIp)) {
+      const cached = ipGeoCache.get(realIp);
+      country = cached.country;
+      country_code = cached.country_code;
+    }
+
+    const existing = db.prepare('SELECT id FROM analytics_visitors WHERE visitor_id = ?').get(visitorId);
+    if (existing) {
+      db.prepare('UPDATE analytics_visitors SET last_seen = CURRENT_TIMESTAMP WHERE visitor_id = ?').run(visitorId);
+    } else {
+      db.prepare('INSERT INTO analytics_visitors(visitor_id, country, country_code) VALUES(?, ?, ?)').run(visitorId, country, country_code);
+    }
+
+    db.prepare(
+      'INSERT INTO analytics_events(visitor_id, event_type, page_path, referrer, country, country_code) VALUES(?, ?, ?, ?, ?, ?)'
+    ).run(visitorId, eventType, pagePath, referrer || '', country, country_code);
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Analytics visit error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/analytics/summary
+app.get('/api/admin/analytics/summary', adminOnly, (req, res) => {
+  try {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const last24h = new Date(now.getTime() - 24*60*60*1000).toISOString();
+    const online5min = new Date(now.getTime() - 5*60*1000).toISOString();
+
+    const visitors_today = db.prepare(
+      'SELECT COUNT(DISTINCT visitor_id) as count FROM analytics_events WHERE created_at >= ?'
+    ).get(today).count;
+
+    const visitors_24h = db.prepare(
+      'SELECT COUNT(DISTINCT visitor_id) as count FROM analytics_events WHERE created_at >= ?'
+    ).get(last24h).count;
+
+    const total_unique_visitors = db.prepare(
+      'SELECT COUNT(*) as count FROM analytics_visitors'
+    ).get().count;
+
+    const total_page_views = db.prepare(
+      'SELECT COUNT(*) as count FROM analytics_events WHERE event_type IN (?, ?)'
+    ).get('page_view', 'download_page_view').count;
+
+    const online_now = db.prepare(
+      'SELECT COUNT(*) as count FROM analytics_visitors WHERE last_seen >= ?'
+    ).get(online5min).count;
+
+    const download_page_visits = db.prepare(
+      'SELECT COUNT(*) as count FROM analytics_events WHERE event_type = ?'
+    ).get('download_page_view').count;
+
+    const download_clicks = db.prepare(
+      'SELECT COUNT(*) as count FROM analytics_events WHERE event_type = ?'
+    ).get('download_click').count;
+
+    res.json({
+      visitors_today,
+      visitors_24h,
+      total_unique_visitors,
+      total_page_views,
+      online_now,
+      download_page_visits,
+      download_clicks
+    });
+  } catch (e) {
+    console.error('Analytics summary error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/analytics/countries
+app.get('/api/admin/analytics/countries', adminOnly, (req, res) => {
+  try {
+    const countries = db.prepare(`
+      SELECT country, country_code,
+             COUNT(DISTINCT visitor_id) as visitors,
+             COUNT(CASE WHEN event_type IN ('page_view', 'download_page_view') THEN 1 END) as page_views,
+             COUNT(CASE WHEN event_type = 'download_click' THEN 1 END) as download_clicks
+      FROM analytics_events
+      WHERE country != 'Unknown'
+      GROUP BY country, country_code
+      ORDER BY visitors DESC
+      LIMIT 100
+    `).all();
+    res.json(countries);
+  } catch (e) {
+    console.error('Analytics countries error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/analytics/recent
+app.get('/api/admin/analytics/recent', adminOnly, (req, res) => {
+  try {
+    const recent = db.prepare(`
+      SELECT event_type, page_path, country, country_code, created_at
+      FROM analytics_events
+      ORDER BY created_at DESC
+      LIMIT 50
+    `).all();
+    res.json(recent);
+  } catch (e) {
+    console.error('Analytics recent error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get("/api/plans",(req,res)=>res.json(db.prepare("SELECT * FROM plans WHERE active=1 ORDER BY id").all()));
 app.get("/api/products",(req,res)=>{
 
