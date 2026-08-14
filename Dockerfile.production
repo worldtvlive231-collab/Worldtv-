@@ -3,11 +3,14 @@ FROM node:20-alpine
 # Set working directory
 WORKDIR /app
 
+# Install build tools for better-sqlite3
+RUN apk add --no-cache python3 make g++ build-base
+
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci --omit=dev
+# Install dependencies with rebuild
+RUN npm ci --omit=dev && npm rebuild better-sqlite3 --build-from-source
 
 # Copy application files
 COPY . .
