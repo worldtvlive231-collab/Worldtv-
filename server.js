@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS subscription_codes(
  status TEXT NOT NULL DEFAULT 'unused',
  user_id INTEGER,
  expires_at TEXT,
+ reseller_id INTEGER,
+ used_at TEXT,
  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS orders(
