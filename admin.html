@@ -786,4 +786,61 @@ async function addExpense(){
     $("login").classList.remove("hide");
   }
 })();
+async function loadResellers() {
+  try {
+    const resellers = await api("/api/admin/resellers");
+    let totalSales = 0, totalCommissions = 0, pendingPayout = 0;
+    $("totalResellers").textContent = resellers.length;
+    $("resellersTable").innerHTML = resellers.map(r => {
+      totalSales += r.total_sales || 0;
+      totalCommissions += r.total_commissions || 0;
+      pendingPayout += r.pending_payout || 0;
+      return `<tr><td><b>${r.name}</b></td><td>${r.email}</td><td>${r.commission_percent}%</td><td>${r.total_sales}</td><td>GH₵${(r.total_commissions || 0).toFixed(2)}</td><td>GH₵${(r.pending_payout || 0).toFixed(2)}</td><td><span class="pill">${r.status}</span></td><td><button class="btn secondary" onclick="openResellerDetails(${r.id})">Manage</button></td></tr>`;
+    }).join("");
+    $("totalResellerSales").textContent = totalSales;
+    $("totalCommissionsPaid").textContent = "GH₵" + totalCommissions.toFixed(2);
+    $("pendingPayouts").textContent = "GH₵" + pendingPayout.toFixed(2);
+  } catch (e) {
+    console.error("Failed to load resellers:", e);
+  }
+}
+async function createReseller() {
+  const name = $("resellerName").value.trim();
+  const email = $("resellerEmail").value.trim();
+  const phone = $("resellerPhone").value.trim();
+  const commission = parseFloat($("resellerCommission").value);
+  const password = $("resellerPassword").value;
+  if (!name || !email || isNaN(commission) || !password) {
+    $("resellerMsg").textContent = "All fields required";
+    return;
+  }
+  try {
+    await api("/api/admin/resellers", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({name, email, phone, commission_percent: commission, password})
+    });
+    $("resellerMsg").textContent = "✓ Reseller created: " + email;
+    $("resellerName").value = "";
+    $("resellerEmail").value = "";
+    $("resellerPhone").value = "";
+    $("resellerCommission").value = "10";
+    $("resellerPassword").value = "";
+    setTimeout(() => {$("resellerMsg").textContent = "";}, 3000);
+    await loadResellers();
+  } catch (e) {
+    $("resellerMsg").textContent = "Error: " + (e.message || "Failed to create");
+  }
+}
+async function openResellerDetails(resellerId) {
+  try {
+    const data = await api(`/api/admin/resellers/${resellerId}`);
+    const r = data.reseller;
+    const earned = data.sales.reduce((sum, s) => sum + (s.commission_ghs || 0), 0);
+    alert(`RESELLER: ${r.name}\n\nEmail: ${r.email}\nPhone: ${r.phone || "N/A"}\nCommission: ${r.commission_percent}%\n\nStats:\nTotal Sales: ${data.sales.length}\nTotal Earned: GH₵${earned.toFixed(2)}`);
+  } catch (e) {
+    alert("Error loading reseller details");
+  }
+}
+
 </script><script src="/assets/pwa.js"></script></body></html>
