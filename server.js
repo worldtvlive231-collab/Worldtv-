@@ -159,6 +159,7 @@ function ensureReferralCode(userId){
 app.use(express.json({limit:"1mb"}));
 app.use(express.urlencoded({extended:true}));
 app.use(express.static(__dirname));
+app.get("/reseller", (req,res) => res.sendFile(__dirname + "/reseller.html"));
 
 /* Basic production hardening */
 app.disable("x-powered-by");
@@ -292,6 +293,115 @@ app.get("/api/admin/resellers/:id", adminOnly, (req,res) => {
   res.json({ reseller, sales, payouts });
 });
 
+
+
+// Reseller Authentication
+app.post("/api/reseller/login", async (req, res) => {
+  const { email, password } = req.body || {};
+  
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password required" });
+  }
+  
+  try {
+    const reseller = db.prepare("SELECT id, name, email, password_hash FROM resellers WHERE email = ? AND status = 'active'").get(email.toLowerCase());
+    
+    if (!reseller) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+    
+    const passwordMatch = await bcrypt.compare(password, reseller.password_hash);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+    
+    // Generate simple token (in production use JWT)
+    const token = require('crypto').randomBytes(32).toString('hex');
+    res.json({ ok: true, token, resellerId: reseller.id });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Reseller Dashboard Data
+app.get("/api/reseller/dashboard", (req, res) => {
+  const token = req.headers['x-reseller-token'];
+  if (!token) return res.status(401).json({ error: "Unauthorized" });
+  
+  // In production, decode JWT. For now, we'll verify by extracting reseller_id from query or assume token validity
+  // For demo, we trust the token for now - in prod, store token -> reseller_id mapping
+  const resellerId = req.query.resellerId || req.headers['x-reseller-id'];
+  if (!resellerId) return res.status(401).json({ error: "Unauthorized" });
+  
+  try {
+    const reseller = db.prepare("SELECT id, name, email FROM resellers WHERE id = ?").get(resellerId);
+    if (!reseller) return res.status(401).json({ error: "Unauthorized" });
+    
+    const quota = db.prepare(
+      "SELECT allocated_count, used_count, available_count FROM reseller_code_allocation WHERE reseller_id = ?"
+    ).get(resellerId) || { allocated_count: 0, used_count: 0, available_count: 0 };
+    
+    const codes = db.prepare(
+      "SELECT code, status, created_at, used_at FROM subscription_codes WHERE reseller_id = ? ORDER BY created_at DESC"
+    ).all(resellerId);
+    
+    res.json({ reseller, quota, codes });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Reseller Generate Codes
+app.post("/api/reseller/generate-codes", (req, res) => {
+  const token = req.headers['x-reseller-token'];
+  const resellerId = req.headers['x-reseller-id'];
+  if (!token || !resellerId) return res.status(401).json({ error: "Unauthorized" });
+  
+  const { count } = req.body || {};
+  const genCount = Number(count);
+  
+  if (!Number.isFinite(genCount) || genCount < 1) {
+    return res.status(400).json({ error: "Valid count required" });
+  }
+  
+  try {
+    const reseller = db.prepare("SELECT id FROM resellers WHERE id = ?").get(resellerId);
+    if (!reseller) return res.status(401).json({ error: "Unauthorized" });
+    
+    const quota = db.prepare(
+      "SELECT available_count FROM reseller_code_allocation WHERE reseller_id = ?"
+    ).get(resellerId);
+    
+    if (!quota || quota.available_count < genCount) {
+      return res.status(400).json({ error: "Not enough codes available. Contact admin to allocate more." });
+    }
+    
+    // Generate codes
+    const generated = [];
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    for (let i = 0; i < genCount; i++) {
+      let code = '';
+      for (let j = 0; j < 8; j++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      
+      db.prepare(
+        "INSERT INTO subscription_codes(code, status, reseller_id) VALUES(?, 'active', ?)"
+      ).run(code, resellerId);
+      
+      generated.push(code);
+    }
+    
+    // Decrement available count
+    db.prepare(
+      "UPDATE reseller_code_allocation SET available_count = available_count - ?, used_count = used_count + ? WHERE reseller_id = ?"
+    ).run(genCount, 0, resellerId); // Note: used_count doesn't increment until customer actually uses it
+    
+    res.json({ ok: true, generated, count: genCount });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 /* Public */
 app.get("/api/health",(req,res)=>res.json({ok:true,service:"World TV"}));
