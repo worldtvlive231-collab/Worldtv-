@@ -4,7 +4,6 @@ const path = require("path");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const multer = require("multer");
-const cookieParser = require('cookie-parser');
 const fs = require("fs");
 const Database = require("better-sqlite3");
 
@@ -191,7 +190,6 @@ function ensureReferralCode(userId){
 
 app.use(express.json({limit:"1mb"}));
 app.use(express.urlencoded({extended:true}));
-app.use(cookieParser());
 app.use(express.static(__dirname));
 app.use(recordAnalytics);
 app.get("/reseller", (req,res) => res.sendFile(__dirname + "/reseller.html"));
@@ -566,7 +564,12 @@ async function recordAnalytics(req, res, next) {
       return next();
     }
 
-    let visitorId = req.cookies.wtv_visitor_id;
+    const cookies = {};
+    (req.headers.cookie || '').split(';').forEach(c => {
+      const [key, val] = c.trim().split('=');
+      if (key) cookies[key] = decodeURIComponent(val || '');
+    });
+    let visitorId = cookies.wtv_visitor_id;
     if (!visitorId) {
       visitorId = crypto.randomBytes(16).toString('hex');
       res.cookie('wtv_visitor_id', visitorId, {
@@ -626,7 +629,12 @@ async function recordAnalytics(req, res, next) {
 app.post('/api/analytics/visit', express.json(), async (req, res) => {
   try {
     const { eventType, pagePath, referrer } = req.body;
-    let visitorId = req.cookies.wtv_visitor_id;
+    const cookies = {};
+    (req.headers.cookie || '').split(';').forEach(c => {
+      const [key, val] = c.trim().split('=');
+      if (key) cookies[key] = decodeURIComponent(val || '');
+    });
+    let visitorId = cookies.wtv_visitor_id;
     
     if (!visitorId) {
       visitorId = crypto.randomBytes(16).toString('hex');
