@@ -52,6 +52,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <button class="btn tab" onclick="showTab('auditTab',this)">Audit Log</button>
 <button class="btn tab" onclick="showTab('emailTab',this)">Email Center</button>
 <button class="btn tab" onclick="showTab('pricingTab',this)">Pricing Manager</button>
+<button class="btn tab" onclick="showTab('resellersTab',this)">Resellers</button>
 <button class="btn tab" onclick="showTab('salesDashboardTab',this)">Live Sales Dashboard</button>
 </div>
 
@@ -372,6 +373,20 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <section id="auditTab" class="hide"><div class="card"><h2>Admin Audit Log</h2><p class="muted">A record of important administrative subscription actions.</p><input id="auditSearch" placeholder="Search action or details"><button class="btn secondary" onclick="loadAudit()">Search</button><div style="overflow:auto"><table><thead><tr><th>Date</th><th>Action</th><th>Type</th><th>ID</th><th>Details</th></tr></thead><tbody id="auditRows"></tbody></table></div></div></section>
 
 
+<section id="resellersTab" class="hide">
+<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px;">
+  <div class="card"><div class="muted">Total Resellers</div><div id="totalResellers" class="stat">0</div></div>
+  <div class="card"><div class="muted">Total Sales</div><div id="totalResellerSales" class="stat">0</div></div>
+  <div class="card"><div class="muted">Total Commissions</div><div id="totalCommissionsPaid" class="stat">GH₵0</div></div>
+  <div class="card"><div class="muted">Pending Payouts</div><div id="pendingPayouts" class="stat" style="color:#f2ded8">GH₵0</div></div>
+</div>
+<div class="card" style="margin-bottom: 20px;"><h2>Create New Reseller Account</h2><p class="muted">Add resellers who earn commission on sales.</p>
+<div class="formgrid"><div><label>Name</label><input id="resellerName" placeholder="Reseller Name"><label>Email</label><input id="resellerEmail" placeholder="email@example.com"></div>
+<div><label>Phone</label><input id="resellerPhone" placeholder="+233..."><label>Commission %</label><input id="resellerCommission" type="number" min="0" max="100" value="10"></div></div>
+<label>Password</label><input id="resellerPassword" type="password" placeholder="Strong password">
+<button class="btn primary" onclick="createReseller()" style="margin-top:12px">Create Reseller</button><p id="resellerMsg" class="muted"></p></div>
+<div class="card"><h2>All Resellers</h2><div style="overflow:auto"><table><thead><tr><th>Name</th><th>Email</th><th>Commission %</th><th>Sales</th><th>Earned</th><th>Pending</th><th>Status</th><th>Actions</th></tr></thead><tbody id="resellersTable"></tbody></table></div></div>
+</section>
 <section id="emailTab" class="hide">
 <div class="card"><h2>Email Center</h2><p class="muted">Prepare customer emails now. After hosting, an email provider can automatically send this queue.</p>
 <input id="emailSubject" placeholder="Email subject"><textarea id="emailMessage" placeholder="Message"></textarea>
@@ -410,7 +425,7 @@ async function loginAdmin(){const r=await fetch("/api/admin/login",{method:"POST
 function logout(){localStorage.removeItem("wtv_admin_token");token="";location.reload()}
 function showTab(id,btn){["customersTab","productsTab","codesTab","promotionsTab","servicesTab","supportTab","settingsTab","notificationsTab","reportsTab","backupTab","contentTab","productOrdersTab","couponsTab","referralsTab","subscriptionsTab","alertsTab","auditTab","emailTab","pricingTab","salesDashboardTab"].forEach(x=>$(x).classList.add("hide"));$(id).classList.remove("hide");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active")}
 async function showDashboard(){$("login").classList.add("hide");$("dashboard").classList.remove("hide");$("logoutBtn").classList.remove("hide");const plans=await fetch("/api/plans").then(r=>r.json());$("plan").innerHTML=plans.map(p=>`<option value="${p.id}">${p.name} — GH₵${p.price_ghs}</option>`).join("");await refreshAll()}
-async function refreshAll(){const s=await api("/api/admin/stats");$("total").textContent=s.total;$("unused").textContent=s.unused;$("used").textContent=s.used;$("customersCount").textContent=s.customers;$("productsCount").textContent=s.products;await loadCustomers();await loadProducts();await loadCodes();await loadPromotions();await loadServices();await loadSupport();await loadSettings();await loadReports();await loadContent();await loadProductOrders();await loadCoupons();await loadReferrals();await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue();await loadPricingData();await loadSalesDashboard()}
+async function refreshAll(){const s=await api("/api/admin/stats");$("total").textContent=s.total;$("unused").textContent=s.unused;$("used").textContent=s.used;$("customersCount").textContent=s.customers;$("productsCount").textContent=s.products;await loadCustomers();await loadProducts();await loadCodes();await loadPromotions();await loadServices();await loadSupport();await loadSettings();await loadReports();await loadContent();await loadProductOrders();await loadCoupons();await loadReferrals();await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue();await loadPricingData();await loadSalesDashboard();await loadResellers()}
 
 async function loadCustomers(){const q=$("customerSearch").value.trim();const d=await api("/api/admin/customers"+(q?`?q=${encodeURIComponent(q)}`:""));$("customerRows").innerHTML=d.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.email}</td><td>${c.order_count}</td><td>${c.paid_orders}</td><td>${c.latest_expiry?new Date(c.latest_expiry).toLocaleDateString():"—"}</td><td><button class="btn secondary" onclick="openCustomer(${c.id})">Manage</button></td></tr>`).join("")}
 async function openCustomer(id){selectedCustomerId=id;const d=await api(`/api/admin/customers/${id}`);$("customerDetail").innerHTML=`<h2>${d.user.name}</h2><p class="muted">${d.user.email}</p>
@@ -748,7 +763,7 @@ async function addExpense(){
     $("expenseAmount").value = "";
     $("expenseDescription").value = "";
     setTimeout(() => { $("expenseMsg").textContent = ""; }, 2000);
-    await loadSalesDashboard();
+    await loadSalesDashboard();await loadResellers();
   } catch(e) {
     $("expenseMsg").textContent = "Error: " + e.message;
   }
