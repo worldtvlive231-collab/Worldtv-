@@ -6,11 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci --omit=dev
-
-# Clean and rebuild better-sqlite3 from source
-RUN rm -rf node_modules/better-sqlite3/build && npm rebuild better-sqlite3 --build-from-source
+# Install dependencies and rebuild better-sqlite3
+RUN npm ci --omit=dev && npm rebuild better-sqlite3
 
 # Copy application files
 COPY . .
@@ -22,9 +19,10 @@ RUN mkdir -p /app/data
 EXPOSE 8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Start application
 CMD ["npm", "start"]
+
 
