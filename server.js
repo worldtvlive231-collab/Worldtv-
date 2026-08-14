@@ -190,6 +190,7 @@ function ensureReferralCode(userId){
 
 app.use(express.json({limit:"1mb"}));
 app.use(express.urlencoded({extended:true}));
+app.set("trust proxy", true);
 app.use(express.static(__dirname));
 app.use(recordAnalytics);
 app.get("/reseller", (req,res) => res.sendFile(__dirname + "/reseller.html"));
