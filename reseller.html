@@ -223,6 +223,7 @@ async function loadResellerData() {
   }
 }
 
+let isGenerating = false;
 async function generateCodes() {
   const count = parseInt($('generateCount').value, 10);
   const msg = $('generateMsg');
@@ -235,6 +236,8 @@ async function generateCodes() {
   }
 
   try {
+    if (isGenerating) return;
+    isGenerating = true;
     const result = await api('/api/reseller/generate-codes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
