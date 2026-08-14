@@ -6,8 +6,11 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies and rebuild better-sqlite3
-RUN npm ci --omit=dev && npm rebuild better-sqlite3
+# Install dependencies
+RUN npm ci --omit=dev
+
+# Clean and rebuild better-sqlite3 from source
+RUN rm -rf node_modules/better-sqlite3/build && npm rebuild better-sqlite3 --build-from-source
 
 # Copy application files
 COPY . .
