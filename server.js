@@ -488,7 +488,7 @@ app.post("/api/reseller/generate-codes", resellerOnly, (req, res) => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     
     // Use a transaction for atomicity
-    const insertStmt = db.prepare("INSERT INTO subscription_codes(code, status, reseller_id) VALUES(?, 'active', ?)");
+    const insertStmt = db.prepare("INSERT INTO subscription_codes(code, status, plan_id, reseller_id) VALUES(?, 'active', 1, ?)");
     const updateStmt = db.prepare("UPDATE reseller_code_allocation SET available_count = available_count - ? WHERE reseller_id = ?");
     
     const transaction = db.transaction(() => {
