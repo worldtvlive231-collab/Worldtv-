@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reseller Dashboard - World TV</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    h1 { color: #333; }
+    .btn { padding: 10px 16px; border: none; border-radius: 5px; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+    .btn.primary { background: #0066cc; color: white; }
+    .btn.primary:hover { background: #0052a3; }
+    .btn.secondary { background: #e0e0e0; color: #333; }
+    .btn.secondary:hover { background: #d0d0d0; }
+    .btn.danger { background: #dc3545; color: white; }
+    .btn.danger:hover { background: #c82333; }
+    .logout { cursor: pointer; }
+    h2 { color: #333; margin-bottom: 15px; }
+    h3 { color: #555; margin-top: 15px; margin-bottom: 10px; font-size: 16px; }
+    .quota-box { background: #f9f9f9; padding: 20px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #0066cc; }
+    .quota-stat { display: inline-block; margin-right: 30px; }
+    .quota-stat .number { font-size: 32px; font-weight: bold; color: #0066cc; }
+    .quota-stat .label { font-size: 12px; color: #999; text-transform: uppercase; }
+    .codes-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    .codes-table th { background: #f5f5f5; padding: 12px; text-align: left; font-weight: 600; font-size: 13px; border-bottom: 2px solid #ddd; }
+    .codes-table td { padding: 12px; border-bottom: 1px solid #eee; }
+    .codes-table tr:hover { background: #f9f9f9; }
+    .pill { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .pill.active { background: #d4edda; color: #155724; }
+    .pill.used { background: #cce5ff; color: #004085; }
+    .pill.expired { background: #f8d7da; color: #721c24; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 5px; }
+    input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+    input:focus { outline: none; border-color: #0066cc; box-shadow: 0 0 0 3px rgba(0,102,204,0.1); }
+    .msg { padding: 12px; border-radius: 5px; margin: 10px 0; font-size: 14px; }
+    .msg.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .msg.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .hide { display: none !important; }
+    .login-page { max-width: 400px; margin: 60px auto; }
+    .login-card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .login-card h1 { text-align: center; margin-bottom: 30px; }
+    .login-card .btn { width: 100%; }
+  </style>
+</head>
+<body>
+<div id="loginPage" class="login-page">
+  <div class="login-card">
+    <h1>Reseller Login</h1>
+    <div class="form-group">
+      <label>Email</label>
+      <input id="loginEmail" type="email" placeholder="your@email.com">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input id="loginPassword" type="password" placeholder="Password">
+    </div>
+    <button class="btn primary" onclick="loginReseller()" style="width: 100%; margin-bottom: 10px;">Log In</button>
+    <p id="loginMsg" class="msg hide"></p>
+  </div>
+</div>
+
+<div id="dashboardPage" class="hide">
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1 id="resellerName">Reseller Dashboard</h1>
+        <p class="muted" id="resellerEmail" style="color: #999; margin-top: 5px;"></p>
+      </div>
+      <button class="btn secondary" onclick="logoutReseller()">Log Out</button>
+    </div>
+
+    <div class="card">
+      <h2>Code Quota</h2>
+      <div class="quota-box">
+        <div class="quota-stat">
+          <div class="number" id="allocatedCount">0</div>
+          <div class="label">Allocated</div>
+        </div>
+        <div class="quota-stat">
+          <div class="number" id="usedCount">0</div>
+          <div class="label">Used</div>
+        </div>
+        <div class="quota-stat">
+          <div class="number" id="availableCount">0</div>
+          <div class="label">Available</div>
+        </div>
+      </div>
+      <p id="quotaMsg" class="muted" style="margin-top: 10px;"></p>
+    </div>
+
+    <div class="card">
+      <h2>Generate Codes for Customers</h2>
+      <div class="form-group">
+        <label>Number of Codes</label>
+        <input id="generateCount" type="number" min="1" max="100" value="5" placeholder="How many codes to generate">
+      </div>
+      <button class="btn primary" onclick="generateCodes()">Generate Codes</button>
+      <p id="generateMsg" class="msg hide" style="margin-top: 10px;"></p>
+    </div>
+
+    <div class="card">
+      <h2>My Codes</h2>
+      <div style="overflow-x: auto;">
+        <table class="codes-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Status</th>
+              <th>Generated</th>
+              <th>Used</th>
+            </tr>
+          </thead>
+          <tbody id="codesTableBody">
+            <tr><td colspan="4" style="text-align: center; color: #999;">Loading codes...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let resellerToken = localStorage.getItem('wtv_reseller_token') || '';
+let resellerId = localStorage.getItem('wtv_reseller_id') || '';
+
+async function api(url, options = {}) {
+  options.headers = Object.assign({}, options.headers, { 'x-reseller-token': resellerToken });
+  const r = await fetch(url, options);
+  const json = await r.json();
+  if (r.status === 401) { logout(); throw new Error('Unauthorized'); }
+  if (!r.ok) throw new Error(json.error || 'Request failed');
+  return json;
+}
+
+async function loginReseller() {
+  const email = $('loginEmail').value.trim();
+  const password = $('loginPassword').value;
+  const msg = $('loginMsg');
+
+  if (!email || !password) {
+    msg.classList.remove('hide');
+    msg.classList.add('error');
+    msg.textContent = 'Email and password required';
+    return;
+  }
+
+  try {
+    const result = await fetch('/api/reseller/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    }).then(r => r.json());
+
+    if (!result.ok) throw new Error(result.error);
+
+    resellerToken = result.token;
+    resellerId = result.resellerId;
+    localStorage.setItem('wtv_reseller_token', resellerToken);
+    localStorage.setItem('wtv_reseller_id', resellerId);
+
+    msg.classList.add('hide');
+    showDashboard();
+  } catch (e) {
+    msg.classList.remove('hide');
+    msg.classList.add('error');
+    msg.textContent = 'Login failed: ' + e.message;
+  }
+}
+
+function logoutReseller() {
+  resellerToken = '';
+  resellerId = '';
+  localStorage.removeItem('wtv_reseller_token');
+  localStorage.removeItem('wtv_reseller_id');
+  showLogin();
+}
+
+async function showDashboard() {
+  $('loginPage').classList.add('hide');
+  $('dashboardPage').classList.remove('hide');
+  await loadResellerData();
+}
+
+function showLogin() {
+  $('loginPage').classList.remove('hide');
+  $('dashboardPage').classList.add('hide');
+}
+
+async function loadResellerData() {
+  try {
+    const data = await api('/api/reseller/dashboard');
+    $('resellerName').textContent = data.reseller.name;
+    $('resellerEmail').textContent = data.reseller.email;
+    $('allocatedCount').textContent = data.quota.allocated_count || 0;
+    $('usedCount').textContent = data.quota.used_count || 0;
+    $('availableCount').textContent = data.quota.available_count || 0;
+
+    if (data.quota.available_count === 0 && data.quota.allocated_count === 0) {
+      $('quotaMsg').textContent = 'No codes allocated yet. Contact your administrator.';
+    }
+
+    const tbody = $('codesTableBody');
+    if (data.codes.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">No codes generated yet</td></tr>';
+    } else {
+      tbody.innerHTML = data.codes.map(c => `
+        <tr>
+          <td><code style="background: #f5f5f5; padding: 4px 8px; border-radius: 3px;">${c.code}</code></td>
+          <td><span class="pill ${c.status === 'active' ? 'active' : c.status === 'used' ? 'used' : 'expired'}">${c.status}</span></td>
+          <td>${new Date(c.created_at).toLocaleDateString()}</td>
+          <td>${c.used_at ? new Date(c.used_at).toLocaleDateString() : '-'}</td>
+        </tr>
+      `).join('');
+    }
+  } catch (e) {
+    console.error('Error loading dashboard:', e);
+  }
+}
+
+async function generateCodes() {
+  const count = parseInt($('generateCount').value, 10);
+  const msg = $('generateMsg');
+
+  if (!count || count < 1) {
+    msg.classList.remove('hide');
+    msg.classList.add('error');
+    msg.textContent = 'Enter a valid number of codes';
+    return;
+  }
+
+  try {
+    const result = await api('/api/reseller/generate-codes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ count })
+    });
+
+    msg.classList.remove('hide');
+    msg.classList.add('success');
+    msg.textContent = `✓ Generated ${count} codes`;
+    $('generateCount').value = '5';
+    setTimeout(() => loadResellerData(), 1000);
+  } catch (e) {
+    msg.classList.remove('hide');
+    msg.classList.add('error');
+    msg.textContent = 'Error: ' + e.message;
+  }
+}
+
+// Check if already logged in
+if (resellerToken && resellerId) {
+  showDashboard();
+} else {
+  showLogin();
+}
+</script>
+</body>
+</html>
