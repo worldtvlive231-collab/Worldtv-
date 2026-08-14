@@ -369,6 +369,22 @@ app.get("/api/admin/resellers-with-quotas", adminOnly, (req,res) => {
 
 
 // Reseller Authentication
+// ============ RESELLER SESSION STORE ============
+const resellerSessions = new Map(); // token -> { resellerId, createdAt }
+
+// Middleware to validate reseller token
+function resellerOnly(req, res, next) {
+  const token = req.headers['x-reseller-token'];
+  if (!token) return res.status(401).json({ error: "Unauthorized" });
+  
+  const session = resellerSessions.get(token);
+  if (!session) return res.status(401).json({ error: "Unauthorized" });
+  
+  req.resellerId = session.resellerId;
+  next();
+}
+
+// ============ RESELLER LOGIN ============
 app.post("/api/reseller/login", async (req, res) => {
   const { email, password } = req.body || {};
   
@@ -388,35 +404,29 @@ app.post("/api/reseller/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid email or password" });
     }
     
-    // Generate simple token (in production use JWT)
+    // Generate token and store session
     const token = require('crypto').randomBytes(32).toString('hex');
+    resellerSessions.set(token, { resellerId: reseller.id, createdAt: Date.now() });
+    
     res.json({ ok: true, token, resellerId: reseller.id });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// Reseller Dashboard Data
-app.get("/api/reseller/dashboard", (req, res) => {
-  const token = req.headers['x-reseller-token'];
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
-  
-  // In production, decode JWT. For now, we'll verify by extracting reseller_id from query or assume token validity
-  // For demo, we trust the token for now - in prod, store token -> reseller_id mapping
-  const resellerId = req.query.resellerId || req.headers['x-reseller-id'];
-  if (!resellerId) return res.status(401).json({ error: "Unauthorized" });
-  
+// ============ RESELLER DASHBOARD ============
+app.get("/api/reseller/dashboard", resellerOnly, (req, res) => {
   try {
-    const reseller = db.prepare("SELECT id, name, email FROM resellers WHERE id = ?").get(resellerId);
+    const reseller = db.prepare("SELECT id, name, email FROM resellers WHERE id = ?").get(req.resellerId);
     if (!reseller) return res.status(401).json({ error: "Unauthorized" });
     
     const quota = db.prepare(
       "SELECT allocated_count, used_count, available_count FROM reseller_code_allocation WHERE reseller_id = ?"
-    ).get(resellerId) || { allocated_count: 0, used_count: 0, available_count: 0 };
+    ).get(req.resellerId) || { allocated_count: 0, used_count: 0, available_count: 0 };
     
     const codes = db.prepare(
       "SELECT code, status, created_at, used_at FROM subscription_codes WHERE reseller_id = ? ORDER BY created_at DESC"
-    ).all(resellerId);
+    ).all(req.resellerId);
     
     res.json({ reseller, quota, codes });
   } catch (e) {
@@ -424,12 +434,8 @@ app.get("/api/reseller/dashboard", (req, res) => {
   }
 });
 
-// Reseller Generate Codes
-app.post("/api/reseller/generate-codes", (req, res) => {
-  const token = req.headers['x-reseller-token'];
-  const resellerId = req.headers['x-reseller-id'];
-  if (!token || !resellerId) return res.status(401).json({ error: "Unauthorized" });
-  
+// ============ RESELLER GENERATE CODES ============
+app.post("/api/reseller/generate-codes", resellerOnly, (req, res) => {
   const { count } = req.body || {};
   const genCount = Number(count);
   
@@ -438,12 +444,12 @@ app.post("/api/reseller/generate-codes", (req, res) => {
   }
   
   try {
-    const reseller = db.prepare("SELECT id FROM resellers WHERE id = ?").get(resellerId);
+    const reseller = db.prepare("SELECT id FROM resellers WHERE id = ?").get(req.resellerId);
     if (!reseller) return res.status(401).json({ error: "Unauthorized" });
     
     const quota = db.prepare(
       "SELECT available_count FROM reseller_code_allocation WHERE reseller_id = ?"
-    ).get(resellerId);
+    ).get(req.resellerId);
     
     if (!quota || quota.available_count < genCount) {
       return res.status(400).json({ error: "Not enough codes available. Contact admin to allocate more." });
@@ -460,15 +466,15 @@ app.post("/api/reseller/generate-codes", (req, res) => {
       
       db.prepare(
         "INSERT INTO subscription_codes(code, status, reseller_id) VALUES(?, 'active', ?)"
-      ).run(code, resellerId);
+      ).run(code, req.resellerId);
       
       generated.push(code);
     }
     
     // Decrement available count
     db.prepare(
-      "UPDATE reseller_code_allocation SET available_count = available_count - ?, used_count = used_count + ? WHERE reseller_id = ?"
-    ).run(genCount, 0, resellerId); // Note: used_count doesn't increment until customer actually uses it
+      "UPDATE reseller_code_allocation SET available_count = available_count - ? WHERE reseller_id = ?"
+    ).run(genCount, req.resellerId);
     
     res.json({ ok: true, generated, count: genCount });
   } catch (e) {
@@ -476,7 +482,6 @@ app.post("/api/reseller/generate-codes", (req, res) => {
   }
 });
 
-/* Public */
 app.get("/api/health",(req,res)=>res.json({ok:true,service:"World TV"}));
 app.get("/api/plans",(req,res)=>res.json(db.prepare("SELECT * FROM plans WHERE active=1 ORDER BY id").all()));
 app.get("/api/products",(req,res)=>{
