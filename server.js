@@ -201,7 +201,7 @@ function adminOnly(req,res,next){
 
   next();
 }
-db.exec(`CREATE TABLE IF NOT EXISTS resellers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,email TEXT NOT NULL UNIQUE,phone TEXT,password_hash TEXT NOT NULL,commission_percent REAL NOT NULL DEFAULT 10,status TEXT NOT NULL DEFAULT 'active',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS reseller_sales(id INTEGER PRIMARY KEY AUTOINCREMENT,reseller_id INTEGER NOT NULL,customer_id INTEGER NOT NULL,plan_id INTEGER NOT NULL,amount_ghs REAL NOT NULL,commission_ghs REAL NOT NULL,status TEXT NOT NULL DEFAULT 'completed',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS reseller_payouts(id INTEGER PRIMARY KEY AUTOINCREMENT,reseller_id INTEGER NOT NULL,amount_ghs REAL NOT NULL,status TEXT NOT NULL DEFAULT 'pending',payout_date TEXT,notes TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);`);
+db.exec(`CREATE TABLE IF NOT EXISTS resellers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,email TEXT NOT NULL UNIQUE,phone TEXT,password_hash TEXT NOT NULL,commission_percent REAL NOT NULL DEFAULT 10,status TEXT NOT NULL DEFAULT 'active',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS reseller_sales(id INTEGER PRIMARY KEY AUTOINCREMENT,reseller_id INTEGER NOT NULL,customer_id INTEGER NOT NULL,plan_id INTEGER NOT NULL,amount_ghs REAL NOT NULL,commission_ghs REAL NOT NULL,status TEXT NOT NULL DEFAULT 'completed',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS reseller_payouts(id INTEGER PRIMARY KEY AUTOINCREMENT,reseller_id INTEGER NOT NULL,amount_ghs REAL NOT NULL,status TEXT NOT NULL DEFAULT 'pending',payout_date TEXT,notes TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS reseller_code_allocation(id INTEGER PRIMARY KEY AUTOINCREMENT,reseller_id INTEGER NOT NULL UNIQUE,allocated_count INTEGER NOT NULL DEFAULT 0,used_count INTEGER NOT NULL DEFAULT 0,available_count INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);`);
 
 // Reseller Management API
 app.get("/api/admin/resellers", adminOnly, (req,res) => {
@@ -268,31 +268,65 @@ app.get("/api/admin/resellers/:id", adminOnly, (req,res) => {
 });
 });
 
-app.get("/api/admin/resellers/:id", adminOnly, (req,res) => {
-  const reseller = db.prepare(
-    "SELECT id, name, email, phone, commission_percent, status, created_at, updated_at FROM resellers WHERE id=?"
-  ).get(req.params.id);
-
-  if (!reseller) return res.status(404).json({ error: "Reseller not found" });
-
-  const sales = db.prepare(`
-    SELECT rs.id, rs.customer_id, u.name as customer_name, u.email as customer_email,
-           rs.plan_id, p.name as plan_name, rs.amount_ghs, rs.commission_ghs, rs.status, rs.created_at
-    FROM reseller_sales rs
-    LEFT JOIN users u ON u.id = rs.customer_id
-    LEFT JOIN plans p ON p.id = rs.plan_id
-    WHERE rs.reseller_id = ?
-    ORDER BY rs.created_at DESC
-  `).all(req.params.id);
-
-  const payouts = db.prepare(
-    "SELECT id, reseller_id, amount_ghs, status, payout_date, notes, created_at FROM reseller_payouts WHERE reseller_id=? ORDER BY created_at DESC"
-  ).all(req.params.id);
-
-  res.json({ reseller, sales, payouts });
+// Allocate codes to a reseller
+app.post("/api/admin/resellers/:id/allocate-codes", adminOnly, (req,res) => {
+  const resellerId = req.params.id;
+  const { count } = req.body || {};
+  
+  if (!count || count <= 0) {
+    return res.status(400).json({ error: "Valid count required" });
+  }
+  
+  try {
+    const reseller = db.prepare("SELECT id FROM resellers WHERE id = ?").get(resellerId);
+    if (!reseller) return res.status(404).json({ error: "Reseller not found" });
+    
+    const existing = db.prepare("SELECT id FROM reseller_code_allocation WHERE reseller_id = ?").get(resellerId);
+    
+    if (existing) {
+      db.prepare(`UPDATE reseller_code_allocation SET allocated_count = allocated_count + ?, available_count = available_count + ?, updated_at = CURRENT_TIMESTAMP WHERE reseller_id = ?`).run(count, count, resellerId);
+    } else {
+      db.prepare(`INSERT INTO reseller_code_allocation(reseller_id, allocated_count, available_count) VALUES(?, ?, ?)`).run(resellerId, count, count);
+    }
+    
+    audit("codes_allocated_to_reseller", "reseller", resellerId, `${count} codes allocated`);
+    res.json({ ok: true, message: `${count} codes allocated` });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
+app.get("/api/admin/resellers/:id/code-quota", adminOnly, (req,res) => {
+  const resellerId = req.params.id;
+  try {
+    const quota = db.prepare(`SELECT allocated_count, used_count, available_count FROM reseller_code_allocation WHERE reseller_id = ?`).get(resellerId) || { allocated_count: 0, used_count: 0, available_count: 0 };
+    const codeDetails = db.prepare(`SELECT status, COUNT(*) as count FROM subscription_codes WHERE reseller_id = ? GROUP BY status`).all(resellerId);
+    res.json({ quota, codeDetails });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
+app.get("/api/admin/resellers-with-quotas", adminOnly, (req,res) => {
+  try {
+    const resellers = db.prepare(`
+      SELECT r.id, r.name, r.email, r.commission_percent, r.status, r.created_at,
+             COALESCE(rca.allocated_count, 0) as allocated_codes,
+             COALESCE(rca.used_count, 0) as used_codes,
+             COALESCE(rca.available_count, 0) as available_codes,
+             COUNT(DISTINCT rs.id) as total_sales,
+             COALESCE(SUM(rs.commission_ghs), 0) as total_commissions
+      FROM resellers r
+      LEFT JOIN reseller_code_allocation rca ON rca.reseller_id = r.id
+      LEFT JOIN reseller_sales rs ON rs.reseller_id = r.id
+      GROUP BY r.id
+      ORDER BY r.created_at DESC
+    `).all();
+    res.json(resellers);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 /* Public */
 app.get("/api/health",(req,res)=>res.json({ok:true,service:"World TV"}));
 app.get("/api/plans",(req,res)=>res.json(db.prepare("SELECT * FROM plans WHERE active=1 ORDER BY id").all()));
