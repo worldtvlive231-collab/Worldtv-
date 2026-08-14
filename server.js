@@ -201,7 +201,7 @@ function adminOnly(req,res,next){
 
   next();
 }
-db.exec(`CREATE TABLE IF NOT EXISTS resellers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,email TEXT NOT NULL UNIQUE,phone TEXT,password_hash TEXT NOT NULL,commission_percent REAL NOT NULL DEFAULT 10,status TEXT NOT NULL DEFAULT 'active',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS reseller_sales(id INTEGER PRIMARY KEY AUTOINCREMENT,reseller_id INTEGER NOT NULL,customer_id INTEGER NOT NULL,plan_id INTEGER NOT NULL,amount_ghs REAL NOT NULL,commission_ghs REAL NOT NULL,status TEXT NOT NULL DEFAULT 'completed',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS reseller_payouts(id INTEGER PRIMARY KEY AUTOINCREMENT,reseller_id INTEGER NOT NULL,amount_ghs REAL NOT NULL,status TEXT NOT NULL DEFAULT 'pending',payout_date TEXT,notes TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);`);
+db.exec(`CREATE TABLE IF NOT EXISTS resellers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,email TEXT NOT NULL UNIQUE,phone TEXT,password_hash TEXT NOT NULL,commission_percent REAL NOT NULL DEFAULT 10,status TEXT NOT NULL DEFAULT 'active',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS reseller_sales(id INTEGER PRIMARY KEY AUTOINCREMENT,reseller_id INTEGER NOT NULL,customer_id INTEGER NOT NULL,plan_id INTEGER NOT NULL,amount_ghs REAL NOT NULL,commission_ghs REAL NOT NULL,status TEXT NOT NULL DEFAULT 'completed',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS reseller_payouts(id INTEGER PRIMARY KEY AUTOINCREMENT,reseller_id INTEGER NOT NULL,amount_ghs REAL NOT NULL,status TEXT NOT NULL DEFAULT 'pending',payout_date TEXT,notes TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS reseller_code_allocation(id INTEGER PRIMARY KEY AUTOINCREMENT,reseller_id INTEGER NOT NULL UNIQUE,allocated_count INTEGER NOT NULL DEFAULT 0,used_count INTEGER NOT NULL DEFAULT 0,available_count INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);`);
 
 // Reseller Management API
 app.get("/api/admin/resellers", adminOnly, (req,res) => {
@@ -290,6 +290,79 @@ app.get("/api/admin/resellers/:id", adminOnly, (req,res) => {
   ).all(req.params.id);
 
   res.json({ reseller, sales, payouts });
+});
+
+app.post("/api/admin/resellers/:id/allocate-codes", adminOnly, (req,res) => {
+  const id = req.params.id;
+  const { count } = req.body || {};
+  const addCount = Number(count);
+
+  if (!Number.isFinite(addCount) || addCount <= 0) {
+    return res.status(400).json({ error: "A positive code count is required" });
+  }
+
+  const reseller = db.prepare("SELECT id FROM resellers WHERE id=?").get(id);
+  if (!reseller) return res.status(404).json({ error: "Reseller not found" });
+
+  try {
+    const existing = db.prepare("SELECT * FROM reseller_code_allocation WHERE reseller_id=?").get(id);
+
+    if (existing) {
+      db.prepare(`
+        UPDATE reseller_code_allocation
+        SET allocated_count = allocated_count + ?,
+            available_count = available_count + ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE reseller_id = ?
+      `).run(addCount, addCount, id);
+    } else {
+      db.prepare(`
+        INSERT INTO reseller_code_allocation(reseller_id, allocated_count, used_count, available_count)
+        VALUES(?, ?, 0, ?)
+      `).run(id, addCount, addCount);
+    }
+
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/api/admin/resellers/:id/code-quota", adminOnly, (req,res) => {
+  const id = req.params.id;
+
+  const reseller = db.prepare("SELECT id FROM resellers WHERE id=?").get(id);
+  if (!reseller) return res.status(404).json({ error: "Reseller not found" });
+
+  const quota = db.prepare(
+    "SELECT allocated_count, used_count, available_count FROM reseller_code_allocation WHERE reseller_id=?"
+  ).get(id) || { allocated_count: 0, used_count: 0, available_count: 0 };
+
+  const codeStatus = db.prepare(`
+    SELECT status, COUNT(*) as count
+    FROM subscription_codes
+    GROUP BY status
+  `).all();
+
+  res.json({ quota, codeStatus });
+});
+
+app.get("/api/admin/resellers-with-quotas", adminOnly, (req,res) => {
+  const resellers = db.prepare(`
+    SELECT r.id, r.name, r.email, r.phone, r.commission_percent, r.status, r.created_at,
+           COALESCE(rca.allocated_count, 0) as allocated_codes,
+           COALESCE(rca.used_count, 0) as used_codes,
+           COALESCE(rca.available_count, 0) as available_codes,
+           COUNT(DISTINCT rs.id) as total_sales,
+           COALESCE(SUM(rs.commission_ghs), 0) as total_commissions
+    FROM resellers r
+    LEFT JOIN reseller_code_allocation rca ON rca.reseller_id = r.id
+    LEFT JOIN reseller_sales rs ON rs.reseller_id = r.id
+    GROUP BY r.id
+    ORDER BY r.created_at DESC
+  `).all();
+
+  res.json(resellers);
 });
 
 

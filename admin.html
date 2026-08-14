@@ -385,7 +385,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <div><label>Phone</label><input id="resellerPhone" placeholder="+233..."><label>Commission %</label><input id="resellerCommission" type="number" min="0" max="100" value="10"></div></div>
 <label>Password</label><input id="resellerPassword" type="password" placeholder="Strong password">
 <button class="btn primary" onclick="createReseller()" style="margin-top:12px">Create Reseller</button><p id="resellerMsg" class="muted"></p></div>
-<div class="card"><h2>All Resellers</h2><div style="overflow:auto"><table><thead><tr><th>Name</th><th>Email</th><th>Commission %</th><th>Sales</th><th>Earned</th><th>Pending</th><th>Status</th><th>Actions</th></tr></thead><tbody id="resellersTable"></tbody></table></div></div>
+<div class="card"><h2>All Resellers</h2><div style="overflow:auto"><table><thead><tr><th>Name</th><th>Email</th><th>Commission %</th><th>Sales</th><th>Earned</th><th>Pending</th><th>Codes (Available/Allocated)</th><th>Status</th><th>Actions</th></tr></thead><tbody id="resellersTable"></tbody></table></div></div>
 </section>
 <section id="emailTab" class="hide">
 <div class="card"><h2>Email Center</h2><p class="muted">Prepare customer emails now. After hosting, an email provider can automatically send this queue.</p>
@@ -399,9 +399,10 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 </main>
 
 <div id="customerModal" class="modal"><div class="modalbox"><button class="close" onclick="closeCustomer()">×</button><div id="customerDetail"></div></div></div>
+<div id="resellerModal" class="modal"><div class="modalbox"><button class="close" onclick="closeResellerModal()">×</button><div id="resellerDetail"></div></div></div>
 
 <script>
-let token=localStorage.getItem("wtv_admin_token")||"";let editingProductId=null;let selectedCustomerId=null;const $=id=>document.getElementById(id);
+let token=localStorage.getItem("wtv_admin_token")||"";let editingProductId=null;let selectedCustomerId=null;let selectedResellerId=null;const $=id=>document.getElementById(id);
 async function api(url,o={}){
   o.headers=Object.assign({},o.headers,{"x-admin-token":token});
   const r=await fetch(url,o);
@@ -788,14 +789,14 @@ async function addExpense(){
 })();
 async function loadResellers() {
   try {
-    const resellers = await api("/api/admin/resellers");
+    const resellers = await api("/api/admin/resellers-with-quotas");
     let totalSales = 0, totalCommissions = 0, pendingPayout = 0;
     $("totalResellers").textContent = resellers.length;
     $("resellersTable").innerHTML = resellers.map(r => {
       totalSales += r.total_sales || 0;
       totalCommissions += r.total_commissions || 0;
       pendingPayout += r.pending_payout || 0;
-      return `<tr><td><b>${r.name}</b></td><td>${r.email}</td><td>${r.commission_percent}%</td><td>${r.total_sales}</td><td>GH₵${(r.total_commissions || 0).toFixed(2)}</td><td>GH₵${(r.pending_payout || 0).toFixed(2)}</td><td><span class="pill">${r.status}</span></td><td><button class="btn secondary" onclick="openResellerDetails(${r.id})">Manage</button></td></tr>`;
+      return `<tr><td><b>${r.name}</b></td><td>${r.email}</td><td>${r.commission_percent}%</td><td>${r.total_sales}</td><td>GH₵${(r.total_commissions || 0).toFixed(2)}</td><td>GH₵${(r.pending_payout || 0).toFixed(2)}</td><td>${r.available_codes || 0}/${r.allocated_codes || 0}</td><td><span class="pill">${r.status}</span></td><td><button class="btn secondary" onclick="openResellerDetails(${r.id})">Manage</button></td></tr>`;
     }).join("");
     $("totalResellerSales").textContent = totalSales;
     $("totalCommissionsPaid").textContent = "GH₵" + totalCommissions.toFixed(2);
@@ -834,12 +835,59 @@ async function createReseller() {
 }
 async function openResellerDetails(resellerId) {
   try {
+    selectedResellerId = resellerId;
     const data = await api(`/api/admin/resellers/${resellerId}`);
+    const quotaData = await api(`/api/admin/resellers/${resellerId}/code-quota`);
     const r = data.reseller;
+    const q = quotaData.quota || { allocated_count: 0, used_count: 0, available_count: 0 };
     const earned = data.sales.reduce((sum, s) => sum + (s.commission_ghs || 0), 0);
-    alert(`RESELLER: ${r.name}\n\nEmail: ${r.email}\nPhone: ${r.phone || "N/A"}\nCommission: ${r.commission_percent}%\n\nStats:\nTotal Sales: ${data.sales.length}\nTotal Earned: GH₵${earned.toFixed(2)}`);
+    $("resellerDetail").innerHTML = `
+      <h2>${r.name}</h2>
+      <p class="muted">${r.email} • ${r.phone || "N/A"}</p>
+      <p class="muted">Commission: ${r.commission_percent}% • Status: <span class="pill">${r.status}</span></p>
+      <div class="card"><h3>Sales</h3><p>Total Sales: ${data.sales.length}<br>Total Earned: GH₵${earned.toFixed(2)}</p></div>
+      <div class="card"><h3>Code Allocation</h3>
+        <p>Allocated: <b>${q.allocated_count || 0}</b> &nbsp; Used: <b>${q.used_count || 0}</b> &nbsp; Available: <b>${q.available_count || 0}</b></p>
+        <button class="btn secondary" onclick="allocateCodesUI()">Allocate Codes</button>
+        <div id="allocateCodesForm" class="hide" style="margin-top:12px">
+          <label>Number of codes</label>
+          <input id="allocateCodesCount" type="number" min="1" value="10">
+          <button class="btn primary" onclick="submitCodeAllocation(${r.id})" style="margin-top:8px">Allocate</button>
+          <p id="allocateCodesMsg" class="muted"></p>
+        </div>
+      </div>
+    `;
+    $("resellerModal").classList.add("open");
   } catch (e) {
     alert("Error loading reseller details");
+  }
+}
+function allocateCodesUI() {
+  $("allocateCodesForm").classList.toggle("hide");
+}
+function closeResellerModal() {
+  $("resellerModal").classList.remove("open");
+  selectedResellerId = null;
+}
+async function submitCodeAllocation(resellerId) {
+  const count = parseInt($("allocateCodesCount").value, 10);
+  if (!count || count < 1) {
+    $("allocateCodesMsg").textContent = "Enter a valid number of codes";
+    return;
+  }
+  try {
+    await api(`/api/admin/resellers/${resellerId}/allocate-codes`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ count })
+    });
+    $("allocateCodesMsg").textContent = `✓ Allocated ${count} codes`;
+    await loadResellers();
+    setTimeout(() => {
+      closeResellerModal();
+    }, 1500);
+  } catch (e) {
+    $("allocateCodesMsg").textContent = "Error: " + (e.message || "Failed to allocate codes");
   }
 }
 
