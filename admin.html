@@ -54,6 +54,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <button class="btn tab" onclick="showTab('pricingTab',this)">Pricing Manager</button>
 <button class="btn tab" onclick="showTab('resellersTab',this)">Resellers</button>
 <button class="btn tab" onclick="showTab('salesDashboardTab',this)">Live Sales Dashboard</button>
+<button class="btn tab" onclick="showTab('analyticsTab',this)">Live Analytics</button>
 </div>
 
 <section id="customersTab">
@@ -396,6 +397,96 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 
 </section>
 </section>
+
+<section id="analyticsTab" class="hide">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+<h2 style="margin:0">Live Analytics</h2>
+<div style="display:flex;align-items:center;gap:10px">
+<span style="font-size:13px">● <span style="color:#4CAF50">LIVE</span></span>
+<button class="btn secondary" onclick="refreshAnalytics()" style="font-size:12px;padding:6px 10px">Refresh Now</button>
+</div>
+</div>
+
+<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))">
+<div class="card"><div class="muted">Visitors Today</div><div id="analyticsVisitorsToday" class="stat">0</div></div>
+<div class="card"><div class="muted">Visitors (24h)</div><div id="analyticsVisitors24h" class="stat">0</div></div>
+<div class="card"><div class="muted">Total Unique</div><div id="analyticsTotalVisitors" class="stat">0</div></div>
+<div class="card"><div class="muted">Page Views</div><div id="analyticsTotalPageViews" class="stat">0</div></div>
+<div class="card"><div class="muted">Online Now</div><div id="analyticsOnlineNow" class="stat">0</div></div>
+<div class="card"><div class="muted">Download Visits</div><div id="analyticsDownloadPageVisits" class="stat">0</div></div>
+<div class="card"><div class="muted">App Downloads</div><div id="analyticsDownloadClicks" class="stat">0</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px">
+<div class="card" style="grid-column:1/-1"><h2>Top Countries</h2>
+<div style="overflow:auto"><table><thead><tr><th>Country</th><th>Visitors</th><th>Page Views</th><th>Downloads</th></tr></thead><tbody id="analyticsCountriesTable"></tbody></table></div>
+</div>
+
+<div class="card" style="grid-column:1/-1"><h2>Live Visitor Activity (Last 50)</h2>
+<div style="overflow:auto"><table><thead><tr><th>Time</th><th>Activity</th><th>Page</th><th>Country</th></tr></thead><tbody id="analyticsActivityTable"></tbody></table></div>
+</div>
+</div>
+</section>
+
+<script>
+let analyticsRefreshInterval;
+
+function showTab(tabName, btn) {
+  if (tabName === 'analyticsTab') {
+    // Start auto-refresh for analytics
+    refreshAnalytics();
+    if (analyticsRefreshInterval) clearInterval(analyticsRefreshInterval);
+    analyticsRefreshInterval = setInterval(refreshAnalytics, 5000);
+  } else {
+    // Stop auto-refresh when leaving analytics
+    if (analyticsRefreshInterval) clearInterval(analyticsRefreshInterval);
+  }
+  
+  document.querySelectorAll('section').forEach(s => s.classList.add('hide'));
+  document.getElementById(tabName).classList.remove('hide');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function refreshAnalytics() {
+  try {
+    const [summary, countries, recent] = await Promise.all([
+      fetch('/api/admin/analytics/summary?token=' + adminToken).then(r => r.json()).catch(() => ({})),
+      fetch('/api/admin/analytics/countries?token=' + adminToken).then(r => r.json()).catch(() => []),
+      fetch('/api/admin/analytics/recent?token=' + adminToken).then(r => r.json()).catch(() => [])
+    ]);
+
+    if (summary) {
+      document.getElementById('analyticsVisitorsToday').textContent = summary.visitors_today || 0;
+      document.getElementById('analyticsVisitors24h').textContent = summary.visitors_24h || 0;
+      document.getElementById('analyticsTotalVisitors').textContent = summary.total_unique_visitors || 0;
+      document.getElementById('analyticsTotalPageViews').textContent = summary.total_page_views || 0;
+      document.getElementById('analyticsOnlineNow').textContent = summary.online_now || 0;
+      document.getElementById('analyticsDownloadPageVisits').textContent = summary.download_page_visits || 0;
+      document.getElementById('analyticsDownloadClicks').textContent = summary.download_clicks || 0;
+    }
+
+    if (countries && countries.length > 0) {
+      document.getElementById('analyticsCountriesTable').innerHTML = countries.slice(0, 20).map(c => {
+        const flag = c.country_code ? String.fromCodePoint(...[...c.country_code].map(x => 0x1F1A5 + x.charCodeAt())) : '';
+        return `<tr><td>${flag} ${c.country}</td><td>${c.visitors}</td><td>${c.page_views}</td><td>${c.download_clicks}</td></tr>`;
+      }).join('');
+    }
+
+    if (recent && recent.length > 0) {
+      document.getElementById('analyticsActivityTable').innerHTML = recent.slice(0, 50).map(r => {
+        const time = new Date(r.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const eventLabel = r.event_type === 'page_view' ? 'Page View' : r.event_type === 'download_page_view' ? 'Download Page' : r.event_type === 'download_click' ? 'App Download' : r.event_type;
+        const flag = r.country_code ? String.fromCodePoint(...[...r.country_code].map(x => 0x1F1A5 + x.charCodeAt())) : '';
+        return `<tr><td>${time}</td><td>${eventLabel}</td><td>${r.page_path || '/'}</td><td>${flag} ${r.country || 'Unknown'}</td></tr>`;
+      }).join('');
+    }
+  } catch (e) {
+    console.error('Analytics refresh error:', e);
+  }
+}
+</script>
+
 </main>
 
 <div id="customerModal" class="modal"><div class="modalbox"><button class="close" onclick="closeCustomer()">×</button><div id="customerDetail"></div></div></div>
