@@ -9,7 +9,7 @@ const Database = require("better-sqlite3");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const db = new Database("/app/data/worldtv.sqlite");
+const db = new Database(path.join(__dirname, 'data', 'worldtv.sqlite'));
 const adminSessions = new Map();
 const customerSessions = new Map();
 
@@ -2106,7 +2106,7 @@ app.get("/api/admin/export/orders.csv",adminOnly,(req,res)=>{
 app.get("/api/admin/backup/database",adminOnly,(req,res)=>{
   try{
     db.pragma("wal_checkpoint(FULL)");
-    const dbPath="/app/data/worldtv.sqlite";
+    const dbPath="path.join(__dirname, 'data', 'worldtv.sqlite')";
     if(!fs.existsSync(dbPath)) return res.status(404).json({error:"Database file not found"});
     res.download(dbPath,"world-tv-backup-"+new Date().toISOString().slice(0,10)+".sqlite");
   }catch(e){res.status(500).json({error:"Could not create database backup"});}
