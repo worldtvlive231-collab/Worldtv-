@@ -245,6 +245,30 @@ app.post("/api/admin/resellers", adminOnly, async (req,res) => {
   }
 });
 
+app.get("/api/admin/resellers/:id", adminOnly, (req,res) => {
+  const reseller = db.prepare(
+    "SELECT id, name, email, phone, commission_percent, status, created_at, updated_at FROM resellers WHERE id=?"
+  ).get(req.params.id);
+
+  if (!reseller) return res.status(404).json({ error: "Reseller not found" });
+
+  const sales = db.prepare(`
+    SELECT rs.id, rs.customer_id, u.name as customer_name, u.email as customer_email,
+           rs.plan_id, p.name as plan_name, rs.amount_ghs, rs.commission_ghs, rs.status, rs.created_at
+    FROM reseller_sales rs
+    LEFT JOIN users u ON u.id = rs.customer_id
+    LEFT JOIN plans p ON p.id = rs.plan_id
+    WHERE rs.reseller_id = ?
+    ORDER BY rs.created_at DESC
+  `).all(req.params.id);
+
+  const payouts = db.prepare(
+    "SELECT id, reseller_id, amount_ghs, status, payout_date, notes, created_at FROM reseller_payouts WHERE reseller_id=? ORDER BY created_at DESC"
+  ).all(req.params.id);
+
+  res.json({ reseller, sales, payouts });
+});
+
 
 /* Public */
 app.get("/api/health",(req,res)=>res.json({ok:true,service:"World TV"}));
