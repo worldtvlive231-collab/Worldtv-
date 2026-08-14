@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS subscription_codes(
  status TEXT NOT NULL DEFAULT 'unused',
  user_id INTEGER,
  expires_at TEXT,
+ reseller_id INTEGER,
+ used_at TEXT,
  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS orders(
@@ -147,6 +149,8 @@ if(!db.prepare("SELECT id FROM plans WHERE name=?").get("1 Year")){
 
 try{db.prepare("ALTER TABLE users ADD COLUMN referral_code TEXT").run();}catch(e){}
 try{db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)").run();}catch(e){}
+try{db.prepare("ALTER TABLE subscription_codes ADD COLUMN reseller_id INTEGER").run();}catch(e){}
+try{db.prepare("ALTER TABLE subscription_codes ADD COLUMN used_at TEXT").run();}catch(e){}
 function ensureReferralCode(userId){
  let u=db.prepare("SELECT referral_code FROM users WHERE id=?").get(userId);
  if(u?.referral_code) return u.referral_code;
