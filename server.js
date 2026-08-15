@@ -278,29 +278,6 @@ app.post("/api/admin/resellers", adminOnly, async (req,res) => {
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
-
-app.get("/api/admin/resellers/:id", adminOnly, (req,res) => {
-  const id = req.params.id;
-  const reseller = db.prepare("SELECT * FROM resellers WHERE id = ?").get(id);
-  
-  if (!reseller) {
-    return res.status(404).json({ error: "Reseller not found" });
-  }
-  
-  const sales = db.prepare(`
-    SELECT rs.id, rs.customer_id, rs.plan_id, rs.amount_ghs, rs.commission_ghs, rs.created_at,
-           u.name as customer_name, u.email as customer_email, p.name as plan_name
-    FROM reseller_sales rs
-    LEFT JOIN users u ON u.id = rs.customer_id
-    LEFT JOIN plans p ON p.id = rs.plan_id
-    WHERE rs.reseller_id = ?
-    ORDER BY rs.created_at DESC
-  `).all(id);
-  
-  const payouts = db.prepare("SELECT * FROM reseller_payouts WHERE reseller_id = ? ORDER BY created_at DESC").all(id);
-  
-  res.json({ reseller, sales, payouts });
-});
 });
 
 app.get("/api/admin/resellers/:id", adminOnly, (req,res) => {
