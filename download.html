@@ -113,6 +113,7 @@ h1{font-size:48px;line-height:1.2;margin:16px 0;color:#17130a}.lead{font-size:18
 </main>
 <script>
 async function downloadApp(){
+  trackDownload();
   const status=document.getElementById("downloadStatus");
   status.textContent="Starting download...";
   try{

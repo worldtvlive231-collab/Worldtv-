@@ -34,9 +34,8 @@
     }
   }
 
-  // Track download clicks
-  function trackDownload(event) {
-    const href = event.currentTarget?.href || event.currentTarget?.getAttribute('data-download-url');
+  // Track download clicks - exposed globally
+  window.trackDownload = function() {
     const referrer = document.referrer || '';
     
     try {
@@ -57,9 +56,7 @@
         keepalive: true
       }).catch(() => {});
     }
-    
-    // Don't prevent default - let the download proceed
-  }
+  };
 
   // Initialize on DOMContentLoaded
   if (document.readyState === 'loading') {
@@ -75,13 +72,13 @@
     // Attach click handlers to download buttons
     const downloadButtons = document.querySelectorAll('[data-track-download]');
     downloadButtons.forEach(btn => {
-      btn.addEventListener('click', trackDownload, false);
+      btn.addEventListener('click', window.trackDownload, false);
     });
 
     // Also track .download-btn, #download-btn, or .app-download classes
     const appDownloadLinks = document.querySelectorAll('.download-link, .app-download, [href$=".apk"]');
     appDownloadLinks.forEach(link => {
-      link.addEventListener('click', trackDownload, false);
+      link.addEventListener('click', window.trackDownload, false);
     });
   }
 })();
