@@ -95,7 +95,7 @@ const CurrencyConverter = {
       const response = await fetch('/api/exchange-rates');
       const data = await response.json();
 
-      if (data.ok && data.rates) {
+       if (data.rates) {
         // Store rates: { GHS: 1, USD: 0.0914, GBP: 0.0726, ... }
         // These are direct 1 GHS -> X Currency rates
         this.exchangeRates = data.rates;
