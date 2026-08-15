@@ -1,8 +1,8 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Subscribe — World TV</title>
-<style>body{margin:0;font-family:system-ui;background:#fff9eb;color:#17130a}.box{width:min(650px,92%);margin:50px auto;background:#fff;border:1px solid #eadfc8;border-radius:22px;padding:28px}.logo{width:140px;display:block;margin:auto}.price{font-size:38px;font-weight:900;color:#d89a00}.btn{background:#e0a200;border:0;border-radius:10px;padding:12px 16px;font-weight:800;cursor:pointer}.muted{color:#716958}input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #d8ccb2;border-radius:9px;margin:8px 0 14px}</style><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#e0a200"><link rel="apple-touch-icon" href="/assets/world-tv-logo.png"><link rel="icon" href="/assets/world-tv-logo.png"><meta property="og:site_name" content="World TV"><meta property="og:type" content="website"><meta property="og:image" content="https://myworldtvlive.com/assets/world-tv-logo.png"><script src="/assets/site-meta.js"></script></head>
-<body><div class="box"><img class="logo" src="/world-tv-logo.png"><h1>World TV Subscription</h1><h2 id="planName">Loading...</h2><div class="price" id="planPrice">GH₵—</div><p id="planDuration" class="muted">Loading plan details...</p><p class="muted">Create a subscription request now. Online payment will be connected later.</p>
-<label>Coupon code (optional)</label><input id="coupon" placeholder="Enter coupon code"><div id="currency-selector" style="margin:16px 0;text-align:center"><strong style="display:block;margin-bottom:8px">Select Your Currency:</strong></div>
-<button class="btn" onclick="createRequest()">Continue</button><div id="msg"></div><p><a href="/account.html">My Account</a> · <a href="/">Home</a></p></div>
+<style>body{margin:0;font-family:system-ui;background:#fff9eb;color:#17130a}.box{width:min(650px,92%);margin:50px auto;background:#fff;border:1px solid #eadfc8;border-radius:22px;padding:28px}.logo{width:140px;display:block;margin:auto}.price{font-size:38px;font-weight:900;color:#d89a00}.btn{background:#e0a200;border:0;border-radius:10px;padding:12px 16px;font-weight:800;cursor:pointer}.muted{color:#716958}input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #d8ccb2;border-radius:9px;margin:8px 0 14px}#currency-selector{margin:16px 0;text-align:center}#currency-dropdown{padding:8px 12px;border:1px solid #d8ccb2;border-radius:8px;background:#fff;font-weight:700;cursor:pointer;font-size:14px}</style><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#e0a200"><link rel="apple-touch-icon" href="/assets/world-tv-logo.png"><link rel="icon" href="/assets/world-tv-logo.png"><meta property="og:site_name" content="World TV"><meta property="og:type" content="website"><meta property="og:image" content="https://myworldtvlive.com/assets/world-tv-logo.png"><script src="/assets/site-meta.js"></script></head>
+<body><div class="box"><img class="logo" src="/world-tv-logo.png"><h1>World TV Subscription</h1><h2 id="planName">Loading...</h2><div class="price" id="planPrice" data-price-ghs="299">GH₵—</div><p id="planDuration" class="muted">Loading plan details...</p><p class="muted">Create a subscription request now. Online payment will be connected later.</p>
+<div id="currency-selector"><strong style="display:block;margin-bottom:8px">Select Your Currency:</strong></div>
+<label>Coupon code (optional)</label><input id="coupon" placeholder="Enter coupon code"><button class="btn" onclick="createRequest()">Continue</button><div id="msg"></div><p><a href="/account.html">My Account</a> · <a href="/">Home</a></p></div>
 <script>
 const token=localStorage.getItem("wtv_customer_token");
 if(!token){location.href="/login.html"}
@@ -16,9 +16,9 @@ let selectedPlanId=1;
       const plan=plans[0];
       selectedPlanId=plan.id;
       document.getElementById("planName").textContent=plan.name;
-      const priceEl = document.getElementById("planPrice");
+      const priceEl=document.getElementById("planPrice");
       priceEl.setAttribute('data-price-ghs', plan.price_ghs);
-      priceEl.textContent = `GH₵${Number(plan.price_ghs).toFixed(2)}`;
+      priceEl.textContent=`GH₵${Number(plan.price_ghs).toFixed(2)}`;
       const durationDays=plan.duration_days;
       const duration=durationDays===365?"1 Year":durationDays===30?"1 Month":`${durationDays} days`;
       document.getElementById("planDuration").textContent=`${duration} subscription access. Create a subscription request now. Online payment will be connected later.`;
@@ -36,5 +36,5 @@ async function createRequest(){
   if(r.ok)msg.innerHTML=`<h2>Subscription Request Created</h2><p>Reference: <b>${d.reference}</b></p>${d.discount_ghs?`<p>Discount: GH₵${d.discount_ghs.toFixed(2)}</p>`:""}<p>Amount due: <b>GH₵${d.final_amount_ghs.toFixed(2)}</b></p><p class="muted">Payment is not online yet. World TV administration can confirm your payment and issue your code.</p>`;
   else msg.textContent=d.error||"Could not create request";
 }
-</script><script src="/assets/pwa.js"></script><script src="/assets/currency-converter.js"></script>
-</body></html>
+</script><script src="/assets/pwa.js"></script><script src="/assets/currency-converter.js"></script></body></html>
+
