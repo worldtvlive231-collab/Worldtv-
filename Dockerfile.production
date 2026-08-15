@@ -1,13 +1,28 @@
-FROM node:20-bookworm
+FROM node:20-bookworm AS builder
 
-# Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies and rebuild better-sqlite3
-RUN npm ci --omit=dev && npm rebuild better-sqlite3
+# Clean npm cache and install fresh
+RUN npm cache clean --force && \
+    npm ci --omit=dev --verbose
+
+# Remove old binaries and rebuild
+RUN rm -rf node_modules/better-sqlite3/build && \
+    npm rebuild better-sqlite3 --verbose
+
+# Final stage
+FROM node:20-bookworm
+
+WORKDIR /app
+
+# Copy only node_modules from builder
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy package files
+COPY package.json package-lock.json ./
 
 # Copy application files
 COPY . .
@@ -24,4 +39,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 
 # Start application
 CMD ["npm", "start"]
-
