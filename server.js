@@ -821,9 +821,22 @@ app.get("/api/app/info", (req,res)=>{
   });
 });
 
-  req.customer=customerSessions.get(token);
+
+// Middleware to validate customer token
+function customerOnly(req, res, next) {
+  const token = req.headers["x-customer-token"];
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  req.customer = customerSessions.get(token);
+  if (!req.customer) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
   next();
 }
+
 
 /* Customer auth */
 app.post("/api/customer/register",async(req,res)=>{
