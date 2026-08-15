@@ -190,7 +190,6 @@ function ensureReferralCode(userId){
 
 app.use(express.json({limit:"1mb"}));
 app.use(express.urlencoded({extended:true}));
-app.set("trust proxy", true);
 app.use(express.static(__dirname));
 app.use(recordAnalytics);
 app.get("/reseller", (req,res) => res.sendFile(__dirname + "/reseller.html"));
@@ -279,29 +278,6 @@ app.post("/api/admin/resellers", adminOnly, async (req,res) => {
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
-
-app.get("/api/admin/resellers/:id", adminOnly, (req,res) => {
-  const id = req.params.id;
-  const reseller = db.prepare("SELECT * FROM resellers WHERE id = ?").get(id);
-  
-  if (!reseller) {
-    return res.status(404).json({ error: "Reseller not found" });
-  }
-  
-  const sales = db.prepare(`
-    SELECT rs.id, rs.customer_id, rs.plan_id, rs.amount_ghs, rs.commission_ghs, rs.created_at,
-           u.name as customer_name, u.email as customer_email, p.name as plan_name
-    FROM reseller_sales rs
-    LEFT JOIN users u ON u.id = rs.customer_id
-    LEFT JOIN plans p ON p.id = rs.plan_id
-    WHERE rs.reseller_id = ?
-    ORDER BY rs.created_at DESC
-  `).all(id);
-  
-  const payouts = db.prepare("SELECT * FROM reseller_payouts WHERE reseller_id = ? ORDER BY created_at DESC").all(id);
-  
-  res.json({ reseller, sales, payouts });
-});
 });
 
 app.get("/api/admin/resellers/:id", adminOnly, (req,res) => {
@@ -565,13 +541,11 @@ async function recordAnalytics(req, res, next) {
       return next();
     }
 
-    // Parse cookies manually
     const cookies = {};
     (req.headers.cookie || '').split(';').forEach(c => {
       const [key, val] = c.trim().split('=');
       if (key) cookies[key] = decodeURIComponent(val || '');
     });
-
     let visitorId = cookies.wtv_visitor_id;
     if (!visitorId) {
       visitorId = crypto.randomBytes(16).toString('hex');
@@ -632,14 +606,11 @@ async function recordAnalytics(req, res, next) {
 app.post('/api/analytics/visit', express.json(), async (req, res) => {
   try {
     const { eventType, pagePath, referrer } = req.body;
-    
-    // Parse cookies manually
     const cookies = {};
     (req.headers.cookie || '').split(';').forEach(c => {
       const [key, val] = c.trim().split('=');
       if (key) cookies[key] = decodeURIComponent(val || '');
     });
-    
     let visitorId = cookies.wtv_visitor_id;
     
     if (!visitorId) {
@@ -771,6 +742,9 @@ app.get('/api/admin/analytics/recent', adminOnly, (req, res) => {
 
 app.get("/api/plans",(req,res)=>res.json(db.prepare("SELECT * FROM plans WHERE active=1 ORDER BY id").all()));
 app.get("/api/products",(req,res)=>{
+  res.json(db.prepare("SELECT * FROM products WHERE active=1 ORDER BY id").all());
+});
+
 
 /* App Download */
 app.get("/api/app/info", (req,res)=>{
@@ -828,168 +802,6 @@ app.get("/api/app/download", async (req,res)=>{
     res.status(500).json({error: e.message});
   }
 });
-  const rows=db.prepare(`
-
-/* App Download */
-app.get("/api/app/info", (req,res)=>{
-  res.json({
-    name: "World TV",
-    version: "8.2.6",
-    releaseDate: "2026-08-14",
-    size: "~45MB",
-    description: "Watch live TV, movies, series and sports from around the world",
-    features: [
-      "4,000+ live TV channels",
-      "Movies and series catalog",
-      "Live football scores",
-      "Multiple quality options",
-      "Android TV, Smart TV & Phone compatible",
-      "Free 7-day trial"
-    ],
-    downloadUrl: "/api/app/download",
-    trialInfo: "Get 7 days free trial. No credit card required."
-  });
-});
-
-    SELECT id,name,description,price_ghs,category,image_url,stock_status,whatsapp_number,featured
-
-/* App Download */
-app.get("/api/app/info", (req,res)=>{
-  res.json({
-    name: "World TV",
-    version: "8.2.6",
-    releaseDate: "2026-08-14",
-    size: "~45MB",
-    description: "Watch live TV, movies, series and sports from around the world",
-    features: [
-      "4,000+ live TV channels",
-      "Movies and series catalog",
-      "Live football scores",
-      "Multiple quality options",
-      "Android TV, Smart TV & Phone compatible",
-      "Free 7-day trial"
-    ],
-    downloadUrl: "/api/app/download",
-    trialInfo: "Get 7 days free trial. No credit card required."
-  });
-});
-
-    FROM products
-
-/* App Download */
-app.get("/api/app/info", (req,res)=>{
-  res.json({
-    name: "World TV",
-    version: "8.2.6",
-    releaseDate: "2026-08-14",
-    size: "~45MB",
-    description: "Watch live TV, movies, series and sports from around the world",
-    features: [
-      "4,000+ live TV channels",
-      "Movies and series catalog",
-      "Live football scores",
-      "Multiple quality options",
-      "Android TV, Smart TV & Phone compatible",
-      "Free 7-day trial"
-    ],
-    downloadUrl: "/api/app/download",
-    trialInfo: "Get 7 days free trial. No credit card required."
-  });
-});
-
-    WHERE active=1
-
-/* App Download */
-app.get("/api/app/info", (req,res)=>{
-  res.json({
-    name: "World TV",
-    version: "8.2.6",
-    releaseDate: "2026-08-14",
-    size: "~45MB",
-    description: "Watch live TV, movies, series and sports from around the world",
-    features: [
-      "4,000+ live TV channels",
-      "Movies and series catalog",
-      "Live football scores",
-      "Multiple quality options",
-      "Android TV, Smart TV & Phone compatible",
-      "Free 7-day trial"
-    ],
-    downloadUrl: "/api/app/download",
-    trialInfo: "Get 7 days free trial. No credit card required."
-  });
-});
-
-    ORDER BY featured DESC,id DESC
-
-/* App Download */
-app.get("/api/app/info", (req,res)=>{
-  res.json({
-    name: "World TV",
-    version: "8.2.6",
-    releaseDate: "2026-08-14",
-    size: "~45MB",
-    description: "Watch live TV, movies, series and sports from around the world",
-    features: [
-      "4,000+ live TV channels",
-      "Movies and series catalog",
-      "Live football scores",
-      "Multiple quality options",
-      "Android TV, Smart TV & Phone compatible",
-      "Free 7-day trial"
-    ],
-    downloadUrl: "/api/app/download",
-    trialInfo: "Get 7 days free trial. No credit card required."
-  });
-});
-
-  `).all();
-
-/* App Download */
-app.get("/api/app/info", (req,res)=>{
-  res.json({
-    name: "World TV",
-    version: "8.2.6",
-    releaseDate: "2026-08-14",
-    size: "~45MB",
-    description: "Watch live TV, movies, series and sports from around the world",
-    features: [
-      "4,000+ live TV channels",
-      "Movies and series catalog",
-      "Live football scores",
-      "Multiple quality options",
-      "Android TV, Smart TV & Phone compatible",
-      "Free 7-day trial"
-    ],
-    downloadUrl: "/api/app/download",
-    trialInfo: "Get 7 days free trial. No credit card required."
-  });
-});
-
-  res.json(rows);
-
-/* App Download */
-app.get("/api/app/info", (req,res)=>{
-  res.json({
-    name: "World TV",
-    version: "8.2.6",
-    releaseDate: "2026-08-14",
-    size: "~45MB",
-    description: "Watch live TV, movies, series and sports from around the world",
-    features: [
-      "4,000+ live TV channels",
-      "Movies and series catalog",
-      "Live football scores",
-      "Multiple quality options",
-      "Android TV, Smart TV & Phone compatible",
-      "Free 7-day trial"
-    ],
-    downloadUrl: "/api/app/download",
-    trialInfo: "Get 7 days free trial. No credit card required."
-  });
-});
-
-});
 
 /* App Download */
 app.get("/api/app/info", (req,res)=>{
@@ -1013,18 +825,23 @@ app.get("/api/app/info", (req,res)=>{
 });
 
 
-function customerOnly(req,res,next){
-  const token=req.headers["x-customer-token"];
+/* Customer auth */
 
-  if(!token || !customerSessions.has(token)){
-    return res.status(401).json({error:"Customer authentication required"});
+// Middleware to validate customer token
+function customerOnly(req, res, next) {
+  const token = req.headers["x-customer-token"];
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
-
-  req.customer=customerSessions.get(token);
+  
+  req.customer = customerSessions.get(token);
+  if (!req.customer) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
   next();
 }
 
-/* Customer auth */
 app.post("/api/customer/register",async(req,res)=>{
   try{
     const {name,email,password,referral_code}=req.body||{};
