@@ -350,7 +350,10 @@ setInterval(loadUpcoming,30000);
       const subDetails = document.getElementById("subDetails");
       
       if (subPlanName) subPlanName.textContent = `World TV — ${plan.name}`;
-      if (subPrice) subPrice.textContent = `GH₵${Number(plan.price_ghs).toFixed(2)}`;
+      if (subPrice) {
+        subPrice.setAttribute('data-price-ghs', plan.price_ghs);
+        subPrice.textContent = `GH₵${Number(plan.price_ghs).toFixed(2)}`;
+      }
       if (subDetails) {
         const durationDays = plan.duration_days;
         const duration = durationDays === 365 ? "1 Year" : durationDays === 30 ? "1 Month" : `${durationDays} days`;
@@ -362,6 +365,7 @@ setInterval(loadUpcoming,30000);
   }
 })();
 </script>
-<script src="/assets/pwa.js"></script></body>
+<script src="/assets/pwa.js"></script><script src="/assets/currency-converter.js"></script>
+</body>
 </html>
 
