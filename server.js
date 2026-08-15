@@ -1,4 +1,5 @@
 require("dotenv").config();
+const { getExchangeRates } = require('./exchange-rates');
 const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
@@ -2511,6 +2512,49 @@ app.post("/api/payment/paystack/verify", async (req, res) => {
   }
 });
 
+
+
+
+
+// ============ CURRENCY CONVERTER ENDPOINTS ============
+
+// GET /api/exchange-rates - Returns cached exchange rates
+app.get("/api/exchange-rates", async (req, res) => {
+  try {
+    const result = await getExchangeRates();
+    res.json(result);
+  } catch (error) {
+    console.error("Exchange rates error:", error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// GET /api/visitor-country - Returns visitor's detected country from analytics
+app.get("/api/visitor-country", (req, res) => {
+  try {
+    const cookies = {};
+    (req.headers.cookie || '').split(';').forEach(c => {
+      const [key, val] = c.trim().split('=');
+      if (key) cookies[key] = decodeURIComponent(val || '');
+    });
+    const visitorId = cookies.wtv_visitor_id;
+    
+    if (!visitorId) {
+      return res.json({ country: 'Unknown', country_code: '' });
+    }
+
+    const visitor = db.prepare('SELECT country, country_code FROM analytics_visitors WHERE visitor_id = ?').get(visitorId);
+    
+    if (!visitor) {
+      return res.json({ country: 'Unknown', country_code: '' });
+    }
+
+    res.json({ country: visitor.country, country_code: visitor.country_code });
+  } catch (error) {
+    console.error("Visitor country error:", error);
+    res.json({ country: 'Unknown', country_code: '' });
+  }
+});
 
 
 app.listen(PORT,"0.0.0.0",()=>console.log(`World TV running on port ${PORT}`));
