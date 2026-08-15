@@ -11,7 +11,8 @@
 a{text-decoration:none;color:inherit}.wrap{width:min(1180px,92%);margin:auto}
 header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
 .nav{height:78px;display:flex;align-items:center;justify-content:space-between;gap:20px}.logo{height:64px;width:116px;object-fit:contain}
-nav{display:flex;gap:22px;font-size:14px;font-weight:750}.actions{display:flex;gap:10px}
+nav{display:flex;gap:22px;font-size:14px;font-weight:750}.actions{display:flex;gap:10px;align-items:center}
+#top-right-currency-bar{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-weight:700;font-size:13px;line-height:1.4;margin-left:auto;margin-right:15px}
 .btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:12px;padding:12px 18px;font-weight:800;cursor:pointer}
 .primary{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#211800}.secondary{background:#fff;border:1px solid #d8c9a7}
 .hero{padding:80px 0;background:radial-gradient(circle at 83% 18%,#ffe29a,#fff7df 28%,#fff 58%)}.hero-grid{display:grid;grid-template-columns:1.08fr .92fr;gap:45px;align-items:center}
@@ -25,8 +26,8 @@ section{padding:76px 0}.section-head{text-align:center;max-width:720px;margin:0 
 .cta{background:#18130a;color:#fff;border-radius:28px;padding:46px;display:flex;justify-content:space-between;gap:25px;align-items:center}.cta p{color:#d8d0bf}
 footer{background:#111;color:#ddd;padding:45px 0}.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:30px}footer p,footer a{color:#aaa;font-size:14px;line-height:1.7}
 .match-card{border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff;text-align:center;box-shadow:0 4px 12px rgba(35,25,0,.06)}.match-card h4{margin:0 0 12px;font-size:13px;font-weight:700;color:#666}.match-logos{display:flex;justify-content:center;align-items:center;gap:12px;margin:12px 0}.team-logo{width:40px;height:40px;border-radius:8px;object-fit:contain;background:#f5f5f5}.match-score{font-size:24px;font-weight:900;line-height:1;color:var(--dark)}.match-teams{font-size:12px;color:var(--muted);margin:8px 0;line-height:1.4}.live-badge{display:inline-block;background:#ff4444;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;font-weight:800;margin:6px 0}.match-meta{font-size:11px;color:#999;margin-top:8px}.refresh-note{text-align:center;font-size:12px;color:#999;margin-top:12px}.upcoming-badge{display:inline-block;background:#4488ff;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;font-weight:800;margin:6px 0}
-@media(max-width:900px){nav{display:none}.hero-grid{grid-template-columns:1fr}.cards,.feature-grid{grid-template-columns:1fr 1fr}.cta{flex-direction:column;align-items:flex-start}}
-@media(max-width:600px){.cards,.feature-grid{grid-template-columns:1fr}.actions .secondary{display:none}.footer-grid{grid-template-columns:1fr}.hero{padding-top:45px}}
+@media(max-width:900px){nav{display:none}.hero-grid{grid-template-columns:1fr}.cards,.feature-grid{grid-template-columns:1fr 1fr}.cta{flex-direction:column;align-items:flex-start}#top-right-currency-bar{margin-right:0;margin-bottom:10px}}
+@media(max-width:600px){.cards,.feature-grid{grid-template-columns:1fr}.actions .secondary{display:none}.footer-grid{grid-template-columns:1fr}.hero{padding-top:45px}#top-right-currency-bar{font-size:12px}}
 </style>
 <link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#e0a200"><link rel="apple-touch-icon" href="/assets/world-tv-logo.png"><link rel="icon" href="/assets/world-tv-logo.png"><meta property="og:site_name" content="World TV"><meta property="og:type" content="website"><meta property="og:image" content="https://myworldtvlive.com/assets/world-tv-logo.png"><script src="/assets/site-meta.js"></script><script src="/assets/analytics.js"></script>
 </head>
@@ -43,7 +44,8 @@ footer{background:#111;color:#ddd;padding:45px 0}.footer-grid{display:grid;grid-
     </nav>
     <div class="actions">
       <a class="btn secondary" href="/login.html">Login</a>
-      <a class="btn primary" href="/subscribe.html">Subscribe Now</a><br><a href="/register.html">Create Account</a>
+      <a class="btn primary" href="/subscribe.html">Subscribe Now</a>
+      <a href="/register.html">Create Account</a>
     </div>
   </div>
 </header>
@@ -63,7 +65,7 @@ footer{background:#111;color:#ddd;padding:45px 0}.footer-grid{display:grid;grid-
     <div class="hero-card">
       <img src="/world-tv-logo.png" alt="World TV logo">
       <h3 id="heroPlanName">1 Year World TV</h3>
-      <div class="price" id="heroPrice">GH₵—</div>
+      <div class="price" id="heroPrice" data-price-ghs="299">GH₵—</div>
       <p class="lead" style="font-size:15px">Payment setup will be connected later. Customers can already create an account and use the portal structure.</p>
     </div>
   </div>
@@ -128,7 +130,8 @@ const loadLiveScores=async()=>{
         </div>
         <div class="match-teams"><strong>${m.home_team||'Home'}</strong><br><strong>${m.away_team||'Away'}</strong></div>
         <div class="match-meta">
-          ${m.kickoff?new Date(m.kickoff).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})+' '+new Date(m.kickoff).toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}
+          ${m.kickoff?new Date(m.kickoff).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})+' '+new Date(m.kickoff).toLocaleDateString('en-US',{month:'short',day:'numeric'}):''
+}
         </div>
       </div>
     `).join('');
@@ -175,7 +178,8 @@ const loadUpcoming=async()=>{
         </div>
         <div class="match-teams"><strong>${m.home_team||'Home'}</strong><br><strong>${m.away_team||'Away'}</strong></div>
         <div class="match-meta">
-          ${m.kickoff?new Date(m.kickoff).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})+' '+new Date(m.kickoff).toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}
+          ${m.kickoff?new Date(m.kickoff).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})+' '+new Date(m.kickoff).toLocaleDateString('en-US',{month:'short',day:'numeric'}):''
+}
         </div>
       </div>
     `).join('');
@@ -205,7 +209,7 @@ setInterval(loadUpcoming,30000);
     </div>
     <div class="card" style="max-width:650px;margin:auto;text-align:center">
       <h3 id="subPlanName">World TV — 1 Year</h3>
-      <div class="price" id="subPrice">GH₵—</div>
+      <div class="price" id="subPrice" data-price-ghs="299">GH₵—</div>
       <p id="subDetails">365-day access • Customer account • Subscription code • Renewal history</p>
       <a class="btn primary" href="/register.html">Create Account to Subscribe</a>
     </div>
@@ -263,7 +267,8 @@ setInterval(loadUpcoming,30000);
   box.innerHTML=shown.map(p=>`<div class="card">
     <div class="product-visual" style="overflow:hidden">${p.image_url?`<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover">`:'📦'}</div>
     <h3>${p.name}</h3><p>${p.description||''}</p>
-    ${p.price_ghs!=null?`<div class="price" style="font-size:26px">GH₵${Number(p.price_ghs).toFixed(2)}</div>`:''}
+    ${p.price_ghs!=null?`<div class="price" style="font-size:26px" data-price-ghs="${p.price_ghs}">GH₵${Number(p.price_ghs).toFixed(2)}</div>`:''
+}
     <a class="btn primary" href="/products.html">View Product</a>
   </div>`).join('');
 })();
@@ -342,7 +347,10 @@ setInterval(loadUpcoming,30000);
       const heroPrice = document.getElementById("heroPrice");
       
       if (heroPlanName) heroPlanName.textContent = plan.name;
-      if (heroPrice) heroPrice.textContent = `GH₵${Number(plan.price_ghs).toFixed(2)}`;
+      if (heroPrice) {
+        heroPrice.setAttribute('data-price-ghs', plan.price_ghs);
+        heroPrice.textContent = `GH₵${Number(plan.price_ghs).toFixed(2)}`;
+      }
       
       // Update subscription section
       const subPlanName = document.getElementById("subPlanName");
