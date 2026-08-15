@@ -451,9 +451,9 @@ function showTab(tabName, btn) {
 async function refreshAnalytics() {
   try {
     const [summary, countries, recent] = await Promise.all([
-      fetch('/api/admin/analytics/summary?token=' + adminToken).then(r => r.json()).catch(() => ({})),
-      fetch('/api/admin/analytics/countries?token=' + adminToken).then(r => r.json()).catch(() => []),
-      fetch('/api/admin/analytics/recent?token=' + adminToken).then(r => r.json()).catch(() => [])
+      fetch('/api/admin/analytics/summary?token=' + token).then(r => r.json()).catch(() => ({})),
+      fetch('/api/admin/analytics/countries?token=' + token).then(r => r.json()).catch(() => []),
+      fetch('/api/admin/analytics/recent?token=' + token).then(r => r.json()).catch(() => [])
     ]);
 
     if (summary) {
