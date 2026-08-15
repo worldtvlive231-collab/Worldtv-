@@ -742,6 +742,9 @@ app.get('/api/admin/analytics/recent', adminOnly, (req, res) => {
 
 app.get("/api/plans",(req,res)=>res.json(db.prepare("SELECT * FROM plans WHERE active=1 ORDER BY id").all()));
 app.get("/api/products",(req,res)=>{
+  res.json(db.prepare("SELECT * FROM products WHERE active=1 ORDER BY id").all());
+});
+
 
 /* App Download */
 app.get("/api/app/info", (req,res)=>{
@@ -821,11 +824,24 @@ app.get("/api/app/info", (req,res)=>{
   });
 });
 
-  req.customer=customerSessions.get(token);
+
+/* Customer auth */
+
+// Middleware to validate customer token
+function customerOnly(req, res, next) {
+  const token = req.headers["x-customer-token"];
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  req.customer = customerSessions.get(token);
+  if (!req.customer) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
   next();
 }
 
-/* Customer auth */
 app.post("/api/customer/register",async(req,res)=>{
   try{
     const {name,email,password,referral_code}=req.body||{};
