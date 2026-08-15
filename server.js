@@ -851,41 +851,6 @@ app.get("/api/app/info", (req,res)=>{
   });
 });
 
-app.get("/api/app/download", async (req,res)=>{
-  try {
-    const fs = require("fs");
-    const path = require("path");
-    const https = require("https");
-    
-    const appDir = path.join(__dirname, "public", "apps");
-    if(!fs.existsSync(appDir)) fs.mkdirSync(appDir, {recursive: true});
-    
-    const appPath = path.join(appDir, "worldtv8.2.6-20260814.apk");
-    
-    if(fs.existsSync(appPath)) {
-      res.setHeader("Content-Type", "application/vnd.android.package-archive");
-      res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-      res.setHeader("Content-Length", fs.statSync(appPath).size);
-      return res.sendFile(appPath);
-    }
-    
-    res.setHeader("Content-Type", "application/vnd.android.package-archive");
-    res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-    
-    const externalUrl = "https://23s.tv/IPTV/worldtv8.2.6-20260814.apk";
-    
-    https.get(externalUrl, (remoteRes) => {
-      const cacheStream = fs.createWriteStream(appPath);
-      remoteRes.pipe(cacheStream);
-      remoteRes.pipe(res);
-    }).on("error", (err) => {
-      console.error("Failed to download app:", err);
-      res.status(503).json({error: "App download temporarily unavailable"});
-    });
-  } catch(e) {
-    res.status(500).json({error: e.message});
-  }
-});
     SELECT id,name,description,price_ghs,category,image_url,stock_status,whatsapp_number,featured
 
 /* App Download */
@@ -909,41 +874,6 @@ app.get("/api/app/info", (req,res)=>{
   });
 });
 
-app.get("/api/app/download", async (req,res)=>{
-  try {
-    const fs = require("fs");
-    const path = require("path");
-    const https = require("https");
-    
-    const appDir = path.join(__dirname, "public", "apps");
-    if(!fs.existsSync(appDir)) fs.mkdirSync(appDir, {recursive: true});
-    
-    const appPath = path.join(appDir, "worldtv8.2.6-20260814.apk");
-    
-    if(fs.existsSync(appPath)) {
-      res.setHeader("Content-Type", "application/vnd.android.package-archive");
-      res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-      res.setHeader("Content-Length", fs.statSync(appPath).size);
-      return res.sendFile(appPath);
-    }
-    
-    res.setHeader("Content-Type", "application/vnd.android.package-archive");
-    res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-    
-    const externalUrl = "https://23s.tv/IPTV/worldtv8.2.6-20260814.apk";
-    
-    https.get(externalUrl, (remoteRes) => {
-      const cacheStream = fs.createWriteStream(appPath);
-      remoteRes.pipe(cacheStream);
-      remoteRes.pipe(res);
-    }).on("error", (err) => {
-      console.error("Failed to download app:", err);
-      res.status(503).json({error: "App download temporarily unavailable"});
-    });
-  } catch(e) {
-    res.status(500).json({error: e.message});
-  }
-});
     FROM products
 
 /* App Download */
@@ -967,41 +897,6 @@ app.get("/api/app/info", (req,res)=>{
   });
 });
 
-app.get("/api/app/download", async (req,res)=>{
-  try {
-    const fs = require("fs");
-    const path = require("path");
-    const https = require("https");
-    
-    const appDir = path.join(__dirname, "public", "apps");
-    if(!fs.existsSync(appDir)) fs.mkdirSync(appDir, {recursive: true});
-    
-    const appPath = path.join(appDir, "worldtv8.2.6-20260814.apk");
-    
-    if(fs.existsSync(appPath)) {
-      res.setHeader("Content-Type", "application/vnd.android.package-archive");
-      res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-      res.setHeader("Content-Length", fs.statSync(appPath).size);
-      return res.sendFile(appPath);
-    }
-    
-    res.setHeader("Content-Type", "application/vnd.android.package-archive");
-    res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-    
-    const externalUrl = "https://23s.tv/IPTV/worldtv8.2.6-20260814.apk";
-    
-    https.get(externalUrl, (remoteRes) => {
-      const cacheStream = fs.createWriteStream(appPath);
-      remoteRes.pipe(cacheStream);
-      remoteRes.pipe(res);
-    }).on("error", (err) => {
-      console.error("Failed to download app:", err);
-      res.status(503).json({error: "App download temporarily unavailable"});
-    });
-  } catch(e) {
-    res.status(500).json({error: e.message});
-  }
-});
     WHERE active=1
 
 /* App Download */
@@ -1025,41 +920,6 @@ app.get("/api/app/info", (req,res)=>{
   });
 });
 
-app.get("/api/app/download", async (req,res)=>{
-  try {
-    const fs = require("fs");
-    const path = require("path");
-    const https = require("https");
-    
-    const appDir = path.join(__dirname, "public", "apps");
-    if(!fs.existsSync(appDir)) fs.mkdirSync(appDir, {recursive: true});
-    
-    const appPath = path.join(appDir, "worldtv8.2.6-20260814.apk");
-    
-    if(fs.existsSync(appPath)) {
-      res.setHeader("Content-Type", "application/vnd.android.package-archive");
-      res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-      res.setHeader("Content-Length", fs.statSync(appPath).size);
-      return res.sendFile(appPath);
-    }
-    
-    res.setHeader("Content-Type", "application/vnd.android.package-archive");
-    res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-    
-    const externalUrl = "https://23s.tv/IPTV/worldtv8.2.6-20260814.apk";
-    
-    https.get(externalUrl, (remoteRes) => {
-      const cacheStream = fs.createWriteStream(appPath);
-      remoteRes.pipe(cacheStream);
-      remoteRes.pipe(res);
-    }).on("error", (err) => {
-      console.error("Failed to download app:", err);
-      res.status(503).json({error: "App download temporarily unavailable"});
-    });
-  } catch(e) {
-    res.status(500).json({error: e.message});
-  }
-});
     ORDER BY featured DESC,id DESC
 
 /* App Download */
@@ -1083,41 +943,6 @@ app.get("/api/app/info", (req,res)=>{
   });
 });
 
-app.get("/api/app/download", async (req,res)=>{
-  try {
-    const fs = require("fs");
-    const path = require("path");
-    const https = require("https");
-    
-    const appDir = path.join(__dirname, "public", "apps");
-    if(!fs.existsSync(appDir)) fs.mkdirSync(appDir, {recursive: true});
-    
-    const appPath = path.join(appDir, "worldtv8.2.6-20260814.apk");
-    
-    if(fs.existsSync(appPath)) {
-      res.setHeader("Content-Type", "application/vnd.android.package-archive");
-      res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-      res.setHeader("Content-Length", fs.statSync(appPath).size);
-      return res.sendFile(appPath);
-    }
-    
-    res.setHeader("Content-Type", "application/vnd.android.package-archive");
-    res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-    
-    const externalUrl = "https://23s.tv/IPTV/worldtv8.2.6-20260814.apk";
-    
-    https.get(externalUrl, (remoteRes) => {
-      const cacheStream = fs.createWriteStream(appPath);
-      remoteRes.pipe(cacheStream);
-      remoteRes.pipe(res);
-    }).on("error", (err) => {
-      console.error("Failed to download app:", err);
-      res.status(503).json({error: "App download temporarily unavailable"});
-    });
-  } catch(e) {
-    res.status(500).json({error: e.message});
-  }
-});
   `).all();
 
 /* App Download */
@@ -1141,41 +966,6 @@ app.get("/api/app/info", (req,res)=>{
   });
 });
 
-app.get("/api/app/download", async (req,res)=>{
-  try {
-    const fs = require("fs");
-    const path = require("path");
-    const https = require("https");
-    
-    const appDir = path.join(__dirname, "public", "apps");
-    if(!fs.existsSync(appDir)) fs.mkdirSync(appDir, {recursive: true});
-    
-    const appPath = path.join(appDir, "worldtv8.2.6-20260814.apk");
-    
-    if(fs.existsSync(appPath)) {
-      res.setHeader("Content-Type", "application/vnd.android.package-archive");
-      res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-      res.setHeader("Content-Length", fs.statSync(appPath).size);
-      return res.sendFile(appPath);
-    }
-    
-    res.setHeader("Content-Type", "application/vnd.android.package-archive");
-    res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-    
-    const externalUrl = "https://23s.tv/IPTV/worldtv8.2.6-20260814.apk";
-    
-    https.get(externalUrl, (remoteRes) => {
-      const cacheStream = fs.createWriteStream(appPath);
-      remoteRes.pipe(cacheStream);
-      remoteRes.pipe(res);
-    }).on("error", (err) => {
-      console.error("Failed to download app:", err);
-      res.status(503).json({error: "App download temporarily unavailable"});
-    });
-  } catch(e) {
-    res.status(500).json({error: e.message});
-  }
-});
   res.json(rows);
 
 /* App Download */
@@ -1199,41 +989,6 @@ app.get("/api/app/info", (req,res)=>{
   });
 });
 
-app.get("/api/app/download", async (req,res)=>{
-  try {
-    const fs = require("fs");
-    const path = require("path");
-    const https = require("https");
-    
-    const appDir = path.join(__dirname, "public", "apps");
-    if(!fs.existsSync(appDir)) fs.mkdirSync(appDir, {recursive: true});
-    
-    const appPath = path.join(appDir, "worldtv8.2.6-20260814.apk");
-    
-    if(fs.existsSync(appPath)) {
-      res.setHeader("Content-Type", "application/vnd.android.package-archive");
-      res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-      res.setHeader("Content-Length", fs.statSync(appPath).size);
-      return res.sendFile(appPath);
-    }
-    
-    res.setHeader("Content-Type", "application/vnd.android.package-archive");
-    res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-    
-    const externalUrl = "https://23s.tv/IPTV/worldtv8.2.6-20260814.apk";
-    
-    https.get(externalUrl, (remoteRes) => {
-      const cacheStream = fs.createWriteStream(appPath);
-      remoteRes.pipe(cacheStream);
-      remoteRes.pipe(res);
-    }).on("error", (err) => {
-      console.error("Failed to download app:", err);
-      res.status(503).json({error: "App download temporarily unavailable"});
-    });
-  } catch(e) {
-    res.status(500).json({error: e.message});
-  }
-});
 });
 
 /* App Download */
@@ -1257,41 +1012,6 @@ app.get("/api/app/info", (req,res)=>{
   });
 });
 
-app.get("/api/app/download", async (req,res)=>{
-  try {
-    const fs = require("fs");
-    const path = require("path");
-    const https = require("https");
-    
-    const appDir = path.join(__dirname, "public", "apps");
-    if(!fs.existsSync(appDir)) fs.mkdirSync(appDir, {recursive: true});
-    
-    const appPath = path.join(appDir, "worldtv8.2.6-20260814.apk");
-    
-    if(fs.existsSync(appPath)) {
-      res.setHeader("Content-Type", "application/vnd.android.package-archive");
-      res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-      res.setHeader("Content-Length", fs.statSync(appPath).size);
-      return res.sendFile(appPath);
-    }
-    
-    res.setHeader("Content-Type", "application/vnd.android.package-archive");
-    res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
-    
-    const externalUrl = "https://23s.tv/IPTV/worldtv8.2.6-20260814.apk";
-    
-    https.get(externalUrl, (remoteRes) => {
-      const cacheStream = fs.createWriteStream(appPath);
-      remoteRes.pipe(cacheStream);
-      remoteRes.pipe(res);
-    }).on("error", (err) => {
-      console.error("Failed to download app:", err);
-      res.status(503).json({error: "App download temporarily unavailable"});
-    });
-  } catch(e) {
-    res.status(500).json({error: e.message});
-  }
-});
 
 function customerOnly(req,res,next){
   const token=req.headers["x-customer-token"];
