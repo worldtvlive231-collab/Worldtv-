@@ -81,14 +81,32 @@
   <img class="logo" src="/world-tv-logo.png" alt="World TV">
 
   <h1>Contact World TV</h1>
+<div class="item">
+  <h3>Subscription / Inquiries</h3>
 
-  <div class="item">
-    <h3>Subscription / Inquiries</h3>
-    <p id="waText">
-      WhatsApp:
-      <a href="https://wa.me/233244909092">+233 24 490 9092</a>
-    </p>
-  </div>
+  <a href="https://wa.me/15309040310"
+     target="_blank"
+     rel="noopener"
+     style="
+       display:inline-flex;
+       align-items:center;
+       gap:8px;
+       background:#25D366;
+       color:white;
+       padding:11px 16px;
+       border-radius:10px;
+       text-decoration:none;
+       font-weight:800;
+     ">
+
+    <svg width="24" height="24" viewBox="0 0 32 32"
+         fill="currentColor" aria-hidden="true">
+      <path d="M16 3a12.9 12.9 0 0 0-11 19.7L3 29l6.5-2A13 13 0 1 0 16 3zm0 23.5a10.5 10.5 0 0 1-5.4-1.5l-.4-.2-3.9 1.2 1.3-3.8-.3-.4A10.5 10.5 0 1 1 16 26.5zm5.8-7.8c-.3-.2-1.9-.9-2.2-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-.9 1.2-.2.2-.3.2-.7.1-1.8-.9-3-1.6-4.2-3.6-.3-.5.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.2-1.2 3s1.3 3.5 1.5 3.7c.2.2 2.5 3.8 6.1 5.3 2.3 1 3.2 1.1 4.4.9.7-.1 1.9-.8 2.2-1.5.3-.7.3-1.4.2-1.5-.2-.2-.4-.3-.7-.5z"/>
+    </svg>
+
+    WhatsApp +1 (530) 904-0310
+  </a>
+</div>  
 
   <h2>Send us a message</h2>
 
@@ -120,17 +138,15 @@
 </div>
 
 <script>
-(async () => {
-  const s = await fetch("/api/site-settings")
-    .then(r => r.json())
-    .catch(() => ({}));
 
-  if (s.support_whatsapp) {
-    document.getElementById("waText").textContent =
-      "WhatsApp: " + s.support_whatsapp;
-  }
-})();
 
+
+
+
+
+
+
+  
 document.getElementById("supportForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -172,3 +188,4 @@ document.getElementById("supportForm").addEventListener("submit", async (e) => {
 
 </body>
 </html>
+ // trigger Railway redeploy
