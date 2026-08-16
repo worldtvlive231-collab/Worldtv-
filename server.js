@@ -2428,85 +2428,358 @@ app.get("/api/football/tomorrow", async (req, res) => {
 /* Paystack payment integration */
 app.post("/api/payment/paystack/initialize", customerOnly, async (req, res) => {
   try {
-    const { planId } = req.body || {};
-    if (!planId) return res.status(400).json({ error: "Plan ID required" });
-    
-    const plan = db.prepare("SELECT * FROM plans WHERE id=? AND active=1").get(planId);
-    if (!plan) return res.status(400).json({ error: "Invalid plan" });
-    
-    const user = db.prepare("SELECT id, email, name FROM users WHERE id=?").get(req.customer.userId);
-    if (!user) return res.status(404).json({ error: "User not found" });
-    
-    const reference = "WTV-PAY-" + Date.now() + "-" + crypto.randomBytes(3).toString("hex");
-    const amountInPesewas = plan.price_ghs * 100;
-    
-    // Store checkout request
-    db.prepare(`
-      INSERT INTO checkout_requests(reference, user_id, plan_id, original_amount_ghs, final_amount_ghs, status)
-      VALUES(?, ?, ?, ?, ?, 'awaiting_payment')
-    `).run(reference, user.id, planId, plan.price_ghs, plan.price_ghs);
-    
-    // Initialize Paystack transaction
+    const reference = String(req.body?.reference || "").trim();
+
+    if (!reference) {
+      return res.status(400).json({ error: "Payment reference required" });
+    }
+
+    const checkout = db.prepare(`
+      SELECT
+        c.*,
+        p.name AS plan_name,
+        u.email,
+        u.name AS customer_name
+      FROM checkout_requests c
+      JOIN plans p ON p.id = c.plan_id
+      JOIN users u ON u.id = c.user_id
+      WHERE c.reference = ?
+        AND c.user_id = ?
+    `).get(reference, req.customer.userId);
+
+    if (!checkout) {
+      return res.status(404).json({ error: "Subscription request not found" });
+    }
+
+    if (checkout.status !== "awaiting_payment") {
+      return res.status(409).json({
+        error: "This payment request is no longer awaiting payment"
+      });
+    }
+
     const paystackKey = process.env.PAYSTACK_SECRET_KEY;
-    if (!paystackKey) return res.status(500).json({ error: "Payment gateway not configured" });
-    
-    const payloadString = JSON.stringify({
-      email: user.email,
-      amount: amountInPesewas,
-      metadata: {
-        plan_id: planId,
-        plan_name: plan.name,
-        customer_name: user.name,
-        reference: reference
+
+    if (!paystackKey) {
+      return res.status(500).json({
+        error: "Paystack is not configured"
+      });
+    }
+
+    const amountPesewas =
+      Math.round(Number(checkout.final_amount_ghs) * 100);
+
+    const baseUrl = String(
+      process.env.PUBLIC_BASE_URL || "https://myworldtvlive.com"
+    ).replace(/\/+$/, "");
+
+    const paystackResponse = await fetch(
+      "https://api.paystack.co/transaction/initialize",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${paystackKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: checkout.email,
+          amount: String(amountPesewas),
+          currency: "GHS",
+          reference: checkout.reference,
+          callback_url: `${baseUrl}/subscribe.html`,
+          metadata: JSON.stringify({
+            plan_id: checkout.plan_id,
+            plan_name: checkout.plan_name,
+            customer_name: checkout.customer_name
+          })
+        })
       }
-    });
-    
-    const hash = crypto.createHmac("sha256", paystackKey).update(payloadString).digest("hex");
-    
+    );
+
+    const paystack = await paystackResponse.json();
+
+    if (
+      !paystackResponse.ok ||
+      !paystack.status ||
+      !paystack.data?.authorization_url
+    ) {
+      console.error("Paystack initialization error:", paystack);
+
+      return res.status(502).json({
+        error: paystack.message || "Could not start Paystack payment"
+      });
+    }
+
     res.json({
       ok: true,
-      reference,
-      amount_ghs: plan.price_ghs,
-      plan_name: plan.name,
-      email: user.email,
-      payload: JSON.parse(payloadString)
+      reference: checkout.reference,
+      authorization_url: paystack.data.authorization_url,
+      access_code: paystack.data.access_code,
+      amount_ghs: checkout.final_amount_ghs
     });
+
   } catch (error) {
-    res.status(500).json({ ok: false, error: error.message });
+    console.error("Paystack initialize error:", error);
+
+    res.status(500).json({
+      error: "Could not start payment"
+    });
   }
 });
-
 app.post("/api/payment/paystack/verify", async (req, res) => {
   try {
-    const { reference } = req.body || {};
-    if (!reference) return res.status(400).json({ error: "Reference required" });
-    
-    const checkout = db.prepare("SELECT * FROM checkout_requests WHERE reference=?").get(reference);
-    if (!checkout) return res.status(404).json({ error: "Checkout not found" });
-    
-    // Verify with Paystack (simplified - in production use actual API call)
+    const reference = String(
+      req.body?.reference || req.query?.reference || ""
+    ).trim();
+
+    if (!reference) {
+      return res.status(400).json({ error: "Reference required" });
+    }
+
+    const checkout = db.prepare(`
+      SELECT
+        c.*,
+        p.name AS plan_name,
+        p.duration_days,
+        u.email
+      FROM checkout_requests c
+      JOIN plans p ON p.id = c.plan_id
+      JOIN users u ON u.id = c.user_id
+      WHERE c.reference = ?
+    `).get(reference);
+
+    if (!checkout) {
+      return res.status(404).json({ error: "Checkout not found" });
+    }
+
+    // Prevent the same payment from being fulfilled twice
+    const existingOrder = db.prepare(`
+      SELECT o.*, sc.code, sc.expires_at
+      FROM orders o
+      LEFT JOIN subscription_codes sc ON sc.id = o.code_id
+      WHERE o.reference = ?
+    `).get(reference);
+
+    if (existingOrder) {
+      return res.json({
+        ok: true,
+        paid: true,
+        already_processed: true,
+        code: existingOrder.code || null,
+        expires_at: existingOrder.expires_at || null
+      });
+    }
+
     const paystackKey = process.env.PAYSTACK_SECRET_KEY;
-    if (!paystackKey) return res.status(500).json({ error: "Payment gateway not configured" });
-    
-    // Update checkout to paid
-    db.prepare("UPDATE checkout_requests SET status='paid' WHERE reference=?").run(reference);
-    
-    // Create subscription order
-    const plan = db.prepare("SELECT * FROM plans WHERE id=?").get(checkout.plan_id);
-    const expiry = new Date();
-    expiry.setUTCDate(expiry.getUTCDate() + plan.duration_days);
-    
-    db.prepare(`
-      INSERT INTO orders(reference, user_id, plan_id, amount_pesewas, currency, status, paid_at)
-      VALUES(?, ?, ?, ?, 'GHS', 'paid', ?)
-    `).run(reference, checkout.user_id, checkout.plan_id, Math.round(checkout.final_amount_ghs * 100), new Date().toISOString());
-    
-    res.json({ ok: true, message: "Payment verified and subscription activated" });
+
+    if (!paystackKey) {
+      return res.status(500).json({
+        error: "Paystack is not configured"
+      });
+    }
+
+    const verifyResponse = await fetch(
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${paystackKey}`,
+          Accept: "application/json"
+        }
+      }
+    );
+
+    const paystack = await verifyResponse.json();
+
+    if (!verifyResponse.ok || !paystack.status || !paystack.data) {
+      console.error("Paystack verification error:", paystack);
+
+      return res.status(502).json({
+        error: paystack.message || "Could not verify payment"
+      });
+    }
+
+    const payment = paystack.data;
+
+    if (payment.status !== "success") {
+      return res.status(400).json({
+        error: "Payment has not been completed",
+        payment_status: payment.status
+      });
+    }
+
+    const expectedAmount =
+      Math.round(Number(checkout.final_amount_ghs) * 100);
+
+    if (
+      payment.reference !== reference ||
+      Number(payment.amount) !== expectedAmount ||
+      payment.currency !== "GHS"
+    ) {
+      console.error("Paystack payment mismatch:", {
+        reference,
+        expectedAmount,
+        receivedAmount: payment.amount,
+        currency: payment.currency
+      });
+
+      return res.status(400).json({
+        error: "Payment details do not match this subscription"
+      });
+    }
+
+    const code = db.prepare(`
+      SELECT id, code
+      FROM subscription_codes
+      WHERE plan_id = ?
+        AND status = 'unused'
+      ORDER BY id
+      LIMIT 1
+    `).get(checkout.plan_id);
+
+    // Payment succeeded but no subscription code is available
+    if (!code) {
+      db.prepare(`
+        UPDATE checkout_requests
+        SET status='payment_confirmed',
+            updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
+      `).run(checkout.id);
+
+      return res.json({
+        ok: true,
+        paid: true,
+        fulfilled: false,
+        message:
+          "Payment received successfully. Subscription activation is pending."
+      });
+    }
+
+    let start = new Date();
+
+    const current = db.prepare(`
+      SELECT MAX(sc.expires_at) AS expiry
+      FROM orders o
+      JOIN subscription_codes sc ON sc.id = o.code_id
+      WHERE o.user_id = ?
+        AND o.status = 'paid'
+    `).get(checkout.user_id);
+
+    if (
+      current?.expiry &&
+      new Date(current.expiry) > start
+    ) {
+      start = new Date(current.expiry);
+    }
+
+    const expiry = new Date(start);
+
+    expiry.setUTCDate(
+      expiry.getUTCDate() + Number(checkout.duration_days)
+    );
+
+    const expiresAt = expiry.toISOString();
+
+    const paidAt =
+      payment.paid_at || new Date().toISOString();
+
+    const activateSubscription = db.transaction(() => {
+      const assigned = db.prepare(`
+        UPDATE subscription_codes
+        SET status='used',
+            user_id=?,
+            expires_at=?
+        WHERE id=?
+          AND status='unused'
+      `).run(
+        checkout.user_id,
+        expiresAt,
+        code.id
+      );
+
+      if (assigned.changes !== 1) {
+        throw new Error("Subscription code assignment failed");
+      }
+
+      db.prepare(`
+        INSERT INTO orders(
+          reference,
+          user_id,
+          plan_id,
+          amount_pesewas,
+          currency,
+          status,
+          code_id,
+          paid_at
+        )
+        VALUES(?,?,?,?,?,'paid',?,?)
+      `).run(
+        reference,
+        checkout.user_id,
+        checkout.plan_id,
+        expectedAmount,
+        "GHS",
+        code.id,
+        paidAt
+      );
+
+      db.prepare(`
+        UPDATE checkout_requests
+        SET status='fulfilled',
+            updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
+      `).run(checkout.id);
+
+      if (checkout.coupon_code) {
+        db.prepare(`
+          UPDATE coupons
+          SET used_count = used_count + 1
+          WHERE code=?
+        `).run(checkout.coupon_code);
+      }
+
+      db.prepare(`
+        INSERT INTO notifications(user_id,title,message)
+        VALUES(?,?,?)
+      `).run(
+        checkout.user_id,
+        "Subscription Activated",
+        `Your World TV subscription has been activated. Your code is ${code.code}.`
+      );
+
+      queueEmail(
+        checkout.user_id,
+        checkout.email,
+        "Your World TV subscription is active",
+        `Your World TV subscription has been activated. Subscription code: ${code.code}. Expiry: ${expiresAt}.`
+      );
+    });
+
+    activateSubscription();
+
+    audit(
+      "paystack_subscription_payment",
+      "checkout_request",
+      checkout.id,
+      `Reference ${reference}`
+    );
+
+    res.json({
+      ok: true,
+      paid: true,
+      fulfilled: true,
+      message: "Payment verified and subscription activated",
+      code: code.code,
+      expires_at: expiresAt
+    });
+
   } catch (error) {
-    res.status(500).json({ ok: false, error: error.message });
+    console.error("Paystack verify error:", error);
+
+    res.status(500).json({
+      error: "Could not verify payment"
+    });
   }
 });
-
 
 
 
