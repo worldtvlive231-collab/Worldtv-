@@ -71,7 +71,7 @@ const CurrencyConverter = {
 
   exchangeRates: { GHS: 1 },
   lastUpdated: null,
-  activeCurrency: 'GHS',
+ activeCurrency:'USD',
   basePriceGHS: 299,
 
   async init() {
@@ -84,7 +84,7 @@ const CurrencyConverter = {
       this.activeCurrency =
         this.isSupportedCurrency(manuallySelected) ? manuallySelected :
         this.isSupportedCurrency(detectedCurrency) ? detectedCurrency :
-        'GHS';
+        'USD';
 
       this.setupCurrencyDropdown(this.activeCurrency);
       this.setupTopRightCurrencyBar(this.activeCurrency);
@@ -97,10 +97,10 @@ const CurrencyConverter = {
       }, 30 * 60 * 1000);
     } catch (error) {
       console.error('Currency converter initialization error:', error);
-      this.activeCurrency = 'GHS';
-      this.setupCurrencyDropdown('GHS');
-      this.setupTopRightCurrencyBar('GHS');
-      this.updateAllPrices('GHS');
+      this.activeCurrency = 'USD';
+      this.setupCurrencyDropdown('USD');
+      this.setupTopRightCurrencyBar('USD');
+      this.updateAllPrices('USD');
     }
   },
 
@@ -174,7 +174,7 @@ const CurrencyConverter = {
       console.warn('Could not detect visitor currency:', error);
     }
 
-    return 'GHS';
+    return 'USD';
   },
 
   convert(ghsAmount, targetCurrency) {
@@ -397,3 +397,4 @@ if (document.readyState === 'loading') {
 } else {
   CurrencyConverter.init();
 }
+// trigger Railway redeploy
