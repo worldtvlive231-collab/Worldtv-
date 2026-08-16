@@ -234,35 +234,40 @@ const CurrencyConverter = {
     return `1 GHS = ${info.symbol}${formattedRate}`;
   },
 
-  updateAllPrices(currency) {
-    if (!this.isSupportedCurrency(currency)) {
-      currency = 'GHS';
+ updateAllPrices(currency) {
+  if (!this.isSupportedCurrency(currency)) {
+    currency = 'USD';
+  }
+
+  this.activeCurrency = currency;
+
+  document.querySelectorAll('[data-price-ghs]').forEach((element) => {
+    const ghsAmount = Number(element.getAttribute('data-price-ghs'));
+
+    if (!Number.isFinite(ghsAmount)) {
+      return;
     }
 
-    this.activeCurrency = currency;
+    if (currency === 'GHS') {
+      element.innerHTML =
+        `<strong>${this.format(ghsAmount, 'GHS')}</strong>`;
+      return;
+    }
 
-    document.querySelectorAll('[data-price-ghs]').forEach((element) => {
-      const ghsAmount = Number(element.getAttribute('data-price-ghs'));
+    const convertedAmount = this.convert(ghsAmount, currency);
 
-      if (!Number.isFinite(ghsAmount)) {
-        return;
-      }
+    if (convertedAmount === null) {
+      element.innerHTML =
+        `<strong>${this.format(ghsAmount, 'GHS')}</strong><br>` +
+        `<span class="currency-converted">Conversion unavailable</span>`;
+      return;
+    }
 
-      let html = `<strong>${this.format(ghsAmount, 'GHS')}</strong>`;
-
-      if (currency !== 'GHS') {
-        const convertedAmount = this.convert(ghsAmount, currency);
-
-        if (convertedAmount === null) {
-          html += '<br><span class="currency-converted">Conversion unavailable</span>';
-        } else {
-          html += `<br><span class="currency-converted">≈ ${this.format(convertedAmount, currency)} ${currency}</span>`;
-        }
-      }
-
-      element.innerHTML = html;
-    });
-  },
+    element.innerHTML =
+      `<strong>${this.format(convertedAmount, currency)} ${currency}</strong><br>` +
+      `<span class="currency-converted">≈ ${this.format(ghsAmount, 'GHS')}</span>`;
+  });
+},
 
   setupCurrencyDropdown(initialCurrency) {
     let dropdown = document.getElementById('currency-dropdown');
