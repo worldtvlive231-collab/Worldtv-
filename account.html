@@ -7,7 +7,7 @@
 <div class="card"><h2>Refer a Friend</h2><p class="muted">Share your World TV referral code with friends.</p><div id="referralBox">Loading...</div></div>
 <div class="card"><h2>Notifications</h2><div id="notifications"><p class="muted">Loading notifications...</p></div></div>
 <div class="card"><h2>Payment / Order History</h2><div style="overflow:auto"><table><thead><tr><th>Reference</th><th>Plan</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead><tbody id="history"></tbody></table></div></div></main>
-<script>
+<script src="/assets/currency-converter.js"></script><script>  
 const token=localStorage.getItem("wtv_customer_token")||"";
 async function api(url,o={}){o.headers=Object.assign({},o.headers,{"x-customer-token":token});let r=await fetch(url,o);let d=await r.json().catch(()=>({}));if(r.status===401){location.href="/login.html";throw Error("Please login")}if(!r.ok)throw Error(d.error||"Request failed");return d}
 async function load(){let d=await api("/api/customer/me");profile.innerHTML=`<h2>Welcome, ${d.user.name}</h2><p class="muted">${d.user.email}</p>`;
@@ -28,10 +28,10 @@ async function logout(){try{await api("/api/customer/logout",{method:"POST"})}ca
       const plan=plans[0];
       const durationDays=plan.duration_days;
       const duration=durationDays===365?"1 Year":durationDays===30?"1 Month":`${durationDays} days`;
-      document.getElementById("planDisplay").innerHTML=`<b>${duration} — GH₵${Number(plan.price_ghs).toFixed(2)}</b>`;
-    }
+      document.getElementById("planDisplay").innerHTML=`<b>${duration} — <span data-price-ghs="${Number(plan.price_ghs)}"></span></b>`;if(window.CurrencyConverter){CurrencyConverter.updateAllPrices(CurrencyConverter.activeCurrency);}    }
   }catch(e){
     console.error("Failed to load plan:",e);
   }
 })();
 </script><script src="/assets/pwa.js"></script></body></html>
+ // trigger Railway redeploy
