@@ -2422,11 +2422,6 @@ app.get("/api/football/tomorrow", async (req, res) => {
   }
 });
 
-// 404 Handler
-app.use((req,res,next)=>{
-  if(req.path.startsWith("/api/")) return res.status(404).json({error:"Not found"});
-  res.status(404).sendFile(path.join(__dirname,"404.html"));
-});
 
 // Start server
 
@@ -2555,6 +2550,11 @@ app.get("/api/visitor-country", (req, res) => {
     res.json({ country: 'Unknown', country_code: '' });
   }
 });
-
-
+// 404 Handler
+app.use((req,res,next)=>{
+  if(req.path.startsWith("/api/")) {
+    return res.status(404).json({error:"Not found"});
+  }
+  res.status(404).sendFile(path.join(__dirname,"404.html"));
+});
 app.listen(PORT,"0.0.0.0",()=>console.log(`World TV running on port ${PORT}`));
