@@ -53,7 +53,7 @@ if(d.active_subscription){
 else subscription.innerHTML=`<h2>Subscription Status</h2><p class="muted">No active World TV subscription.</p>`;
 let rf=await api("/api/customer/referral");referralBox.innerHTML=`<p>Your referral code: <b style="font-size:20px">${rf.referral_code}</b></p><p class="muted">Friends referred: ${rf.referrals}</p>`;
 let ns=await api("/api/customer/notifications");notifications.innerHTML=ns.length?ns.map(n=>`<div style="padding:12px 0;border-bottom:1px solid #eee6d6"><b>${n.title}</b><p class="muted">${n.message}</p><small>${new Date(n.created_at).toLocaleString()}</small>${!n.is_read?` <button class="btn secondary" onclick="markRead(${n.id})">Mark read</button>`:""}</div>`).join(""):"<p class='muted'>No notifications yet.</p>";
-history.innerHTML=d.orders.map(o=>`<tr><td>${o.reference}</td><td>${o.plan_name}</td><td>GH₵${(o.amount_pesewas/100).toFixed(2)}</td><td>${o.status}</td><td>${new Date(o.created_at).toLocaleString()}</td></tr>`).join("")}
+document.getElementById("history").innerHTML=d.orders.map(o=>`<tr><td>${o.reference}</td><td>${o.plan_name}</td><td>GH₵${(o.amount_pesewas/100).toFixed(2)}</td><td>${o.status}</td><td>${new Date(o.created_at).toLocaleString()}</td></tr>`).join("");
 async function markRead(id){await api("/api/customer/notifications/"+id+"/read",{method:"POST"});load()}
 async function logout(){try{await api("/api/customer/logout",{method:"POST"})}catch(e){}localStorage.removeItem("wtv_customer_token");location.href="/login.html"}if(!token)location.href="/login.html";else load();
 // Load and display subscription plan
