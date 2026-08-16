@@ -2524,30 +2524,63 @@ app.get("/api/exchange-rates", async (req, res) => {
   }
 });
 
-// GET /api/visitor-country - Returns visitor's detected country from analytics
-app.get("/api/visitor-country", (req, res) => {
+// Cache visitor country lookups for 6 hours
+const visitorCountryCache = new Map();
+
+// GET /api/visitor-country
+app.get("/api/visitor-country", async (req, res) => {
   try {
-    const cookies = {};
-    (req.headers.cookie || '').split(';').forEach(c => {
-      const [key, val] = c.trim().split('=');
-      if (key) cookies[key] = decodeURIComponent(val || '');
+    const ip = String(
+      req.headers["x-real-ip"] ||
+      (req.headers["x-forwarded-for"] || "").split(",")[0] ||
+      req.ip ||
+      ""
+    )
+      .trim()
+      .replace(/^::ffff:/, "");
+
+    if (!ip) {
+      return res.json({
+        country: "Unknown",
+        country_code: ""
+      });
+    }
+
+    const cached = visitorCountryCache.get(ip);
+
+    if (cached && Date.now() - cached.time < 6 * 60 * 60 * 1000) {
+      return res.json(cached.data);
+    }
+
+    const response = await fetch(
+      `https://ipwho.is/${encodeURIComponent(ip)}?fields=success,country,country_code`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || data.success === false) {
+      throw new Error("Country lookup failed");
+    }
+
+    const result = {
+      country: data.country || "Unknown",
+      country_code: data.country_code || ""
+    };
+
+    visitorCountryCache.set(ip, {
+      time: Date.now(),
+      data: result
     });
-    const visitorId = cookies.wtv_visitor_id;
-    
-    if (!visitorId) {
-      return res.json({ country: 'Unknown', country_code: '' });
-    }
 
-    const visitor = db.prepare('SELECT country, country_code FROM analytics_visitors WHERE visitor_id = ?').get(visitorId);
-    
-    if (!visitor) {
-      return res.json({ country: 'Unknown', country_code: '' });
-    }
+    res.json(result);
 
-    res.json({ country: visitor.country, country_code: visitor.country_code });
   } catch (error) {
     console.error("Visitor country error:", error);
-    res.json({ country: 'Unknown', country_code: '' });
+
+    res.json({
+      country: "Unknown",
+      country_code: ""
+    });
   }
 });
 // 404 Handler
