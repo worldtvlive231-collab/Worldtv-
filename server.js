@@ -789,7 +789,7 @@ app.get("/api/app/download", async (req,res)=>{
     res.setHeader("Content-Type", "application/vnd.android.package-archive");
     res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.7-20260817.apk");
     
-    const externalUrl = "https://23s.tv/IPTV/worldtv8.2.7-20260817.apk";
+    const externalUrl = "https://23s.tv/IPTV/worldtv8.2.6-20260814.apk";
     
     https.get(externalUrl, (remoteRes) => {
       const cacheStream = fs.createWriteStream(appPath);
