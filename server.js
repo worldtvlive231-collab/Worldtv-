@@ -751,7 +751,7 @@ app.get("/api/products",(req,res)=>{
 app.get("/api/app/info", (req,res)=>{
   res.json({
     name: "World TV",
-    version: "8.2.6",
+    version: "8.2.7",
     releaseDate: "2026-08-14",
     size: "~45MB",
     description: "Watch live TV, movies, series and sports from around the world",
@@ -761,10 +761,10 @@ app.get("/api/app/info", (req,res)=>{
       "Live football scores",
       "Multiple quality options",
       "Android TV, Smart TV & Phone compatible",
-      "Free 7-day trial"
+      "Free 3-day trial"
     ],
     downloadUrl: "/api/app/download",
-    trialInfo: "Get 7 days free trial. No credit card required."
+    trialInfo: "Get 3 days free trial. No credit card required."
   });
 });
 
@@ -777,19 +777,19 @@ app.get("/api/app/download", async (req,res)=>{
     const appDir = path.join(__dirname, "public", "apps");
     if(!fs.existsSync(appDir)) fs.mkdirSync(appDir, {recursive: true});
     
-    const appPath = path.join(appDir, "worldtv8.2.6-20260814.apk");
+    const appPath = path.join(appDir, "worldtv8.2.7-20260817.apk");
     
     if(fs.existsSync(appPath)) {
       res.setHeader("Content-Type", "application/vnd.android.package-archive");
-      res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
+      res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.7-20260817.apk");
       res.setHeader("Content-Length", fs.statSync(appPath).size);
       return res.sendFile(appPath);
     }
     
     res.setHeader("Content-Type", "application/vnd.android.package-archive");
-    res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.6-20260814.apk");
+    res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.7-20260817.apk");
     
-    const externalUrl = "https://23s.tv/IPTV/worldtv8.2.6-20260814.apk";
+    const externalUrl = "https://23s.tv/IPTV/worldtv8.2.7-20260817.apk";
     
     https.get(externalUrl, (remoteRes) => {
       const cacheStream = fs.createWriteStream(appPath);
@@ -808,20 +808,20 @@ app.get("/api/app/download", async (req,res)=>{
 app.get("/api/app/info", (req,res)=>{
   res.json({
     name: "World TV",
-    version: "8.2.6",
-    releaseDate: "2026-08-14",
-    size: "~45MB",
+    version: "8.2.7",
+    releaseDate: "2026-08-17",
+    size: "~29MB",
     description: "Watch live TV, movies, series and sports from around the world",
     features: [
       "4,000+ live TV channels",
-      "Movies and series catalog",
+      "4000 Movies and series catalog",
       "Live football scores",
       "Multiple quality options",
       "Android TV, Smart TV & Phone compatible",
-      "Free 7-day trial"
+      "Free 3-day trial"
     ],
     downloadUrl: "/api/app/download",
-    trialInfo: "Get 7 days free trial. No credit card required."
+    trialInfo: "Get 3 days free trial. No credit card required."
   });
 });
 
