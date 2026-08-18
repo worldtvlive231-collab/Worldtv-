@@ -938,12 +938,110 @@ app.get("/api/admin/stats",adminOnly,(req,res)=>{
   });
 app.get("/api/admin/codes",adminOnly,(req,res)=>{
   res.json(db.prepare(`
-    SELECT c.id,c.code,c.status,c.expires_at,c.created_at,p.name plan_name,u.email user_email
+    SELECT c.id,c.code,c.plan_id,c.status,c.expires_at,c.created_at,p.name plan_name
     FROM subscription_codes c
     JOIN plans p ON p.id=c.plan_id
     LEFT JOIN users u ON u.id=c.user_id
     ORDER BY c.id DESC LIMIT 5000
   `).all());
+});
+app.get("/api/admin/codes/:id",adminOnly,(req,res)=>{
+  const row=db.prepare(`
+    SELECT
+      c.id,
+      c.code,
+      c.plan_id,
+      c.status,
+      c.expires_at,
+      c.created_at,
+      p.name AS plan_name,
+      u.email AS user_email
+    FROM subscription_codes c
+    JOIN plans p ON p.id=c.plan_id
+    LEFT JOIN users u ON u.id=c.user_id
+    WHERE c.id=?
+  `).get(req.params.id);
+
+  if(!row){
+    return res.status(404).json({error:"Subscription code not found"});
+  }
+
+  res.json(row);
+});
+app.put("/api/admin/codes/:id",adminOnly,(req,res)=>{
+  const existing=db.prepare(
+    "SELECT * FROM subscription_codes WHERE id=?"
+  ).get(req.params.id);
+
+  if(!existing){
+    return res.status(404).json({error:"Subscription code not found"});
+  }
+
+  const newCode=String(req.body.code||"").trim();
+  const planId=Number(req.body.planId);
+  const status=String(req.body.status||"").trim();
+  const expiresAt=String(req.body.expires_at||"").trim()||null;
+
+  if(!newCode){
+    return res.status(400).json({error:"Code is required"});
+  }
+
+  if(!["unused","used","disabled"].includes(status)){
+    return res.status(400).json({error:"Invalid status"});
+  }
+
+  const plan=db.prepare("SELECT id FROM plans WHERE id=?").get(planId);
+
+  if(!plan){
+    return res.status(400).json({error:"Invalid plan"});
+  }
+
+  const duplicate=db.prepare(
+    "SELECT id FROM subscription_codes WHERE code=? AND id<>?"
+  ).get(newCode,req.params.id);
+
+  if(duplicate){
+    return res.status(409).json({error:"That subscription code already exists"});
+  }
+
+  db.prepare(`
+    UPDATE subscription_codes
+    SET code=?,plan_id=?,status=?,expires_at=?
+    WHERE id=?
+  `).run(
+    newCode,
+    planId,
+    status,
+    expiresAt,
+    req.params.id
+  );
+
+  res.json({ok:true});
+});
+app.delete("/api/admin/codes/:id",adminOnly,(req,res)=>{
+  const existing=db.prepare(
+    "SELECT * FROM subscription_codes WHERE id=?"
+  ).get(req.params.id);
+
+  if(!existing){
+    return res.status(404).json({error:"Subscription code not found"});
+  }
+
+  const linkedOrder=db.prepare(
+    "SELECT id FROM orders WHERE code_id=? LIMIT 1"
+  ).get(req.params.id);
+
+  if(existing.user_id || existing.status==="used" || linkedOrder){
+    return res.status(409).json({
+      error:"Used or assigned codes cannot be deleted. Disable the code instead."
+    });
+  }
+
+  db.prepare(
+    "DELETE FROM subscription_codes WHERE id=?"
+  ).run(req.params.id);
+
+  res.json({ok:true});
 });
 function addCodes(planId,codes){
   const exists=db.prepare("SELECT 1 FROM subscription_codes WHERE code=?");
