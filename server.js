@@ -1026,16 +1026,26 @@ app.delete("/api/admin/codes/:id",adminOnly,(req,res)=>{
   if(!existing){
     return res.status(404).json({error:"Subscription code not found"});
   }
+const linkedOrder=db.prepare(
+  "SELECT id FROM orders WHERE code_id=? LIMIT 1"
+).get(req.params.id);
 
-  const linkedOrder=db.prepare(
-    "SELECT id FROM orders WHERE code_id=? LIMIT 1"
-  ).get(req.params.id);
+if(existing.user_id || existing.status==="used"){
+  return res.status(409).json({
+    error:"Used or assigned codes cannot be deleted."
+  });
+}
+if(linkedOrder){
+  db.prepare(
+    "UPDATE subscription_codes SET status='disabled' WHERE id=?"
+  ).run(req.params.id);
 
-  if(existing.user_id || existing.status==="used" || linkedOrder){
-    return res.status(409).json({
-      error:"Used or assigned codes cannot be deleted. Disable the code instead."
-    });
-  }
+  return res.json({
+    ok:true,
+    softDeleted:true
+  });
+}
+  
 
   db.prepare(
     "DELETE FROM subscription_codes WHERE id=?"
@@ -1043,6 +1053,7 @@ app.delete("/api/admin/codes/:id",adminOnly,(req,res)=>{
 
   res.json({ok:true});
 });
+
 function addCodes(planId,codes){
   const exists=db.prepare("SELECT 1 FROM subscription_codes WHERE code=?");
   const ins=db.prepare("INSERT INTO subscription_codes(code,plan_id) VALUES(?,?)");
