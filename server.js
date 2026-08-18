@@ -141,36 +141,79 @@ CREATE TABLE IF NOT EXISTS site_settings(
 );
 `);
 
-// ============ ANALYTICS TABLES ============
+// ============ LIVE ANALYTICS V2 TABLES ============
+// V2 starts with clean analytics data once. It does NOT touch customers, codes,
+// orders, subscriptions, products or any other business tables.
 db.exec(`
-CREATE TABLE IF NOT EXISTS analytics_visitors(
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  visitor_id TEXT UNIQUE NOT NULL,
-  country TEXT DEFAULT 'Unknown',
-  country_code TEXT DEFAULT '',
+CREATE TABLE IF NOT EXISTS analytics_v2_visitors(
+  visitor_id TEXT PRIMARY KEY,
+  country TEXT NOT NULL DEFAULT 'Unknown',
+  country_code TEXT NOT NULL DEFAULT '',
   first_seen TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  last_seen TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  last_seen TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_path TEXT NOT NULL DEFAULT '/',
+  user_agent TEXT NOT NULL DEFAULT ''
 );
-CREATE INDEX IF NOT EXISTS idx_analytics_visitors_id ON analytics_visitors(visitor_id);
-CREATE INDEX IF NOT EXISTS idx_analytics_visitors_last_seen ON analytics_visitors(last_seen);
+CREATE INDEX IF NOT EXISTS idx_analytics_v2_visitors_last_seen
+  ON analytics_v2_visitors(last_seen);
 
-CREATE TABLE IF NOT EXISTS analytics_events(
+CREATE TABLE IF NOT EXISTS analytics_v2_events(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   visitor_id TEXT NOT NULL,
   event_type TEXT NOT NULL,
-  page_path TEXT,
-  referrer TEXT,
-  country TEXT DEFAULT 'Unknown',
-  country_code TEXT DEFAULT '',
+  page_path TEXT NOT NULL DEFAULT '/',
+  referrer TEXT NOT NULL DEFAULT '',
+  country TEXT NOT NULL DEFAULT 'Unknown',
+  country_code TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_analytics_events_visitor ON analytics_events(visitor_id);
-CREATE INDEX IF NOT EXISTS idx_analytics_events_type ON analytics_events(event_type);
-CREATE INDEX IF NOT EXISTS idx_analytics_events_created ON analytics_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_analytics_v2_events_visitor
+  ON analytics_v2_events(visitor_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_v2_events_type
+  ON analytics_v2_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_analytics_v2_events_created
+  ON analytics_v2_events(created_at);
+
+CREATE TABLE IF NOT EXISTS analytics_v2_presence(
+  visitor_id TEXT PRIMARY KEY,
+  last_seen TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  page_path TEXT NOT NULL DEFAULT '/',
+  country TEXT NOT NULL DEFAULT 'Unknown',
+  country_code TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_analytics_v2_presence_last_seen
+  ON analytics_v2_presence(last_seen);
 `);
 
-// IP to country cache (in memory)
-const ipGeoCache = new Map();
+const analyticsV2Migration = db.prepare(
+  "SELECT value FROM site_settings WHERE key='analytics_v2_initialized'"
+).get();
+
+if(!analyticsV2Migration){
+  const initializeAnalyticsV2 = db.transaction(()=>{
+    // Delete only the old/broken analytics system.
+    db.exec(`
+      DROP TABLE IF EXISTS analytics_events;
+      DROP TABLE IF EXISTS analytics_visitors;
+      DELETE FROM analytics_v2_events;
+      DELETE FROM analytics_v2_presence;
+      DELETE FROM analytics_v2_visitors;
+    `);
+
+    db.prepare(`
+      INSERT INTO site_settings(key,value)
+      VALUES('analytics_v2_initialized',CURRENT_TIMESTAMP)
+      ON CONFLICT(key) DO UPDATE SET value=excluded.value
+    `).run();
+  });
+  initializeAnalyticsV2();
+}
+
+// IP -> country cache. Known results live for 24h; failed lookups retry sooner.
+const analyticsGeoCache = new Map();
+const ANALYTICS_GEO_OK_TTL = 24 * 60 * 60 * 1000;
+const ANALYTICS_GEO_FAIL_TTL = 5 * 60 * 1000;
+const ANALYTICS_ONLINE_WINDOW_SECONDS = 60;
 
 
 if(!db.prepare("SELECT id FROM plans WHERE name=?").get("1 Year")){
@@ -191,8 +234,12 @@ function ensureReferralCode(userId){
 
 app.use(express.json({limit:"1mb"}));
 app.use(express.urlencoded({extended:true}));
+
+// Analytics must run BEFORE express.static so real page loads are counted.
+app.use(recordAnalyticsV2);
+app.use(injectAnalyticsScriptV2);
 app.use(express.static(__dirname));
-app.use(recordAnalytics);
+
 app.get("/reseller", (req,res) => res.sendFile(__dirname + "/reseller.html"));
 app.get("/admin", (req,res) => res.sendFile(__dirname + "/admin.html"));
 
@@ -531,215 +578,538 @@ app.post("/api/reseller/logout", resellerOnly, (req, res) => {
 app.get("/api/health",(req,res)=>res.json({ok:true,service:"World TV"}));
 
 
-// ============ ANALYTICS MIDDLEWARE & ENDPOINTS ============
+// ============ LIVE ANALYTICS V2 ============
 
-// Middleware to track visitor and set cookie
-async function recordAnalytics(req, res, next) {
-  try {
-    const pathname = req.path || '/';
-    // Don't track admin, API routes, or assets
-    if (pathname.startsWith('/api/') || pathname.startsWith('/admin') || /\.(js|css|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2)$/.test(pathname) || pathname === '/robots.txt' || pathname === '/sitemap.xml') {
-      return next();
-    }
+function readCookie(req, name){
+  const raw = String(req.headers.cookie || "");
+  for(const part of raw.split(";")){
+    const i = part.indexOf("=");
+    if(i < 0) continue;
+    const key = part.slice(0,i).trim();
+    if(key !== name) continue;
+    try { return decodeURIComponent(part.slice(i+1).trim()); }
+    catch(e){ return part.slice(i+1).trim(); }
+  }
+  return "";
+}
 
-    const cookies = {};
-    (req.headers.cookie || '').split(';').forEach(c => {
-      const [key, val] = c.trim().split('=');
-      if (key) cookies[key] = decodeURIComponent(val || '');
-    });
-    let visitorId = cookies.wtv_visitor_id;
-    if (!visitorId) {
-      visitorId = crypto.randomBytes(16).toString('hex');
-      res.cookie('wtv_visitor_id', visitorId, {
+function analyticsVisitorId(req, res){
+  let visitorId = readCookie(req, "wtv_visitor_v2");
+  if(!/^[a-f0-9]{32}$/i.test(visitorId)){
+    visitorId = crypto.randomBytes(16).toString("hex");
+    if(res && !res.headersSent){
+      res.cookie("wtv_visitor_v2", visitorId, {
         maxAge: 365 * 24 * 60 * 60 * 1000,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: false
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true
       });
     }
+  }
+  return visitorId;
+}
 
-    // Get country from cache or fetch
-    let country = 'Unknown';
-    let country_code = '';
-    const realIp = req.headers['x-real-ip'] || req.ip;
-    
-    if (ipGeoCache.has(realIp)) {
-      const cached = ipGeoCache.get(realIp);
-      country = cached.country;
-      country_code = cached.country_code;
-    } else if (realIp && !realIp.includes('127.0.0.1') && !realIp.includes('localhost')) {
-      try {
-        const geoRes = await fetch(`https://ipwho.is/${realIp}`);
-        const geoData = await geoRes.json();
-        if (geoData && geoData.country) {
-          country = geoData.country;
-          country_code = geoData.country_code || '';
-          ipGeoCache.set(realIp, { country, country_code });
-        }
-      } catch (e) {
-        // Silently fail, use Unknown
-      }
-    }
+function sanitizeAnalyticsPath(value){
+  const s = String(value || "/").split("?")[0].split("#")[0];
+  if(!s.startsWith("/")) return "/";
+  return s.slice(0, 500) || "/";
+}
 
-    // Update or create visitor
-    const existing = db.prepare('SELECT id FROM analytics_visitors WHERE visitor_id = ?').get(visitorId);
-    if (existing) {
-      db.prepare('UPDATE analytics_visitors SET last_seen = CURRENT_TIMESTAMP WHERE visitor_id = ?').run(visitorId);
-    } else {
-      db.prepare('INSERT INTO analytics_visitors(visitor_id, country, country_code) VALUES(?, ?, ?)').run(visitorId, country, country_code);
-    }
+function isAnalyticsBot(req){
+  const ua = String(req.headers["user-agent"] || "");
+  return /bot|crawler|spider|slurp|bingpreview|facebookexternalhit|whatsapp|telegrambot|discordbot|preview|headless|lighthouse|pagespeed|uptimerobot|pingdom|monitoring/i.test(ua);
+}
 
-    // Record event
-    const eventType = pathname === '/download.html' ? 'download_page_view' : 'page_view';
-    db.prepare(
-      'INSERT INTO analytics_events(visitor_id, event_type, page_path, referrer, country, country_code) VALUES(?, ?, ?, ?, ?, ?)'
-    ).run(visitorId, eventType, pathname, req.get('referrer') || '', country, country_code);
+function shouldTrackAnalyticsPage(req){
+  if(req.method !== "GET") return false;
 
-    res.locals.visitorId = visitorId;
-    next();
-  } catch (e) {
-    console.error('Analytics error:', e);
-    next();
+  const pathname = sanitizeAnalyticsPath(req.path || "/");
+  if(
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/reseller") ||
+    pathname.startsWith("/assets/") ||
+    pathname.startsWith("/public/") ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/favicon.ico"
+  ) return false;
+
+  const purpose = String(req.headers["purpose"] || req.headers["sec-purpose"] || "");
+  if(/prefetch|prerender/i.test(purpose)) return false;
+  if(isAnalyticsBot(req)) return false;
+
+  const ext = path.extname(pathname).toLowerCase();
+  if(ext && ext !== ".html" && ext !== ".htm") return false;
+
+  const accept = String(req.headers.accept || "");
+  if(pathname !== "/" && !ext && !accept.includes("text/html")) return false;
+
+  return true;
+}
+
+function normalizeAnalyticsIp(raw){
+  let ip = String(raw || "").trim();
+  if(!ip) return "";
+  if(ip.startsWith("::ffff:")) ip = ip.slice(7);
+  if(/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(ip)) ip = ip.split(":")[0];
+  if(ip.startsWith("[") && ip.includes("]")) ip = ip.slice(1, ip.indexOf("]"));
+  return ip;
+}
+
+function isPublicAnalyticsIp(ip){
+  ip = normalizeAnalyticsIp(ip);
+  if(!ip) return false;
+
+  if(/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)){
+    const p = ip.split(".").map(Number);
+    if(p.some(n => !Number.isInteger(n) || n < 0 || n > 255)) return false;
+    if(p[0] === 10 || p[0] === 127 || p[0] === 0) return false;
+    if(p[0] === 169 && p[1] === 254) return false;
+    if(p[0] === 192 && p[1] === 168) return false;
+    if(p[0] === 172 && p[1] >= 16 && p[1] <= 31) return false;
+    if(p[0] === 100 && p[1] >= 64 && p[1] <= 127) return false;
+    return true;
+  }
+
+  const low = ip.toLowerCase();
+  if(low === "::1" || low === "::") return false;
+  if(low.startsWith("fc") || low.startsWith("fd") || /^fe[89ab]/.test(low)) return false;
+  return low.includes(":");
+}
+
+function getAnalyticsClientIp(req){
+  const candidates = [];
+
+  const cfIp = req.headers["cf-connecting-ip"];
+  if(cfIp) candidates.push(cfIp);
+
+  const trueClientIp = req.headers["true-client-ip"];
+  if(trueClientIp) candidates.push(trueClientIp);
+
+  const forwarded = req.headers["x-forwarded-for"];
+  if(forwarded){
+    String(forwarded).split(",").forEach(x => candidates.push(x));
+  }
+
+  const realIp = req.headers["x-real-ip"];
+  if(realIp) candidates.push(realIp);
+
+  if(req.socket && req.socket.remoteAddress) candidates.push(req.socket.remoteAddress);
+
+  for(const raw of candidates){
+    const ip = normalizeAnalyticsIp(raw);
+    if(isPublicAnalyticsIp(ip)) return ip;
+  }
+  return "";
+}
+
+function countryNameFromCode(code){
+  code = String(code || "").trim().toUpperCase();
+  if(!/^[A-Z]{2}$/.test(code) || ["XX","T1"].includes(code)) return "";
+  try {
+    return new Intl.DisplayNames(["en"], {type:"region"}).of(code) || "";
+  } catch(e) {
+    return "";
   }
 }
 
-// POST /api/analytics/visit - for client-side tracking
-app.post('/api/analytics/visit', express.json(), async (req, res) => {
+function analyticsGeoFromHeaders(req){
+  const code = String(
+    req.headers["cf-ipcountry"] ||
+    req.headers["x-country-code"] ||
+    req.headers["x-vercel-ip-country"] ||
+    req.headers["x-appengine-country"] ||
+    ""
+  ).trim().toUpperCase();
+
+  const country = countryNameFromCode(code);
+  if(country) return {country, country_code:code};
+  return null;
+}
+
+async function resolveAnalyticsGeo(req){
+  const headerGeo = analyticsGeoFromHeaders(req);
+  if(headerGeo) return headerGeo;
+
+  const ip = getAnalyticsClientIp(req);
+  if(!ip) return {country:"Unknown", country_code:""};
+
+  const cached = analyticsGeoCache.get(ip);
+  if(cached && cached.expiresAt > Date.now()){
+    return {country:cached.country, country_code:cached.country_code};
+  }
+
   try {
-    const { eventType, pagePath, referrer } = req.body;
-    const cookies = {};
-    (req.headers.cookie || '').split(';').forEach(c => {
-      const [key, val] = c.trim().split('=');
-      if (key) cookies[key] = decodeURIComponent(val || '');
+    const controller = new AbortController();
+    const timer = setTimeout(()=>controller.abort(), 1500);
+    const geoRes = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`, {
+      signal: controller.signal,
+      headers: {"Accept":"application/json"}
     });
-    let visitorId = cookies.wtv_visitor_id;
-    
-    if (!visitorId) {
-      visitorId = crypto.randomBytes(16).toString('hex');
-      res.cookie('wtv_visitor_id', visitorId, {
-        maxAge: 365 * 24 * 60 * 60 * 1000,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: false
+    clearTimeout(timer);
+
+    if(!geoRes.ok) throw new Error(`Geo lookup failed: ${geoRes.status}`);
+    const geoData = await geoRes.json();
+
+    const country = String(geoData?.country || "").trim();
+    const country_code = String(geoData?.country_code || "").trim().toUpperCase();
+
+    if(country && /^[A-Z]{2}$/.test(country_code)){
+      analyticsGeoCache.set(ip, {
+        country,
+        country_code,
+        expiresAt: Date.now() + ANALYTICS_GEO_OK_TTL
       });
+      return {country, country_code};
+    }
+  } catch(e) {
+    // Analytics must never block or break the website.
+  }
+
+  analyticsGeoCache.set(ip, {
+    country:"Unknown",
+    country_code:"",
+    expiresAt: Date.now() + ANALYTICS_GEO_FAIL_TTL
+  });
+  return {country:"Unknown", country_code:""};
+}
+
+function upsertAnalyticsVisitorV2(visitorId, geo, pagePath, userAgent){
+  const existing = db.prepare(
+    "SELECT visitor_id FROM analytics_v2_visitors WHERE visitor_id=?"
+  ).get(visitorId);
+
+  const country = geo?.country || "Unknown";
+  const countryCode = geo?.country_code || "";
+
+  if(existing){
+    db.prepare(`
+      UPDATE analytics_v2_visitors
+      SET last_seen=CURRENT_TIMESTAMP,
+          last_path=?,
+          user_agent=?,
+          country=CASE WHEN ? <> 'Unknown' THEN ? ELSE country END,
+          country_code=CASE WHEN ? <> '' THEN ? ELSE country_code END
+      WHERE visitor_id=?
+    `).run(
+      pagePath,
+      String(userAgent || "").slice(0,500),
+      country, country,
+      countryCode, countryCode,
+      visitorId
+    );
+  } else {
+    db.prepare(`
+      INSERT INTO analytics_v2_visitors(
+        visitor_id,country,country_code,last_path,user_agent
+      ) VALUES(?,?,?,?,?)
+    `).run(
+      visitorId,
+      country,
+      countryCode,
+      pagePath,
+      String(userAgent || "").slice(0,500)
+    );
+  }
+}
+
+function touchAnalyticsPresenceV2(visitorId, geo, pagePath){
+  const country = geo?.country || "Unknown";
+  const countryCode = geo?.country_code || "";
+
+  db.prepare(`
+    INSERT INTO analytics_v2_presence(
+      visitor_id,last_seen,page_path,country,country_code
+    ) VALUES(?,CURRENT_TIMESTAMP,?,?,?)
+    ON CONFLICT(visitor_id) DO UPDATE SET
+      last_seen=CURRENT_TIMESTAMP,
+      page_path=excluded.page_path,
+      country=CASE WHEN excluded.country <> 'Unknown' THEN excluded.country ELSE analytics_v2_presence.country END,
+      country_code=CASE WHEN excluded.country_code <> '' THEN excluded.country_code ELSE analytics_v2_presence.country_code END
+  `).run(visitorId, pagePath, country, countryCode);
+}
+
+function insertAnalyticsEventV2(visitorId, eventType, pagePath, referrer, geo){
+  db.prepare(`
+    INSERT INTO analytics_v2_events(
+      visitor_id,event_type,page_path,referrer,country,country_code
+    ) VALUES(?,?,?,?,?,?)
+  `).run(
+    visitorId,
+    eventType,
+    pagePath,
+    String(referrer || "").slice(0,1000),
+    geo?.country || "Unknown",
+    geo?.country_code || ""
+  );
+}
+
+async function recordAnalyticsEventV2(req, res, eventType, pagePath){
+  if(isAnalyticsBot(req)) return null;
+
+  const visitorId = analyticsVisitorId(req, res);
+  const cleanPath = sanitizeAnalyticsPath(pagePath || req.path || "/");
+  const geo = await resolveAnalyticsGeo(req);
+
+  upsertAnalyticsVisitorV2(
+    visitorId,
+    geo,
+    cleanPath,
+    req.headers["user-agent"] || ""
+  );
+  touchAnalyticsPresenceV2(visitorId, geo, cleanPath);
+  insertAnalyticsEventV2(
+    visitorId,
+    eventType,
+    cleanPath,
+    req.get("referrer") || "",
+    geo
+  );
+
+  return {visitorId, geo};
+}
+
+// Runs before express.static. The request continues immediately; analytics records
+// in the background so a slow country lookup never delays the website.
+function recordAnalyticsV2(req, res, next){
+  if(!shouldTrackAnalyticsPage(req)) return next();
+
+  const visitorId = analyticsVisitorId(req, res);
+  const pagePath = sanitizeAnalyticsPath(req.path || "/");
+  const eventType =
+    pagePath === "/download.html" || pagePath === "/download"
+      ? "download_page_view"
+      : "page_view";
+  const userAgent = req.headers["user-agent"] || "";
+  const referrer = req.get("referrer") || "";
+
+  next();
+
+  resolveAnalyticsGeo(req)
+    .then(geo=>{
+      upsertAnalyticsVisitorV2(visitorId, geo, pagePath, userAgent);
+      touchAnalyticsPresenceV2(visitorId, geo, pagePath);
+      insertAnalyticsEventV2(visitorId, eventType, pagePath, referrer, geo);
+    })
+    .catch(err=>console.error("Analytics V2 page tracking error:", err.message));
+}
+
+// Adds the heartbeat script to every public HTML page, including pages that were
+// created before Analytics V2. Admin and reseller pages are intentionally excluded.
+function injectAnalyticsScriptV2(req, res, next){
+  if(req.method !== "GET") return next();
+
+  const pagePath = sanitizeAnalyticsPath(req.path || "/");
+  if(
+    pagePath.startsWith("/admin") ||
+    pagePath.startsWith("/reseller") ||
+    pagePath.startsWith("/api/") ||
+    pagePath.startsWith("/assets/") ||
+    pagePath.startsWith("/public/")
+  ) return next();
+
+  let relativeFile = "";
+  if(pagePath === "/") relativeFile = "index.html";
+  else if(/\.html?$/i.test(pagePath)) relativeFile = pagePath.replace(/^\/+/,"");
+  else return next();
+
+  const root = path.resolve(__dirname);
+  const filePath = path.resolve(root, relativeFile);
+  if(filePath !== root && !filePath.startsWith(root + path.sep)) return next();
+  if(!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) return next();
+
+  fs.readFile(filePath, "utf8", (err, html)=>{
+    if(err) return next();
+
+    // Upgrade any old analytics.js reference to the V2 cache-busted URL.
+    html = html.replace(
+      /(["'])\/assets\/analytics\.js\1/gi,
+      '$1/assets/analytics.js?v=2$1'
+    );
+
+    if(!/\/assets\/analytics\.js\?v=2/i.test(html)){
+      const tag = '<script src="/assets/analytics.js?v=2"></script>';
+      if(/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, `${tag}</body>`);
+      else html += tag;
     }
 
-    // Get country
-    let country = 'Unknown';
-    let country_code = '';
-    const realIp = req.headers['x-real-ip'] || req.ip;
-    
-    if (ipGeoCache.has(realIp)) {
-      const cached = ipGeoCache.get(realIp);
-      country = cached.country;
-      country_code = cached.country_code;
-    }
+    res.type("html").send(html);
+  });
+}
 
-    const existing = db.prepare('SELECT id FROM analytics_visitors WHERE visitor_id = ?').get(visitorId);
-    if (existing) {
-      db.prepare('UPDATE analytics_visitors SET last_seen = CURRENT_TIMESTAMP WHERE visitor_id = ?').run(visitorId);
-    } else {
-      db.prepare('INSERT INTO analytics_visitors(visitor_id, country, country_code) VALUES(?, ?, ?)').run(visitorId, country, country_code);
-    }
+// Browser heartbeat. It updates Online Now but does NOT create page-view events.
+app.post("/api/analytics/v2/heartbeat", async (req,res)=>{
+  try {
+    if(isAnalyticsBot(req)) return res.json({ok:true,ignored:true});
 
-    db.prepare(
-      'INSERT INTO analytics_events(visitor_id, event_type, page_path, referrer, country, country_code) VALUES(?, ?, ?, ?, ?, ?)'
-    ).run(visitorId, eventType, pagePath, referrer || '', country, country_code);
+    const visitorId = analyticsVisitorId(req,res);
+    const pagePath = sanitizeAnalyticsPath(req.body?.pagePath || "/");
+    const geo = await resolveAnalyticsGeo(req);
 
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('Analytics visit error:', e);
-    res.status(500).json({ error: e.message });
+    upsertAnalyticsVisitorV2(
+      visitorId,
+      geo,
+      pagePath,
+      req.headers["user-agent"] || ""
+    );
+    touchAnalyticsPresenceV2(visitorId, geo, pagePath);
+
+    res.setHeader("Cache-Control","no-store");
+    res.json({ok:true});
+  } catch(e) {
+    console.error("Analytics V2 heartbeat error:", e);
+    res.status(500).json({error:"Analytics heartbeat failed"});
   }
 });
 
-// GET /api/admin/analytics/summary
-app.get('/api/admin/analytics/summary', adminOnly, (req, res) => {
+app.get("/api/admin/analytics/v2/summary", adminOnly, (req,res)=>{
   try {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const last24h = new Date(now.getTime() - 24*60*60*1000).toISOString();
-    const online5min = new Date(now.getTime() - 5*60*1000).toISOString();
+    const visitors_today = db.prepare(`
+      SELECT COUNT(DISTINCT visitor_id) AS count
+      FROM analytics_v2_events
+      WHERE created_at >= datetime('now','start of day')
+    `).get().count;
 
-    const visitors_today = db.prepare(
-      'SELECT COUNT(DISTINCT visitor_id) as count FROM analytics_events WHERE created_at >= ?'
-    ).get(today).count;
+    const visitors_24h = db.prepare(`
+      SELECT COUNT(DISTINCT visitor_id) AS count
+      FROM analytics_v2_events
+      WHERE created_at >= datetime('now','-24 hours')
+    `).get().count;
 
-    const visitors_24h = db.prepare(
-      'SELECT COUNT(DISTINCT visitor_id) as count FROM analytics_events WHERE created_at >= ?'
-    ).get(last24h).count;
+    const total_unique_visitors = db.prepare(`
+      SELECT COUNT(*) AS count FROM analytics_v2_visitors
+    `).get().count;
 
-    const total_unique_visitors = db.prepare(
-      'SELECT COUNT(*) as count FROM analytics_visitors'
-    ).get().count;
+    const total_page_views = db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM analytics_v2_events
+      WHERE event_type IN ('page_view','download_page_view')
+    `).get().count;
 
-    const total_page_views = db.prepare(
-      'SELECT COUNT(*) as count FROM analytics_events WHERE event_type IN (?, ?)'
-    ).get('page_view', 'download_page_view').count;
+    const online_now = db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM analytics_v2_presence
+      WHERE last_seen >= datetime('now', '-' || ? || ' seconds')
+    `).get(ANALYTICS_ONLINE_WINDOW_SECONDS).count;
 
-    const online_now = db.prepare(
-      'SELECT COUNT(*) as count FROM analytics_visitors WHERE last_seen >= ?'
-    ).get(online5min).count;
+    const download_page_visits = db.prepare(`
+      SELECT COUNT(DISTINCT visitor_id) AS count
+      FROM analytics_v2_events
+      WHERE event_type='download_page_view'
+    `).get().count;
 
-    const download_page_visits = db.prepare(
-      'SELECT COUNT(*) as count FROM analytics_events WHERE event_type = ?'
-    ).get('download_page_view').count;
+    const download_clicks = db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM analytics_v2_events
+      WHERE event_type='download_click'
+    `).get().count;
 
-    const download_clicks = db.prepare(
-      'SELECT COUNT(*) as count FROM analytics_events WHERE event_type = ?'
-    ).get('download_click').count;
+    const unknown_locations = db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM analytics_v2_visitors
+      WHERE country='Unknown' OR country_code=''
+    `).get().count;
 
+    res.setHeader("Cache-Control","no-store");
     res.json({
+      version:2,
       visitors_today,
       visitors_24h,
       total_unique_visitors,
       total_page_views,
       online_now,
       download_page_visits,
-      download_clicks
+      download_clicks,
+      unknown_locations,
+      online_window_seconds: ANALYTICS_ONLINE_WINDOW_SECONDS,
+      server_time: new Date().toISOString()
     });
-  } catch (e) {
-    console.error('Analytics summary error:', e);
-    res.status(500).json({ error: e.message });
+  } catch(e) {
+    console.error("Analytics V2 summary error:", e);
+    res.status(500).json({error:e.message});
   }
 });
 
-// GET /api/admin/analytics/countries
-app.get('/api/admin/analytics/countries', adminOnly, (req, res) => {
+app.get("/api/admin/analytics/v2/countries", adminOnly, (req,res)=>{
   try {
     const countries = db.prepare(`
-      SELECT country, country_code,
-             COUNT(DISTINCT visitor_id) as visitors,
-             COUNT(CASE WHEN event_type IN ('page_view', 'download_page_view') THEN 1 END) as page_views,
-             COUNT(CASE WHEN event_type = 'download_click' THEN 1 END) as download_clicks
-      FROM analytics_events
-      WHERE country != 'Unknown'
-      GROUP BY country, country_code
-      ORDER BY visitors DESC
+      WITH visitor_counts AS (
+        SELECT country,country_code,COUNT(*) AS visitors
+        FROM analytics_v2_visitors
+        WHERE country <> 'Unknown' AND country_code <> ''
+        GROUP BY country,country_code
+      ),
+      event_counts AS (
+        SELECT country,country_code,
+          SUM(CASE WHEN event_type IN ('page_view','download_page_view') THEN 1 ELSE 0 END) AS page_views,
+          SUM(CASE WHEN event_type='download_click' THEN 1 ELSE 0 END) AS download_clicks
+        FROM analytics_v2_events
+        WHERE country <> 'Unknown' AND country_code <> ''
+        GROUP BY country,country_code
+      )
+      SELECT
+        v.country,
+        v.country_code,
+        v.visitors,
+        COALESCE(e.page_views,0) AS page_views,
+        COALESCE(e.download_clicks,0) AS download_clicks
+      FROM visitor_counts v
+      LEFT JOIN event_counts e
+        ON e.country=v.country AND e.country_code=v.country_code
+      ORDER BY v.visitors DESC, page_views DESC, v.country ASC
       LIMIT 100
     `).all();
+
+    res.setHeader("Cache-Control","no-store");
     res.json(countries);
-  } catch (e) {
-    console.error('Analytics countries error:', e);
-    res.status(500).json({ error: e.message });
+  } catch(e) {
+    console.error("Analytics V2 countries error:", e);
+    res.status(500).json({error:e.message});
   }
 });
 
-// GET /api/admin/analytics/recent
-app.get('/api/admin/analytics/recent', adminOnly, (req, res) => {
+app.get("/api/admin/analytics/v2/recent", adminOnly, (req,res)=>{
   try {
     const recent = db.prepare(`
-      SELECT event_type, page_path, country, country_code, created_at
-      FROM analytics_events
-      ORDER BY created_at DESC
+      SELECT event_type,page_path,country,country_code,created_at
+      FROM analytics_v2_events
+      ORDER BY id DESC
       LIMIT 50
     `).all();
+
+    res.setHeader("Cache-Control","no-store");
     res.json(recent);
-  } catch (e) {
-    console.error('Analytics recent error:', e);
-    res.status(500).json({ error: e.message });
+  } catch(e) {
+    console.error("Analytics V2 recent error:", e);
+    res.status(500).json({error:e.message});
   }
 });
+
+app.post("/api/admin/analytics/v2/reset", adminOnly, (req,res)=>{
+  try {
+    const reset = db.transaction(()=>{
+      db.prepare("DELETE FROM analytics_v2_events").run();
+      db.prepare("DELETE FROM analytics_v2_presence").run();
+      db.prepare("DELETE FROM analytics_v2_visitors").run();
+    });
+    reset();
+    analyticsGeoCache.clear();
+    res.json({ok:true});
+  } catch(e) {
+    res.status(500).json({error:e.message});
+  }
+});
+
+setInterval(()=>{
+  try {
+    db.prepare(`
+      DELETE FROM analytics_v2_presence
+      WHERE last_seen < datetime('now','-1 day')
+    `).run();
+  } catch(e) {}
+}, 60 * 60 * 1000);
 
 app.get("/api/plans",(req,res)=>res.json(db.prepare("SELECT * FROM plans WHERE active=1 ORDER BY id").all()));
 app.get("/api/products",(req,res)=>{
@@ -770,37 +1140,50 @@ app.get("/api/app/info", (req,res)=>{
 
 app.get("/api/app/download", async (req,res)=>{
   try {
+    // A download is counted when the browser requests the real APK endpoint.
+    // Tracking runs in the background and never delays the file download.
+    recordAnalyticsEventV2(req, res, "download_click", "/download.html")
+      .catch(err=>console.error("Analytics V2 download tracking error:", err.message));
+
     const fs = require("fs");
     const path = require("path");
     const https = require("https");
-    
+
     const appDir = path.join(__dirname, "public", "apps");
     if(!fs.existsSync(appDir)) fs.mkdirSync(appDir, {recursive: true});
-    
+
     const appPath = path.join(appDir, "worldtv8.2.7-20260817.apk");
-    
+
     if(fs.existsSync(appPath)) {
       res.setHeader("Content-Type", "application/vnd.android.package-archive");
       res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.7-20260817.apk");
       res.setHeader("Content-Length", fs.statSync(appPath).size);
       return res.sendFile(appPath);
     }
-    
+
     res.setHeader("Content-Type", "application/vnd.android.package-archive");
     res.setHeader("Content-Disposition", "attachment; filename=worldtv8.2.7-20260817.apk");
-    
+
     const externalUrl = "https://23s.tv/IPTV/worldtv8.2.7-20260817.apk";
-    
+
     https.get(externalUrl, (remoteRes) => {
+      if((remoteRes.statusCode || 500) >= 400){
+        console.error("Remote app download failed:", remoteRes.statusCode);
+        if(!res.headersSent) return res.status(503).json({error:"App download temporarily unavailable"});
+        return res.end();
+      }
+
       const cacheStream = fs.createWriteStream(appPath);
       remoteRes.pipe(cacheStream);
       remoteRes.pipe(res);
     }).on("error", (err) => {
       console.error("Failed to download app:", err);
-      res.status(503).json({error: "App download temporarily unavailable"});
+      if(!res.headersSent) return res.status(503).json({error: "App download temporarily unavailable"});
+      res.end();
     });
   } catch(e) {
-    res.status(500).json({error: e.message});
+    if(!res.headersSent) return res.status(500).json({error: e.message});
+    res.end();
   }
 });
 
@@ -2910,63 +3293,16 @@ app.get("/api/exchange-rates", async (req, res) => {
   }
 });
 
-// Cache visitor country lookups for 6 hours
-const visitorCountryCache = new Map();
-
 // GET /api/visitor-country
+// Uses the same real-client-IP and country resolver as Live Analytics V2.
 app.get("/api/visitor-country", async (req, res) => {
   try {
-    const ip = String(
-      req.headers["x-real-ip"] ||
-      (req.headers["x-forwarded-for"] || "").split(",")[0] ||
-      req.ip ||
-      ""
-    )
-      .trim()
-      .replace(/^::ffff:/, "");
-
-    if (!ip) {
-      return res.json({
-        country: "Unknown",
-        country_code: ""
-      });
-    }
-
-    const cached = visitorCountryCache.get(ip);
-
-    if (cached && Date.now() - cached.time < 6 * 60 * 60 * 1000) {
-      return res.json(cached.data);
-    }
-
-    const response = await fetch(
-      `https://ipwho.is/${encodeURIComponent(ip)}?fields=success,country,country_code`
-    );
-
-    const data = await response.json();
-
-    if (!response.ok || data.success === false) {
-      throw new Error("Country lookup failed");
-    }
-
-    const result = {
-      country: data.country || "Unknown",
-      country_code: data.country_code || ""
-    };
-
-    visitorCountryCache.set(ip, {
-      time: Date.now(),
-      data: result
-    });
-
-    res.json(result);
-
+    const geo = await resolveAnalyticsGeo(req);
+    res.setHeader("Cache-Control","no-store");
+    res.json(geo);
   } catch (error) {
     console.error("Visitor country error:", error);
-
-    res.json({
-      country: "Unknown",
-      country_code: ""
-    });
+    res.json({ country: "Unknown", country_code: "" });
   }
 });
 // 404 Handler
