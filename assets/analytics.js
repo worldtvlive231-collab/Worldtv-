@@ -1,85 +1,59 @@
-// World TV Analytics Tracking Script
-// Lightweight, non-blocking visitor analytics
+(() => {
+  "use strict";
 
-(function() {
-  'use strict';
+  if (window.__WORLD_TV_ANALYTICS_V2__) return;
+  window.__WORLD_TV_ANALYTICS_V2__ = true;
 
-  // Track page view
-  function trackPageView() {
-    const pathname = window.location.pathname;
-    if (pathname.startsWith('/admin') || pathname.startsWith('/api/')) {
-      return; // Don't track admin or API
-    }
+  const path = window.location.pathname || "/";
+  if (/^\/(?:admin|reseller)(?:\/|$)/i.test(path)) return;
 
-    const referrer = document.referrer || '';
-    
+  const HEARTBEAT_MS = 20000;
+  let timer = null;
+
+  async function heartbeat() {
+    if (document.visibilityState === "hidden") return;
+
     try {
-      navigator.sendBeacon('/api/analytics/visit', JSON.stringify({
-        eventType: 'page_view',
-        pagePath: pathname,
-        referrer: referrer
-      }));
-    } catch (e) {
-      // Fallback to fetch
-      fetch('/api/analytics/visit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/analytics/v2/heartbeat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        cache: "no-store",
+        keepalive: true,
         body: JSON.stringify({
-          eventType: 'page_view',
-          pagePath: pathname,
-          referrer: referrer
-        }),
-        keepalive: true
-      }).catch(() => {});
+          pagePath: window.location.pathname || "/"
+        })
+      });
+    } catch (e) {
+      // Analytics must never interrupt the customer experience.
     }
   }
 
-  // Track download clicks - exposed globally
-  window.trackDownload = function() {
-    const referrer = document.referrer || '';
-    
-    try {
-      navigator.sendBeacon('/api/analytics/visit', JSON.stringify({
-        eventType: 'download_click',
-        pagePath: window.location.pathname,
-        referrer: referrer
-      }));
-    } catch (e) {
-      fetch('/api/analytics/visit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventType: 'download_click',
-          pagePath: window.location.pathname,
-          referrer: referrer
-        }),
-        keepalive: true
-      }).catch(() => {});
-    }
-  };
+  function start() {
+    if (timer) clearInterval(timer);
+    heartbeat();
+    timer = setInterval(heartbeat, HEARTBEAT_MS);
+  }
 
-  // Initialize on DOMContentLoaded
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+  function stop() {
+    if (!timer) return;
+    clearInterval(timer);
+    timer = null;
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") start();
+  });
+
+  window.addEventListener("pageshow", () => {
+    if (document.visibilityState !== "hidden") heartbeat();
+  });
+
+  window.addEventListener("pagehide", stop, { once: true });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start, { once: true });
   } else {
-    init();
-  }
-
-  function init() {
-    // Track page view
-    trackPageView();
-
-    // Attach click handlers to download buttons
-    const downloadButtons = document.querySelectorAll('[data-track-download]');
-    downloadButtons.forEach(btn => {
-      btn.addEventListener('click', window.trackDownload, false);
-    });
-
-    // Also track .download-btn, #download-btn, or .app-download classes
-    const appDownloadLinks = document.querySelectorAll('.download-link, .app-download, [href$=".apk"]');
-    appDownloadLinks.forEach(link => {
-      link.addEventListener('click', window.trackDownload, false);
-    });
+    start();
   }
 })();
-
