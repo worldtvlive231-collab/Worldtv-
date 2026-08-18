@@ -78,7 +78,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 
 <section id="codesTab" class="hide">
 <div class="card"><h2>Upload Subscription Codes</h2><select id="plan"></select><input id="csv" type="file" accept=".csv,text/csv"><button class="btn primary" onclick="uploadCsv()">Upload CSV</button><textarea id="codes" placeholder="Paste codes, one per line"></textarea><button class="btn primary" onclick="pasteCodes()">Add Codes</button><p id="codeMsg" class="muted"></p></div>
-<div class="card"><h2>Codes</h2><div style="overflow:auto"><table><thead><tr><th>Code</th><th>Plan</th><th>Status</th><th>Customer</th><th>Expires</th></tr></thead><tbody id="codeRows"></tbody></table></div></div>
+<div class="card"><h2>Codes</h2><div style="overflow:auto"><table><thead><tr><th>Code</th><th>Plan</th><th>Status</th><th>Customer</th><th>Expires</th><th>Actions</th>/tr></thead><tbody id="codeRows"></tbody></table></div></div>
 </section>
 <section id="promotionsTab" class="hide">
 <div class="card"><h2>Promotions & Announcements</h2>
@@ -535,7 +535,95 @@ function resetProductForm(){editingProductId=null;$("productFormTitle").textCont
 function editProduct(id){const p=window._products.find(x=>x.id===id);if(!p)return;editingProductId=id;$("productFormTitle").textContent="Edit Product";$("pName").value=p.name;$("pPrice").value=p.price_ghs??"";$("pCategory").value=p.category||"General";$("pStock").value=p.stock_status||"in_stock";$("pDescription").value=p.description||"";$("pWhatsapp").value=p.whatsapp_number||"+233244909092";$("pFeatured").checked=!!p.featured;window.scrollTo({top:0,behavior:"smooth"})}
 $("productForm").onsubmit=async e=>{e.preventDefault();const fd=new FormData();fd.append("name",$("pName").value);fd.append("price_ghs",$("pPrice").value);fd.append("category",$("pCategory").value);fd.append("stock_status",$("pStock").value);fd.append("description",$("pDescription").value);fd.append("whatsapp_number",$("pWhatsapp").value);fd.append("featured",$("pFeatured").checked?"1":"0");fd.append("active","1");if($("pImage").files[0])fd.append("image",$("pImage").files[0]);try{await api(editingProductId?`/api/admin/products/${editingProductId}`:"/api/admin/products",{method:editingProductId?"PUT":"POST",body:fd});resetProductForm();await refreshAll()}catch(err){$("pMsg").textContent=err.message}};
 async function deleteProduct(id){if(!confirm("Delete this product?"))return;await api(`/api/admin/products/${id}`,{method:"DELETE"});await refreshAll()}
-async function loadCodes(){const rows=await api("/api/admin/codes");$("codeRows").innerHTML=rows.map(x=>`<tr><td>${x.code}</td><td>${x.plan_name}</td><td>${x.status}</td><td>${x.user_email||"—"}</td><td>${x.expires_at||"—"}</td></tr>`).join("")}
+async function loadCodes(){
+  const rows=await api("/api/admin/codes");
+  window._codes=rows;
+
+  $("codeRows").innerHTML=rows.map(x=>`
+    <tr>
+      <td>${x.code}</td>
+      <td>${x.plan_name}</td>
+      <td>${x.status}</td>
+      <td>${x.user_email||"—"}</td>
+      <td>${x.expires_at||"—"}</td>
+      <td>
+        <button class="btn secondary" onclick="viewCode(${x.id})">View</button>
+        <button class="btn secondary" onclick="editCode(${x.id})">Edit</button>
+        <button class="btn danger" onclick="deleteCode(${x.id})">Delete</button>
+      </td>
+    </tr>
+  `).join("");
+}async function viewCode(id){
+  const code=window._codes.find(x=>x.id===id);
+  if(!code)return;
+
+  alert(
+    "Subscription Code\n\n"+
+    "Code: "+code.code+"\n"+
+    "Plan: "+code.plan_name+"\n"+
+    "Status: "+code.status+"\n"+
+    "Customer: "+(code.user_email||"—")+"\n"+
+    "Expiry: "+(code.expires_at||"—")+"\n"+
+    "Created: "+(code.created_at||"—")
+  );
+}
+async function editCode(id){
+  const code=window._codes.find(x=>x.id===id);
+  if(!code)return;
+
+  const newCode=prompt("Subscription code:",code.code);
+  if(newCode===null)return;
+
+  const newPlanId=prompt("Plan ID:",code.plan_id||"1");
+  if(newPlanId===null)return;
+
+  const newStatus=prompt(
+    "Status: unused, used or disabled",
+    code.status
+  );
+  if(newStatus===null)return;
+
+  const newExpiry=prompt(
+    "Expiry date (leave blank for none):",
+    code.expires_at||""
+  );
+  if(newExpiry===null)return;
+
+  try{
+    await api(`/api/admin/codes/${id}`,{
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        code:newCode,
+        planId:Number(newPlanId),
+        status:newStatus,
+        expires_at:newExpiry
+      })
+    });
+
+    alert("Subscription code updated.");
+    await refreshAll();
+  }catch(e){
+    alert(e.message);
+  }
+  async function deleteCode(id){
+  const code=window._codes.find(x=>x.id===id);
+  if(!code)return;
+
+  if(!confirm("Delete subscription code "+code.code+"?"))return;
+
+  try{
+    await api(`/api/admin/codes/${id}`,{
+      method:"DELETE"
+    });
+
+    alert("Subscription code deleted.");
+    await refreshAll();
+  }catch(e){
+    alert(e.message);
+  }
+}
+} 
 async function uploadCsv(){const f=$("csv").files[0];if(!f)return;const fd=new FormData();fd.append("file",f);fd.append("planId",$("plan").value);const d=await api("/api/admin/codes/csv",{method:"POST",body:fd});$("codeMsg").textContent=`Added ${d.added}; skipped ${d.duplicates} duplicates.`;await refreshAll()}
 async function pasteCodes(){const d=await api("/api/admin/codes/text",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({planId:$("plan").value,codes:$("codes").value})});$("codeMsg").textContent=`Added ${d.added}; skipped ${d.duplicates} duplicates.`;$("codes").value="";await refreshAll()}
 
