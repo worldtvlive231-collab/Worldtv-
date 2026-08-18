@@ -607,10 +607,9 @@ async function editCode(id){
     alert(e.message);
   }
   async function deleteCode(id){
-  const code=window._codes.find(x=>x.id===id);
-  if(!code)return;
-
-  if(!confirm("Delete subscription code "+code.code+"?"))return;
+  if(!confirm("Are you sure you want to delete this subscription code?")){
+    return;
+  }
 
   try{
     await api(`/api/admin/codes/${id}`,{
@@ -620,7 +619,7 @@ async function editCode(id){
     alert("Subscription code deleted.");
     await refreshAll();
   }catch(e){
-    alert(e.message);
+    alert(e.message || "Could not delete subscription code.");
   }
 }
 } 
