@@ -622,7 +622,7 @@ async function editCode(id){
     alert(e.message || "Could not delete subscription code.");
   }
 }
-} 
+
 async function uploadCsv(){const f=$("csv").files[0];if(!f)return;const fd=new FormData();fd.append("file",f);fd.append("planId",$("plan").value);const d=await api("/api/admin/codes/csv",{method:"POST",body:fd});$("codeMsg").textContent=`Added ${d.added}; skipped ${d.duplicates} duplicates.`;await refreshAll()}
 async function pasteCodes(){const d=await api("/api/admin/codes/text",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({planId:$("plan").value,codes:$("codes").value})});$("codeMsg").textContent=`Added ${d.added}; skipped ${d.duplicates} duplicates.`;$("codes").value="";await refreshAll()}
 
