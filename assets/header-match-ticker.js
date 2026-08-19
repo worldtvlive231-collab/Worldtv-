@@ -28,6 +28,7 @@
     .wtv-hero-product-copy .wtv-product-highlights span{font-size:11px;font-weight:850;padding:7px 9px;border-radius:999px;background:#fff7d8;border:1px solid #ecd580;color:#4b3900}
     .wtv-hero-product-price{font-size:31px;font-weight:950;color:#17130a;margin:6px 0 2px}
     .wtv-hero-product-price small{display:block;font-size:12px;font-weight:700;color:#7a705d;margin-top:3px}
+    .wtv-featured-box-price small{display:block;font-size:12px;font-weight:750;color:#716958;margin-top:4px}
     .wtv-hero-buy-btn{width:100%;margin-top:12px;font-size:16px}
     @keyframes wtvTickerMove{from{transform:translateX(0)}to{transform:translateX(-100%)}}
     @media(max-width:620px){.wtv-match-ticker-label{padding:0 10px;font-size:10px}.wtv-match-ticker-inner{min-height:42px}.wtv-match-ticker-label{height:42px}.wtv-match-item{font-size:12px}.wtv-match-ticker-track{gap:28px}.wtv-match-team-logo,.wtv-match-team-logo-fallback{width:24px;height:24px;flex-basis:24px}.wtv-hero-product-copy h2{font-size:22px}}
@@ -46,19 +47,53 @@
     pricingPromise = new Promise((resolve,reject)=>{
       const existing=document.querySelector('script[data-wtv-product-pricing]');
       if(existing){existing.addEventListener('load',()=>resolve(window.WorldTvProductPricing));existing.addEventListener('error',reject);return;}
-      const s=document.createElement('script');s.src='/assets/product-pricing.js?v=2';s.dataset.wtvProductPricing='1';s.onload=()=>resolve(window.WorldTvProductPricing);s.onerror=reject;document.head.appendChild(s);
+      const s=document.createElement('script');s.src='/assets/product-pricing.js?v=3';s.dataset.wtvProductPricing='1';s.onload=()=>resolve(window.WorldTvProductPricing);s.onerror=reject;document.head.appendChild(s);
     });
     return pricingPromise;
   }
 
-  function mount(){const header=document.querySelector("header");if(header&&!ticker.isConnected)header.insertAdjacentElement("afterend",ticker);loadTicker();upgradeHeroProductCard();}
+  function mount(){
+    const header=document.querySelector("header");
+    if(header&&!ticker.isConnected)header.insertAdjacentElement("afterend",ticker);
+    loadTicker();
+    upgradeHeroProductCard();
+    renderFeaturedTvBoxPrices();
+    setTimeout(renderFeaturedTvBoxPrices,700);
+    setTimeout(renderFeaturedTvBoxPrices,1800);
+  }
   function esc(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch]));}
   function fmtKickoff(v){if(!v)return"";const d=new Date(v);if(Number.isNaN(d.getTime()))return"";return d.toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});}
   function firstValue(...values){return values.find(v=>typeof v==="string"&&v.trim())||"";}
   function logoUrl(m,side){const team=m?.[side]||m?.[`${side}_team_data`]||{};return firstValue(m?.[`${side}_logo`],m?.[`${side}_team_logo`],m?.[`${side}_badge`],m?.[`${side}_image`],m?.[`${side}_img`],team?.logo,team?.logo_url,team?.badge,team?.image,team?.img);}
   function logoHtml(url,name){if(!url)return'<span class="wtv-match-team-logo-fallback">⚽</span>';return `<img class="wtv-match-team-logo" src="${esc(url)}" alt="${esc(name)} logo" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<span class=&quot;wtv-match-team-logo-fallback&quot;>⚽</span>'">`;}
 
-  async function renderHeroPrice(){const price=document.getElementById('wtvHeroBoxPrice');if(!price)return;try{const pricing=await ensureProductPricing();if(pricing)await pricing.renderElement(price);}catch(_){price.innerHTML='GH₵850.00<small>Free shipping • Outside Ghana: $100 USD equivalent</small>';}}
+  async function renderHeroPrice(){
+    const price=document.getElementById('wtvHeroBoxPrice');
+    if(!price)return;
+    try{const pricing=await ensureProductPricing();if(pricing)await pricing.renderElement(price);}catch(_){price.innerHTML='GH₵850.00<small>Free shipping • Outside Ghana: $100 USD equivalent</small>';}
+  }
+
+  async function renderFeaturedTvBoxPrices(){
+    const root=document.getElementById('featuredProducts');
+    if(!root)return;
+    const cards=[...root.querySelectorAll('.product-card')];
+    if(!cards.length)return;
+    try{
+      const pricing=await ensureProductPricing();
+      const country=await pricing.detectCountry();
+      for(const card of cards){
+        const title=card.querySelector('h3')?.textContent||'';
+        if(!pricing.isTvBoxProduct(title))continue;
+        const price=card.querySelector('.price');
+        if(!price)continue;
+        price.removeAttribute('data-price-ghs');
+        price.setAttribute('data-worldtv-product-price','tv-box');
+        price.classList.add('wtv-featured-box-price');
+        const q=pricing.quote({country,currency:window.CurrencyConverter?.activeCurrency||'USD',quantity:1});
+        price.innerHTML=`${q.primary}<small>${q.secondary}</small>`;
+      }
+    }catch(_){ }
+  }
 
   async function upgradeHeroProductCard(){
     const card=document.querySelector(".hero-card");if(!card||card.dataset.productPromoReady==="1")return;card.dataset.productPromoReady="1";
@@ -70,5 +105,7 @@
 
   async function loadTicker(){const track=document.getElementById("wtvMatchTickerTrack");if(!track)return;try{const r=await fetch(`/api/football/upcoming?_=${Date.now()}`,{cache:"no-store",headers:{Accept:"application/json"}});const d=await r.json();const matches=Array.isArray(d?.matches)?d.matches.slice(0,12):[];if(!matches.length){track.innerHTML='<span class="wtv-match-item">No upcoming matches right now.</span>';track.style.setProperty("--wtv-ticker-duration","28s");return;}track.innerHTML=matches.map(m=>{const homeName=m.home_team||"Home";const awayName=m.away_team||"Away";return `<span class="wtv-match-item"><span class="league">${esc(m.league||"Football")}</span><span class="wtv-match-team">${logoHtml(logoUrl(m,"home"),homeName)}<span>${esc(homeName)}</span></span><span class="vs">VS</span><span class="wtv-match-team">${logoHtml(logoUrl(m,"away"),awayName)}<span>${esc(awayName)}</span></span><span class="time">${esc(fmtKickoff(m.kickoff))}</span></span>`;}).join("");track.style.setProperty("--wtv-ticker-duration",Math.max(38,matches.length*5.5)+"s");}catch(e){track.innerHTML='<span class="wtv-match-item">Upcoming match updates unavailable right now.</span>';}}
 
-  window.addEventListener("worldtv:currency-changed",renderHeroPrice);if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",mount,{once:true});else mount();setInterval(loadTicker,60000);
+  window.addEventListener("worldtv:currency-changed",()=>{renderHeroPrice();renderFeaturedTvBoxPrices();});
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",mount,{once:true});else mount();
+  setInterval(loadTicker,60000);
 })();
