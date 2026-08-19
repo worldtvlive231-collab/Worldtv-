@@ -102,7 +102,11 @@ async function resolveLeagueMeta(host,m,init){
 async function enrichLeagueMetadata(matches,host,init,maxLookups=60){
  const groups=new Map();
  for(const m of matches){
-  if(topLeagueFor(m)||rawLeagueName(m))continue;
+  // A readable league name alone is not enough for ambiguous names such as
+  // Premier League, Serie A, Championship or Pro League. If the match cannot
+  // already be positively identified as one of our top leagues, resolve its
+  // league metadata so country information is available before filtering.
+  if(topLeagueFor(m))continue;
   const lid=leagueIdOf(m);if(!lid)continue;
   const k=String(lid),g=groups.get(k)||{matches:[]};g.matches.push(m);groups.set(k,g);
  }
@@ -111,7 +115,7 @@ async function enrichLeagueMetadata(matches,host,init,maxLookups=60){
   await Promise.all(candidates.slice(i,i+6).map(async g=>{const meta=await resolveLeagueMeta(host,g.matches[0],init);if(meta)for(const m of g.matches)m._resolvedLeague=meta;}));
  }
  for(const m of matches){
-  if(rawLeagueName(m))continue;
+  if(topLeagueFor(m))continue;
   const lid=leagueIdOf(m),cached=lid?leagueMetaCache.get(String(lid)):null;
   if(cached?.value)m._resolvedLeague=cached.value;
  }
@@ -119,7 +123,7 @@ async function enrichLeagueMetadata(matches,host,init,maxLookups=60){
 }
 async function normalizeMany(matches,host,init){await enrichLeagueMetadata(matches,host,init);return matches.map(normalizeMatch).filter(Boolean);}
 async function fetchMatchesByDate(host,date,init){
- const today=new Date().toISOString().slice(0,10),ttl=date===today?600000:21600000,key=`date:${date}:top10-v2`,cached=providerCache.get(key);
+ const today=new Date().toISOString().slice(0,10),ttl=date===today?600000:21600000,key=`date:${date}:top10-v3`,cached=providerCache.get(key);
  if(cached&&Date.now()-cached.time<ttl)return cached.matches;
  const {response,data}=await fetchProvider(`https://${host}/football-get-matches-by-date?date=${encodeURIComponent(fmtDate(date))}`,init);
  if(!response.ok)throw new Error(`Football provider API error ${response.status}`);
