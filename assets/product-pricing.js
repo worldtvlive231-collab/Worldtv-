@@ -2,7 +2,7 @@
   "use strict";
 
   const GHANA_PRICE_GHS = 850;
-  const INTERNATIONAL_PRICE_USD = 100;
+  const WORLD_PRICE_USD = 100;
 
   function normalizeCountry(value){
     return String(value || "").trim().toLowerCase();
@@ -56,21 +56,21 @@
         currency:"GHS",
         amount:GHANA_PRICE_GHS * qty,
         primary:format(GHANA_PRICE_GHS * qty,"GHS"),
-        secondary:qty === 1 ? "Free delivery & shipping in Ghana" : `Quantity ${qty} • Free delivery & shipping in Ghana`,
+        secondary:qty === 1 ? "Free delivery & shipping" : `Quantity ${qty} • Free delivery & shipping`,
         usd:null,
         ghs:GHANA_PRICE_GHS * qty
       };
     }
 
-    const usd = INTERNATIONAL_PRICE_USD * qty;
+    const usd = WORLD_PRICE_USD * qty;
     const selected = currency && currency !== "GHS" ? currency : "USD";
     const converted = localFromUsd(usd,selected);
     return {
-      market:"international",
+      market:"worldwide",
       currency:selected,
       amount:converted ?? usd,
       primary:converted == null ? `$${usd.toFixed(2)} USD` : `${format(converted,selected)}${selected === "USD" ? " USD" : ` ${selected}`}`,
-      secondary:selected === "USD" ? "International price" : `≈ $${usd.toFixed(2)} USD`,
+      secondary:selected === "USD" ? "Free shipping" : `≈ $${usd.toFixed(2)} USD • Free shipping`,
       usd,
       ghs:null
     };
@@ -96,7 +96,8 @@
 
   window.WorldTvProductPricing = {
     GHANA_PRICE_GHS,
-    INTERNATIONAL_PRICE_USD,
+    WORLD_PRICE_USD,
+    INTERNATIONAL_PRICE_USD: WORLD_PRICE_USD,
     isGhana,
     isTvBoxProduct,
     detectCountry,

@@ -37,11 +37,7 @@
 
   const ticker = document.createElement("div");
   ticker.className = "wtv-match-ticker";
-  ticker.innerHTML = `
-    <div class="wtv-match-ticker-inner">
-      <div class="wtv-match-ticker-label">⚽ UPCOMING MATCHES</div>
-      <div class="wtv-match-ticker-window"><div class="wtv-match-ticker-track" id="wtvMatchTickerTrack"><span class="wtv-match-item">Loading upcoming matches…</span></div></div>
-    </div>`;
+  ticker.innerHTML = `<div class="wtv-match-ticker-inner"><div class="wtv-match-ticker-label">⚽ UPCOMING MATCHES</div><div class="wtv-match-ticker-window"><div class="wtv-match-ticker-track" id="wtvMatchTickerTrack"><span class="wtv-match-item">Loading upcoming matches…</span></div></div></div>`;
 
   let pricingPromise;
   function ensureProductPricing(){
@@ -50,113 +46,29 @@
     pricingPromise = new Promise((resolve,reject)=>{
       const existing=document.querySelector('script[data-wtv-product-pricing]');
       if(existing){existing.addEventListener('load',()=>resolve(window.WorldTvProductPricing));existing.addEventListener('error',reject);return;}
-      const s=document.createElement('script');
-      s.src='/assets/product-pricing.js?v=1';
-      s.dataset.wtvProductPricing='1';
-      s.onload=()=>resolve(window.WorldTvProductPricing);
-      s.onerror=reject;
-      document.head.appendChild(s);
+      const s=document.createElement('script');s.src='/assets/product-pricing.js?v=2';s.dataset.wtvProductPricing='1';s.onload=()=>resolve(window.WorldTvProductPricing);s.onerror=reject;document.head.appendChild(s);
     });
     return pricingPromise;
   }
 
-  function mount(){
-    const header = document.querySelector("header");
-    if (header && !ticker.isConnected) header.insertAdjacentElement("afterend", ticker);
-    loadTicker();
-    upgradeHeroProductCard();
-  }
+  function mount(){const header=document.querySelector("header");if(header&&!ticker.isConnected)header.insertAdjacentElement("afterend",ticker);loadTicker();upgradeHeroProductCard();}
+  function esc(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch]));}
+  function fmtKickoff(v){if(!v)return"";const d=new Date(v);if(Number.isNaN(d.getTime()))return"";return d.toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});}
+  function firstValue(...values){return values.find(v=>typeof v==="string"&&v.trim())||"";}
+  function logoUrl(m,side){const team=m?.[side]||m?.[`${side}_team_data`]||{};return firstValue(m?.[`${side}_logo`],m?.[`${side}_team_logo`],m?.[`${side}_badge`],m?.[`${side}_image`],m?.[`${side}_img`],team?.logo,team?.logo_url,team?.badge,team?.image,team?.img);}
+  function logoHtml(url,name){if(!url)return'<span class="wtv-match-team-logo-fallback">⚽</span>';return `<img class="wtv-match-team-logo" src="${esc(url)}" alt="${esc(name)} logo" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<span class=&quot;wtv-match-team-logo-fallback&quot;>⚽</span>'">`;}
 
-  function esc(v){return String(v ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch]));}
-  function fmtKickoff(v){
-    if(!v) return "";
-    const d = new Date(v);
-    if(Number.isNaN(d.getTime())) return "";
-    return d.toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
-  }
-  function firstValue(...values){return values.find(v=>typeof v === "string" && v.trim()) || "";}
-  function logoUrl(m, side){
-    const team = m?.[side] || m?.[`${side}_team_data`] || {};
-    return firstValue(
-      m?.[`${side}_logo`],m?.[`${side}_team_logo`],m?.[`${side}_badge`],m?.[`${side}_image`],m?.[`${side}_img`],
-      team?.logo,team?.logo_url,team?.badge,team?.image,team?.img
-    );
-  }
-  function logoHtml(url, name){
-    if(!url) return '<span class="wtv-match-team-logo-fallback">⚽</span>';
-    return `<img class="wtv-match-team-logo" src="${esc(url)}" alt="${esc(name)} logo" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<span class=&quot;wtv-match-team-logo-fallback&quot;>⚽</span>'">`;
-  }
-
-  async function renderHeroPrice(){
-    const price=document.getElementById('wtvHeroBoxPrice');
-    if(!price) return;
-    try{
-      const pricing=await ensureProductPricing();
-      if(pricing) await pricing.renderElement(price);
-    }catch(_){
-      price.innerHTML='GH₵850.00<small>Ghana price • International price: $100 USD equivalent</small>';
-    }
-  }
+  async function renderHeroPrice(){const price=document.getElementById('wtvHeroBoxPrice');if(!price)return;try{const pricing=await ensureProductPricing();if(pricing)await pricing.renderElement(price);}catch(_){price.innerHTML='GH₵850.00<small>Free shipping • Outside Ghana: $100 USD equivalent</small>';}}
 
   async function upgradeHeroProductCard(){
-    const card = document.querySelector(".hero-card");
-    if(!card || card.dataset.productPromoReady === "1") return;
-    card.dataset.productPromoReady = "1";
-
-    const top = card.querySelector(".hero-card-top");
-    const oldPrice = card.querySelector(".hero-price");
-    const oldButton = card.querySelector("a.btn");
-    if(top) top.remove();
-    if(oldPrice) oldPrice.remove();
-    if(oldButton) oldButton.remove();
-
-    const copy = document.createElement("div");
-    copy.className = "wtv-hero-product-copy";
-    copy.innerHTML = `
-      <h2>No Android or Google Smart TV? No Problem! 📺</h2>
-      <p>Turn any TV with an HDMI port into a smart entertainment hub with our <strong>WORLD TV Box</strong>.</p>
-      <p>Enjoy <strong>4,000+ Live TV Channels</strong>, <strong>6,000+ Movies &amp; Series</strong>, Kids &amp; Anime, plus Live Sports — all in one box.</p>
-      <div class="wtv-product-highlights"><span>📺 4,000+ Live Channels</span><span>🎬 6,000+ Movies &amp; Series</span><span>👧 Kids &amp; Anime</span><span>⚽ Live Sports</span></div>
-      <div class="wtv-hero-product-price" id="wtvHeroBoxPrice">Loading price…<small>Ghana: GH₵850 • Outside Ghana: $100 USD equivalent</small></div>
-      <a class="btn primary wtv-hero-buy-btn" id="wtvHeroBuyNow" href="/products.html">🛒 Buy Now</a>`;
-    card.appendChild(copy);
-
-    try{
-      const r = await fetch(`/api/products?_=${Date.now()}`,{cache:"no-store",headers:{Accept:"application/json"}});
-      const d = await r.json();
-      const products = Array.isArray(d?.products) ? d.products : Array.isArray(d) ? d : [];
-      const product = products.find(p => /android\s*tv\s*box|world\s*tv\s*box/i.test(String(p?.name || ""))) || products[0];
-      if(product){
-        const buy = document.getElementById("wtvHeroBuyNow");
-        if(buy && product.id != null) buy.href = `/order.html?product=${encodeURIComponent(product.id)}`;
-        const image = document.getElementById("heroProductImage");
-        const imageUrl = product.image_url || product.image || "";
-        if(image && imageUrl) image.src = imageUrl;
-      }
-    }catch(_){ }
-    renderHeroPrice();
-    setTimeout(renderHeroPrice,800);
+    const card=document.querySelector(".hero-card");if(!card||card.dataset.productPromoReady==="1")return;card.dataset.productPromoReady="1";
+    const top=card.querySelector(".hero-card-top");const oldPrice=card.querySelector(".hero-price");const oldButton=card.querySelector("a.btn");if(top)top.remove();if(oldPrice)oldPrice.remove();if(oldButton)oldButton.remove();
+    const copy=document.createElement("div");copy.className="wtv-hero-product-copy";copy.innerHTML=`<h2>No Android or Google Smart TV? No Problem! 📺</h2><p>Turn any TV with an HDMI port into a smart entertainment hub with our <strong>WORLD TV Box</strong>.</p><p>Enjoy <strong>4,000+ Live TV Channels</strong>, <strong>6,000+ Movies &amp; Series</strong>, Kids &amp; Anime, plus Live Sports — all in one box.</p><div class="wtv-product-highlights"><span>📺 4,000+ Live Channels</span><span>🎬 6,000+ Movies &amp; Series</span><span>👧 Kids &amp; Anime</span><span>⚽ Live Sports</span><span>🚚 Free Shipping</span></div><div class="wtv-hero-product-price" id="wtvHeroBoxPrice">Loading price…<small>Ghana: GH₵850 • USA & other countries: $100 USD equivalent • Free shipping</small></div><a class="btn primary wtv-hero-buy-btn" id="wtvHeroBuyNow" href="/products.html">🛒 Buy Now</a>`;card.appendChild(copy);
+    try{const r=await fetch(`/api/products?_=${Date.now()}`,{cache:"no-store",headers:{Accept:"application/json"}});const d=await r.json();const products=Array.isArray(d?.products)?d.products:Array.isArray(d)?d:[];const product=products.find(p=>/android\s*tv\s*box|world\s*tv\s*box/i.test(String(p?.name||"")))||products[0];if(product){const buy=document.getElementById("wtvHeroBuyNow");if(buy&&product.id!=null)buy.href=`/order.html?product=${encodeURIComponent(product.id)}`;const image=document.getElementById("heroProductImage");const imageUrl=product.image_url||product.image||"";if(image&&imageUrl)image.src=imageUrl;}}catch(_){ }
+    renderHeroPrice();setTimeout(renderHeroPrice,800);
   }
 
-  async function loadTicker(){
-    const track = document.getElementById("wtvMatchTickerTrack");
-    if(!track) return;
-    try{
-      const r = await fetch(`/api/football/upcoming?_=${Date.now()}`,{cache:"no-store",headers:{Accept:"application/json"}});
-      const d = await r.json();
-      const matches = Array.isArray(d?.matches) ? d.matches.slice(0,12) : [];
-      if(!matches.length){track.innerHTML = '<span class="wtv-match-item">No upcoming matches right now.</span>';track.style.setProperty("--wtv-ticker-duration","28s");return;}
-      track.innerHTML = matches.map(m => {
-        const homeName = m.home_team || "Home";
-        const awayName = m.away_team || "Away";
-        return `<span class="wtv-match-item"><span class="league">${esc(m.league || "Football")}</span><span class="wtv-match-team">${logoHtml(logoUrl(m,"home"),homeName)}<span>${esc(homeName)}</span></span><span class="vs">VS</span><span class="wtv-match-team">${logoHtml(logoUrl(m,"away"),awayName)}<span>${esc(awayName)}</span></span><span class="time">${esc(fmtKickoff(m.kickoff))}</span></span>`;
-      }).join("");
-      track.style.setProperty("--wtv-ticker-duration", Math.max(38, matches.length * 5.5) + "s");
-    }catch(e){track.innerHTML = '<span class="wtv-match-item">Upcoming match updates unavailable right now.</span>';}
-  }
+  async function loadTicker(){const track=document.getElementById("wtvMatchTickerTrack");if(!track)return;try{const r=await fetch(`/api/football/upcoming?_=${Date.now()}`,{cache:"no-store",headers:{Accept:"application/json"}});const d=await r.json();const matches=Array.isArray(d?.matches)?d.matches.slice(0,12):[];if(!matches.length){track.innerHTML='<span class="wtv-match-item">No upcoming matches right now.</span>';track.style.setProperty("--wtv-ticker-duration","28s");return;}track.innerHTML=matches.map(m=>{const homeName=m.home_team||"Home";const awayName=m.away_team||"Away";return `<span class="wtv-match-item"><span class="league">${esc(m.league||"Football")}</span><span class="wtv-match-team">${logoHtml(logoUrl(m,"home"),homeName)}<span>${esc(homeName)}</span></span><span class="vs">VS</span><span class="wtv-match-team">${logoHtml(logoUrl(m,"away"),awayName)}<span>${esc(awayName)}</span></span><span class="time">${esc(fmtKickoff(m.kickoff))}</span></span>`;}).join("");track.style.setProperty("--wtv-ticker-duration",Math.max(38,matches.length*5.5)+"s");}catch(e){track.innerHTML='<span class="wtv-match-item">Upcoming match updates unavailable right now.</span>';}}
 
-  window.addEventListener("worldtv:currency-changed",renderHeroPrice);
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, {once:true});
-  else mount();
-  setInterval(loadTicker, 60000);
+  window.addEventListener("worldtv:currency-changed",renderHeroPrice);if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",mount,{once:true});else mount();setInterval(loadTicker,60000);
 })();
