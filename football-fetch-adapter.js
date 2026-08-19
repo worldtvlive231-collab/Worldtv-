@@ -1,168 +1,228 @@
-// Rate-limit-safe RapidAPI adapter for free-api-live-football-data.p.rapidapi.com
+// LiveScore-backed adapter for the existing /matches football API contract.
+// Keeps the website/admin routes unchanged while sourcing fixtures from LiveScore's public JSON feed.
 const nativeFetch = global.fetch;
 if (typeof nativeFetch !== "function") throw new Error("Global fetch is required");
 
 const providerCache = new Map();
-let blockedUntil = 0;
+const LIVE_BASE = "https://prod-cdn-mev-api.livescore.com";
+const DATE_BASE = "https://prod-cdn-public-api.livescore.com";
+const STATIC_BASE = "https://lsm-static-prod.livescore.com/medium/";
 
 const TOP_LEAGUES = [
-  {canonical:"Premier League", ids:[47], names:[/^premier league$/i]},
-  {canonical:"Serie A", ids:[55], names:[/^serie a$/i]},
-  {canonical:"La Liga", ids:[87], names:[/^la\s*liga$/i,/^laliga$/i]},
-  {canonical:"Bundesliga", ids:[54], names:[/^bundesliga$/i]},
-  {canonical:"Ligue 1", ids:[53], names:[/^ligue 1$/i]},
-  {canonical:"EFL Championship", ids:[48], names:[/^championship$/i,/^efl championship$/i]},
-  {canonical:"Belgian Pro League", ids:[40], names:[/^belgian pro league$/i,/^jupiler pro league$/i,/^first division a$/i,/^pro league$/i]},
-  {canonical:"Primeira Liga", ids:[61], names:[/^primeira liga$/i,/^liga portugal$/i,/^liga portugal betclic$/i]},
-  {canonical:"Brasileirão Serie A", ids:[268], names:[/^brasileir[aã]o.*serie a$/i,/^brasileir[aã]o$/i]},
-  {canonical:"Eredivisie", ids:[57], names:[/^eredivisie$/i]}
+  { canonical: "Premier League", countries: ["england"], names: [/^premier league(?:\s+\d{2}\/\d{2})?$/i] },
+  { canonical: "Serie A", countries: ["italy"], names: [/^serie a(?:\s+\d{2}\/\d{2})?$/i] },
+  { canonical: "La Liga", countries: ["spain"], names: [/^la\s*liga(?:\s+\d{2}\/\d{2})?$/i, /^laliga(?:\s+\d{2}\/\d{2})?$/i] },
+  { canonical: "Bundesliga", countries: ["germany"], names: [/^bundesliga(?:\s+\d{2}\/\d{2})?$/i] },
+  { canonical: "Ligue 1", countries: ["france"], names: [/^ligue 1(?:\s+\d{2}\/\d{2})?$/i] },
+  { canonical: "EFL Championship", countries: ["england"], names: [/^championship(?:\s+\d{2}\/\d{2})?$/i, /^efl championship(?:\s+\d{2}\/\d{2})?$/i] },
+  { canonical: "Belgian Pro League", countries: ["belgium"], names: [/^pro league(?:\s+\d{2}\/\d{2})?$/i, /^jupiler pro league(?:\s+\d{2}\/\d{2})?$/i, /^first division a(?:\s+\d{2}\/\d{2})?$/i] },
+  { canonical: "Primeira Liga", countries: ["portugal"], names: [/^primeira liga(?:\s+\d{2}\/\d{2})?$/i, /^liga portugal(?: betclic)?(?:\s+\d{2}\/\d{2})?$/i] },
+  { canonical: "Brasileirão Serie A", countries: ["brazil", "brasil"], names: [/^serie a(?:\s+\d{4})?$/i, /^brasileir[aã]o(?: serie a)?(?:\s+\d{4})?$/i] },
+  { canonical: "Eredivisie", countries: ["netherlands", "holland"], names: [/^eredivisie(?:\s+\d{2}\/\d{2})?$/i] }
 ];
 
-const clean = v => String(v || "").trim();
+const clean = v => String(v ?? "").trim();
 const norm = v => clean(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
-const jsonResponse = (body,status=200) => new Response(JSON.stringify(body), {status, headers:{"content-type":"application/json"}});
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const jsonResponse = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
-function datesInclusive(from,to,maxDays=8){
-  const start = new Date(`${from}T00:00:00Z`), end = new Date(`${to}T00:00:00Z`), out=[];
-  if(Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return out;
-  for(let d=start; d<=end && out.length<maxDays; d=new Date(d.getTime()+86400000)) out.push(d.toISOString().slice(0,10));
+function datesInclusive(from, to, maxDays = 8) {
+  const start = new Date(`${from}T00:00:00Z`);
+  const end = new Date(`${to}T00:00:00Z`);
+  const out = [];
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return out;
+  for (let d = start; d <= end && out.length < maxDays; d = new Date(d.getTime() + 86400000)) {
+    out.push(d.toISOString().slice(0, 10));
+  }
   return out;
 }
 
-function leagueIdOf(m){
-  return m?.leagueId ?? m?._league?.leagueId ?? m?._league?.id ?? m?.league?.leagueId ?? m?.league?.id ?? m?.tournament?.id ?? m?.competition?.id ?? null;
+function parsePackedUtc(value) {
+  const s = clean(value);
+  const m = s.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+  if (!m) return null;
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6]))).toISOString();
 }
-function leagueNameOf(m){
-  return clean(m?._league?.localizedName ?? m?._league?.leagueName ?? m?._league?.parentLeagueName ?? m?._league?.tournamentName ?? m?._league?.name ?? m?.league?.localizedName ?? m?.league?.leagueName ?? m?.league?.parentLeagueName ?? m?.league?.name ?? m?.tournament?.name ?? m?.tournament?.leagueName ?? m?.leagueName ?? m?.parentLeagueName ?? m?.competition?.name);
+
+function assetUrl(path) {
+  const p = clean(path);
+  if (!p) return null;
+  if (/^https?:\/\//i.test(p)) return p;
+  return STATIC_BASE + p.replace(/^\/+/, "");
 }
-function topLeagueFor(m){
-  const id = Number(leagueIdOf(m));
-  if(Number.isFinite(id)){
-    const byId = TOP_LEAGUES.find(l => l.ids.includes(id));
-    if(byId) return byId;
+
+function stageLeague(stage = {}) {
+  const country = norm(stage.Cnm || stage.Csnm || stage.CompD || stage.CompST || stage.Ccd);
+  const candidates = [stage.CompN, stage.Snm, stage.Sds, stage.CompUrlName, stage.Scd].map(clean).filter(Boolean);
+  return TOP_LEAGUES.find(league => {
+    if (league.countries.length && !league.countries.some(c => country === c || country.includes(c))) return false;
+    return candidates.some(name => league.names.some(re => re.test(name)));
+  }) || null;
+}
+
+function eventStatus(event = {}) {
+  const esid = Number(event.Esid);
+  const epr = Number(event.Epr);
+  const eps = clean(event.Eps);
+  const elapsedMatch = eps.match(/(\d+)/);
+  const elapsed = elapsedMatch ? Number(elapsedMatch[1]) : null;
+
+  if (epr === 1 || [2, 3, 10].includes(esid)) {
+    return { short: "LIVE", long: eps || "Live", elapsed };
   }
-  const name = leagueNameOf(m);
-  if(!name) return null;
-  return TOP_LEAGUES.find(l => l.names.some(re => re.test(name))) || null;
-}
-function teamLogo(t){
-  return t?.logo || t?.image || t?.imageUrl || t?.imagePath || t?.img || (t?.id ? `https://images.fotmob.com/image_resources/logo/teamlogo/${encodeURIComponent(t.id)}.png` : null);
-}
-function statusOf(s={}){
-  if(s.cancelled) return {short:"CANC",long:"Cancelled",elapsed:null};
-  if(s.finished) return {short:"FT",long:"Finished",elapsed:null};
-  if(s.ongoing || s.started){
-    const mt = String(s?.liveTime?.short || s?.liveTime?.long || "").match(/\d+/);
-    return {short:"LIVE",long:"Live",elapsed:mt?Number(mt[0]):null};
+  if (epr === 2 || [6, 13].includes(esid) || /^(FT|AP)$/i.test(eps)) {
+    return { short: "FT", long: eps || "Finished", elapsed: null };
   }
-  return {short:"NS",long:"Not Started",elapsed:null};
+  return { short: "NS", long: "Not Started", elapsed: null };
 }
-function normalizeMatch(m){
-  const league = topLeagueFor(m);
-  if(!league) return null;
-  const home = m?.home || m?.teams?.home || {}, away = m?.away || m?.teams?.away || {};
-  const kickoff = m?.status?.utcTime || m?.utcTime || m?.startTime || m?.date || m?.fixture?.date || null;
+
+function firstTeam(value) {
+  if (Array.isArray(value)) return value[0] || {};
+  return value && typeof value === "object" ? value : {};
+}
+
+function normalizeEvent(stage, event) {
+  const league = stageLeague(stage);
+  if (!league || !event || typeof event !== "object") return null;
+  const home = firstTeam(event.T1);
+  const away = firstTeam(event.T2);
+  const kickoff = parsePackedUtc(event.Esd) || (event.Etm?.ATm ? new Date(Number(event.Etm.ATm)).toISOString() : null);
+  const status = eventStatus(event);
+
   return {
-    fixture:{id:m?.id || m?.eventId || m?.matchId || m?.fixture?.id || null,date:kickoff,status:statusOf(m?.status || m?.fixture?.status || {})},
-    league:{id:league.id || leagueIdOf(m),name:league.canonical,logo:m?._league?.logo || m?.league?.logo || m?.tournament?.logo || (leagueIdOf(m)?`https://images.fotmob.com/image_resources/logo/leaguelogo/dark/${encodeURIComponent(leagueIdOf(m))}.png`:null)},
-    teams:{home:{id:home?.id||home?.teamId||null,name:home?.name||home?.longName||"Home",logo:teamLogo(home)},away:{id:away?.id||away?.teamId||null,name:away?.name||away?.longName||"Away",logo:teamLogo(away)}},
-    goals:{home:m?.home?.score ?? m?.goals?.home ?? null,away:m?.away?.score ?? m?.goals?.away ?? null}
+    fixture: {
+      id: event.Eid || event.id || null,
+      date: kickoff,
+      status
+    },
+    league: {
+      id: stage.CompId || stage.Sid || null,
+      name: league.canonical,
+      logo: assetUrl(stage.badgeUrl)
+    },
+    teams: {
+      home: {
+        id: home.ID || home.id || null,
+        name: home.Nm || home.name || "Home",
+        logo: assetUrl(home.Img || home.image)
+      },
+      away: {
+        id: away.ID || away.id || null,
+        name: away.Nm || away.name || "Away",
+        logo: assetUrl(away.Img || away.image)
+      }
+    },
+    goals: {
+      home: event.Tr1 === undefined || event.Tr1 === null || event.Tr1 === "" ? null : Number(event.Tr1),
+      away: event.Tr2 === undefined || event.Tr2 === null || event.Tr2 === "" ? null : Number(event.Tr2)
+    }
   };
 }
-function flattenProviderMatches(data){
-  let raw=[];
-  if(Array.isArray(data?.response?.matches)) raw=data.response.matches;
-  else if(Array.isArray(data?.response?.live)) raw=data.response.live;
-  else if(Array.isArray(data?.response)) raw=data.response;
-  else if(Array.isArray(data?.matches)) raw=data.matches;
-  const out=[];
-  for(const item of raw){
-    if(!item || typeof item!=="object") continue;
-    if(Array.isArray(item.matches)){
-      const meta=item.league&&typeof item.league==="object"?{...item,...item.league}:item;
-      for(const m of item.matches) if(m&&typeof m==="object") out.push({...m,_league:meta});
-    } else if(item.league && Array.isArray(item.league.matches)){
-      const meta={...item,...item.league};
-      for(const m of item.league.matches) if(m&&typeof m==="object") out.push({...m,_league:meta});
-    } else out.push(item);
+
+function normalizeStages(data) {
+  const stages = Array.isArray(data?.Stages) ? data.Stages : Array.isArray(data?.response?.Stages) ? data.response.Stages : [];
+  const out = [];
+  for (const stage of stages) {
+    if (!stageLeague(stage)) continue;
+    const events = Array.isArray(stage?.Events) ? stage.Events : [];
+    for (const event of events) {
+      const normalized = normalizeEvent(stage, event);
+      if (normalized) out.push(normalized);
+    }
   }
   return out;
 }
 
-async function readJson(r){
-  const t=await r.text();
-  try{return JSON.parse(t)}catch{throw new Error(`Football provider returned invalid JSON (${r.status})`)}
+async function readJson(response) {
+  const text = await response.text();
+  try { return JSON.parse(text); }
+  catch { throw new Error(`LiveScore returned invalid JSON (${response.status})`); }
 }
-async function fetchProvider(path,init,cacheKey,ttlMs){
-  const host=process.env.FOOTBALL_API_HOST;
-  const cached=providerCache.get(cacheKey);
-  if(cached && Date.now()-cached.time<ttlMs) return cached.data;
-  if(Date.now()<blockedUntil){
-    if(cached?.data) return cached.data;
-    const err=new Error("Football provider rate limited; retry later"); err.status=429; throw err;
+
+async function fetchCached(url, key, ttlMs) {
+  const cached = providerCache.get(key);
+  if (cached && Date.now() - cached.time < ttlMs) return cached.data;
+
+  const response = await nativeFetch(url, {
+    headers: {
+      "accept": "application/json",
+      "user-agent": "WorldTV/1.0"
+    }
+  });
+  if (!response.ok) {
+    if (cached?.data) return cached.data;
+    throw new Error(`LiveScore API error ${response.status}`);
   }
-  const r=await nativeFetch(`https://${host}${path}`,init);
-  if(r.status===429){
-    const retry=Number(r.headers.get("retry-after")||0);
-    blockedUntil=Date.now()+(retry>0?retry*1000:10*60*1000);
-    console.warn(`[Football adapter] provider rate limited (429); pausing requests until ${new Date(blockedUntil).toISOString()}`);
-    if(cached?.data) return cached.data;
-    const err=new Error("Football provider rate limited; retry later"); err.status=429; throw err;
-  }
-  if(!r.ok) throw new Error(`Football provider API error ${r.status}`);
-  const data=await readJson(r);
-  providerCache.set(cacheKey,{time:Date.now(),data});
+  const data = await readJson(response);
+  providerCache.set(key, { time: Date.now(), data });
   return data;
 }
 
-async function fetchMatchesByDate(date,init){
-  const key=`date:${date}:v6`;
-  const data=await fetchProvider(`/football-get-matches-by-date?date=${encodeURIComponent(date.replace(/-/g,""))}`,init,key,6*60*60*1000);
-  return flattenProviderMatches(data);
+async function fetchLive() {
+  const url = `${LIVE_BASE}/v1/api/app/live/soccer/0?countryCode=GH&locale=en`;
+  const data = await fetchCached(url, "livescore:live:v1", 25 * 1000);
+  return normalizeStages(data).filter(m => m.fixture?.status?.short === "LIVE");
 }
-function normalizeMany(matches){ return matches.map(normalizeMatch).filter(Boolean); }
 
-async function handleMatches(u,init){
-  const p=u.searchParams;
-  if(p.get("live")==="all"){
-    const data=await fetchProvider("/football-current-live",init,"live:v6",60*1000);
-    return jsonResponse({response:normalizeMany(flattenProviderMatches(data))});
+async function fetchDate(date) {
+  const ymd = date.replace(/-/g, "");
+  const url = `${DATE_BASE}/v1/api/app/date/soccer/${encodeURIComponent(ymd)}/0?countryCode=GH&locale=en&MD=1`;
+  const data = await fetchCached(url, `livescore:date:${ymd}:v1`, 30 * 60 * 1000);
+  return normalizeStages(data);
+}
+
+async function handleMatches(url) {
+  const p = url.searchParams;
+  if (p.get("live") === "all") {
+    return jsonResponse({ response: await fetchLive() });
   }
-  if(p.get("date")){
-    const matches=await fetchMatchesByDate(p.get("date"),init);
-    return jsonResponse({response:normalizeMany(matches)});
+
+  if (p.get("date")) {
+    return jsonResponse({ response: await fetchDate(p.get("date")) });
   }
-  const from=p.get("dateFrom"),to=p.get("dateTo");
-  if(from&&to){
-    const raw=[];
-    for(const d of datesInclusive(from,to,8)){
-      try{
-        const day=await fetchMatchesByDate(d,init);
-        raw.push(...day);
-      }catch(e){
-        if(e.status===429) break;
-        throw e;
-      }
-      if(Date.now()>=blockedUntil) await sleep(900);
+
+  const from = p.get("dateFrom");
+  const to = p.get("dateTo");
+  if (from && to) {
+    const all = [];
+    for (const date of datesInclusive(from, to, 8)) {
+      const matches = await fetchDate(date);
+      all.push(...matches);
     }
-    const now=Date.now(),finished=p.get("status")==="FT";
-    const filtered=raw.filter(m=>{
-      const s=m?.status||{}, k=new Date(s?.utcTime||m?.utcTime||m?.startTime||m?.date||m?.fixture?.date||"").getTime();
-      if(finished) return s.finished===true || m?.fixture?.status?.short==="FT";
-      return s.finished!==true && s.cancelled!==true && (Number.isNaN(k)||k>=now);
+
+    const finishedOnly = p.get("status") === "FT";
+    const now = Date.now();
+    const filtered = all.filter(match => {
+      if (finishedOnly) return match.fixture?.status?.short === "FT";
+      if (match.fixture?.status?.short === "FT") return false;
+      const kickoffMs = new Date(match.fixture?.date || "").getTime();
+      return Number.isNaN(kickoffMs) || kickoffMs >= now - 2 * 60 * 60 * 1000;
     });
-    return jsonResponse({response:normalizeMany(filtered)});
+
+    const deduped = Array.from(new Map(filtered.map(m => [String(m.fixture?.id || `${m.teams?.home?.name}-${m.teams?.away?.name}-${m.fixture?.date}`), m])).values());
+    return jsonResponse({ response: deduped });
   }
-  return nativeFetch(u,init);
+
+  return null;
 }
 
-global.fetch=async function footballAwareFetch(input,init={}){
-  let u; try{u=input instanceof URL?input:new URL(typeof input==="string"?input:input.url)}catch{return nativeFetch(input,init)}
-  const host=process.env.FOOTBALL_API_HOST;
-  if(!host || u.hostname!==host || u.pathname!=="/matches") return nativeFetch(input,init);
-  try{return await handleMatches(u,init)}catch(e){
-    console.error("[Football adapter]",e.message);
-    return jsonResponse({error:e.status===429?"Football provider rate limited. Please retry shortly.":"Football data temporarily unavailable"},e.status===429?429:502);
+global.fetch = async function footballAwareFetch(input, init = {}) {
+  let url;
+  try {
+    url = input instanceof URL ? input : new URL(typeof input === "string" ? input : input.url);
+  } catch {
+    return nativeFetch(input, init);
+  }
+
+  const configuredHost = process.env.FOOTBALL_API_HOST;
+  if (!configuredHost || url.hostname !== configuredHost || url.pathname !== "/matches") {
+    return nativeFetch(input, init);
+  }
+
+  try {
+    const response = await handleMatches(url);
+    return response || nativeFetch(input, init);
+  } catch (error) {
+    console.error("[Football adapter]", error.message);
+    return jsonResponse({ error: "Football data temporarily unavailable" }, 502);
   }
 };
