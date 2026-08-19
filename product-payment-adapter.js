@@ -103,12 +103,7 @@ async function usdFromGhs(ghs){
 function registerRoutes(app){
   app.get("/api/product-payments/config",(req,res)=>{
     res.setHeader("Cache-Control","no-store");
-    res.json({
-      ok:true,
-      paystack_configured:Boolean(process.env.PAYSTACK_SECRET_KEY),
-      paypal_configured:Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
-      paypal_mode:paypalMode
-    });
+    res.json({ok:true,paystack_configured:Boolean(process.env.PAYSTACK_SECRET_KEY),paypal_configured:Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),paypal_mode:paypalMode});
   });
 
   app.post("/api/product-payments/paystack/initialize",async(req,res)=>{
@@ -119,18 +114,7 @@ function registerRoutes(app){
       if(!String(order.email||"").trim()) return res.status(400).json({error:"Customer email is required for Paystack payment"});
       const reference=`WTVP-${Date.now()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
       const callback=`${publicBase()}/order.html?payment=paystack&order=${encodeURIComponent(orderNumber)}&payment_reference=${encodeURIComponent(reference)}`;
-      const r=await fetch("https://api.paystack.co/transaction/initialize",{
-        method:"POST",
-        headers:{Authorization:`Bearer ${process.env.PAYSTACK_SECRET_KEY}`,"Content-Type":"application/json",Accept:"application/json"},
-        body:JSON.stringify({
-          email:String(order.email).trim(),
-          amount:Math.round(Number(order.total_ghs)*100),
-          currency:"GHS",
-          reference,
-          callback_url:callback,
-          metadata:{order_number:orderNumber,customer_name:order.customer_name,product:order.product_name}
-        })
-      });
+      const r=await fetch("https://api.paystack.co/transaction/initialize",{method:"POST",headers:{Authorization:`Bearer ${process.env.PAYSTACK_SECRET_KEY}`,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({email:String(order.email).trim(),amount:Math.round(Number(order.total_ghs)*100),currency:"GHS",reference,callback_url:callback,metadata:{order_number:orderNumber,customer_name:order.customer_name,product:order.product_name}})});
       const d=await r.json().catch(()=>({}));
       if(!r.ok || !d.status || !d.data?.authorization_url) return res.status(502).json({error:d.message||"Could not start Paystack payment"});
       db.prepare(`INSERT INTO product_payment_attempts(order_number,provider,provider_reference,amount_ghs,amount_provider,provider_currency,status) VALUES(?,?,?,?,?,?,?)`).run(orderNumber,"paystack",reference,Number(order.total_ghs),Number(order.total_ghs),"GHS","pending");
@@ -164,11 +148,7 @@ function registerRoutes(app){
       const usd=await usdFromGhs(order.total_ghs);
       const returnUrl=`${publicBase()}/order.html?payment=paypal&order=${encodeURIComponent(orderNumber)}`;
       const cancelUrl=`${publicBase()}/order.html?payment=cancelled&order=${encodeURIComponent(orderNumber)}`;
-      const {r,d}=await paypalRequest("/v2/checkout/orders",{
-        method:"POST",
-        headers:{"PayPal-Request-Id":`product-${orderNumber}-${Date.now()}`},
-        body:JSON.stringify({intent:"CAPTURE",purchase_units:[{reference_id:orderNumber,custom_id:orderNumber,description:`World TV product order ${orderNumber}`,amount:{currency_code:"USD",value:usd.toFixed(2)}}],payment_source:{paypal:{experience_context:{brand_name:"World TV",shipping_preference:"GET_FROM_FILE",user_action:"PAY_NOW",return_url:returnUrl,cancel_url:cancelUrl}}}})
-      });
+      const {r,d}=await paypalRequest("/v2/checkout/orders",{method:"POST",headers:{"PayPal-Request-Id":`product-${orderNumber}-${Date.now()}`},body:JSON.stringify({intent:"CAPTURE",purchase_units:[{reference_id:orderNumber,custom_id:orderNumber,description:`World TV product order ${orderNumber}`,amount:{currency_code:"USD",value:usd.toFixed(2)}}],payment_source:{paypal:{experience_context:{brand_name:"World TV",shipping_preference:"GET_FROM_FILE",user_action:"PAY_NOW",return_url:returnUrl,cancel_url:cancelUrl}}}})});
       if(!r.ok || !d.id) return res.status(502).json({error:d.message||"Could not start PayPal payment"});
       const approval=(d.links||[]).find(x=>x.rel==="payer-action"||x.rel==="approve");
       if(!approval?.href) return res.status(502).json({error:"PayPal approval link was not received"});
@@ -185,15 +165,9 @@ function registerRoutes(app){
       const attempt=db.prepare(`SELECT * FROM product_payment_attempts WHERE order_number=? AND provider='paypal' AND provider_reference=?`).get(orderNumber,paypalOrderId);
       if(!attempt) return res.status(400).json({error:"PayPal order does not match this product order"});
       let {r,d}=await paypalRequest(`/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}/capture`,{method:"POST",body:"{}"});
-      if(!r.ok){
-        const shown=await paypalRequest(`/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}`,{method:"GET"});
-        if(!shown.r.ok || shown.d?.status!=="COMPLETED") return res.status(502).json({error:d.message||"Could not capture PayPal payment"});
-        d=shown.d;
-      }
+      if(!r.ok){const shown=await paypalRequest(`/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}`,{method:"GET"});if(!shown.r.ok || shown.d?.status!=="COMPLETED") return res.status(502).json({error:d.message||"Could not capture PayPal payment"});d=shown.d;}
       if(d.status!=="COMPLETED") return res.status(400).json({error:"PayPal payment has not been completed"});
-      const unit=d.purchase_units?.[0]||{};
-      const capture=unit.payments?.captures?.[0]||{};
-      const amt=capture.amount||unit.amount||{};
+      const unit=d.purchase_units?.[0]||{};const capture=unit.payments?.captures?.[0]||{};const amt=capture.amount||unit.amount||{};
       if((unit.custom_id||unit.reference_id)!==orderNumber || amt.currency_code!=="USD" || Math.abs(Number(amt.value)-Number(attempt.amount_provider))>0.001) return res.status(400).json({error:"PayPal payment details do not match this order"});
       markPaid(orderNumber,"paypal",paypalOrderId);
       res.json({ok:true,paid:true,order_number:orderNumber,total_ghs:Number(order.total_ghs),provider:"PayPal"});
@@ -205,7 +179,16 @@ const originalListen=express.application.listen;
 express.application.listen=function patchedProductPaymentsListen(...args){
   if(!this.__worldTvProductPaymentsInstalled){
     this.__worldTvProductPaymentsInstalled=true;
-    registerRoutes(this);
+    const router=this._router;
+    if(router && Array.isArray(router.stack)){
+      const before=router.stack.length;
+      registerRoutes(this);
+      const added=router.stack.splice(before);
+      const insertAt=Math.max(0,router.stack.length-2);
+      router.stack.splice(insertAt,0,...added);
+    }else{
+      registerRoutes(this);
+    }
   }
   return originalListen.apply(this,args);
 };
