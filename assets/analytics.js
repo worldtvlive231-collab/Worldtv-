@@ -7,6 +7,13 @@
   const path = window.location.pathname || "/";
   if (/^\/(?:admin|reseller)(?:\/|$)/i.test(path)) return;
 
+  if (path === "/" || path === "/index.html") {
+    const tickerScript = document.createElement("script");
+    tickerScript.src = "/assets/header-match-ticker.js?v=1";
+    tickerScript.defer = true;
+    document.head.appendChild(tickerScript);
+  }
+
   const HEARTBEAT_MS = 20000;
   let timer = null;
 
