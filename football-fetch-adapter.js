@@ -1,7 +1,8 @@
 // Adapter for the configured RapidAPI provider: free-api-live-football-data.p.rapidapi.com
 // The existing server.js football routes use API-Football-style /matches queries.
-// This preload translates those requests to this provider's real endpoints and
-// normalizes the response so the existing public API and frontend keep working.
+// This preload translates those requests to the provider's real endpoints,
+// normalizes the response, filters to the requested top 10 leagues, and keeps
+// team logos when the provider supplies them.
 
 const nativeFetch = global.fetch;
 const providerCache = new Map();
@@ -10,11 +11,32 @@ if (typeof nativeFetch !== "function") {
   throw new Error("Global fetch is required for football-fetch-adapter.js");
 }
 
+const TOP_LEAGUES = [
+  { canonical: "Premier League", countries: ["ENG"], names: [/^premier league$/i] },
+  { canonical: "Serie A", countries: ["ITA"], names: [/^serie a$/i] },
+  { canonical: "La Liga", countries: ["ESP"], names: [/^la ?liga$/i, /^laliga$/i] },
+  { canonical: "Bundesliga", countries: ["GER", "DEU"], names: [/^bundesliga$/i] },
+  { canonical: "Ligue 1", countries: ["FRA"], names: [/^ligue 1$/i] },
+  { canonical: "EFL Championship", countries: ["ENG"], names: [/^championship$/i, /^efl championship$/i] },
+  { canonical: "Belgian Pro League", countries: ["BEL"], names: [/^belgian pro league$/i, /^jupiler pro league$/i, /^pro league$/i, /^first division a$/i] },
+  { canonical: "Primeira Liga", countries: ["POR"], names: [/^primeira liga$/i, /^liga portugal$/i, /^liga portugal betclic$/i] },
+  { canonical: "Brasileirão Serie A", countries: ["BRA"], names: [/^brasileir[aã]o.*serie a$/i, /^serie a$/i] },
+  { canonical: "Eredivisie", countries: ["NED", "NLD"], names: [/^eredivisie$/i] }
+];
+
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" }
   });
+}
+
+function cleanCode(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function cleanName(value) {
+  return String(value || "").trim();
 }
 
 function formatProviderDate(dateString) {
@@ -37,12 +59,59 @@ function teamLogo(team) {
   return team?.logo || team?.image || team?.imageUrl || team?.imagePath || team?.img || null;
 }
 
-function leagueName(match) {
-  return match?.league?.name || match?.tournament?.name || match?.leagueName || match?.competition?.name || "Football";
+function rawLeagueName(match) {
+  return cleanName(
+    match?._league?.name ||
+    match?.league?.name ||
+    match?.tournament?.name ||
+    match?.tournament?.leagueName ||
+    match?.leagueName ||
+    match?.competition?.name ||
+    ""
+  );
+}
+
+function rawCountryCode(match) {
+  return cleanCode(
+    match?._league?.ccode ||
+    match?._league?.countryCode ||
+    match?.tournament?.ccode ||
+    match?.tournament?.countryCode ||
+    match?.league?.ccode ||
+    match?.league?.countryCode ||
+    match?.countryCode ||
+    ""
+  );
+}
+
+function topLeagueFor(match) {
+  const name = rawLeagueName(match);
+  const country = rawCountryCode(match);
+  if (!name) return null;
+
+  for (const league of TOP_LEAGUES) {
+    const nameMatches = league.names.some(re => re.test(name));
+    if (!nameMatches) continue;
+
+    if (country && league.countries.length && !league.countries.includes(country)) continue;
+
+    // Generic league names such as Serie A and Premier League must have a country
+    // code when possible, to avoid including unrelated competitions with the same name.
+    if (!country && /^(serie a|premier league|championship|pro league)$/i.test(name)) continue;
+
+    return league;
+  }
+  return null;
 }
 
 function leagueLogo(match) {
-  return match?.league?.logo || match?.tournament?.logo || match?.tournament?.image || match?.competition?.logo || null;
+  return match?._league?.logo ||
+    match?._league?.image ||
+    match?.league?.logo ||
+    match?.tournament?.logo ||
+    match?.tournament?.image ||
+    match?.competition?.logo ||
+    null;
 }
 
 function parseMinute(status) {
@@ -60,6 +129,9 @@ function normalizedStatus(status) {
 }
 
 function normalizeMatch(match) {
+  const preferredLeague = topLeagueFor(match);
+  if (!preferredLeague) return null;
+
   const status = normalizedStatus(match?.status || {});
   const kickoff = match?.status?.utcTime || match?.utcTime || match?.startTime || match?.date || null;
 
@@ -70,19 +142,19 @@ function normalizeMatch(match) {
       status
     },
     league: {
-      id: match?.leagueId || match?.league?.id || match?.tournament?.id || null,
-      name: leagueName(match),
+      id: match?.leagueId || match?._league?.id || match?.league?.id || match?.tournament?.id || null,
+      name: preferredLeague.canonical,
       logo: leagueLogo(match)
     },
     teams: {
       home: {
         id: match?.home?.id || null,
-        name: match?.home?.name || "Home",
+        name: match?.home?.name || match?.home?.longName || "Home",
         logo: teamLogo(match?.home)
       },
       away: {
         id: match?.away?.id || null,
-        name: match?.away?.name || "Away",
+        name: match?.away?.name || match?.away?.longName || "Away",
         logo: teamLogo(match?.away)
       }
     },
@@ -91,6 +163,43 @@ function normalizeMatch(match) {
       away: match?.away?.score ?? null
     }
   };
+}
+
+function normalizeMany(matches) {
+  return matches.map(normalizeMatch).filter(Boolean);
+}
+
+function flattenProviderMatches(data) {
+  const raw = Array.isArray(data?.response?.matches) ? data.response.matches : [];
+  const out = [];
+
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+
+    // Provider may return a league-grouped structure:
+    // { league: { name, ccode, ... }, matches: [ ... ] }
+    if (Array.isArray(item.matches)) {
+      const leagueMeta = item.league && typeof item.league === "object" ? item.league : item;
+      for (const match of item.matches) {
+        if (match && typeof match === "object") out.push({ ...match, _league: leagueMeta });
+      }
+      continue;
+    }
+
+    // Alternate grouped shape: { league: { ..., matches: [...] } }
+    if (item.league && Array.isArray(item.league.matches)) {
+      const leagueMeta = item.league;
+      for (const match of item.league.matches) {
+        if (match && typeof match === "object") out.push({ ...match, _league: leagueMeta });
+      }
+      continue;
+    }
+
+    // Flat match object.
+    out.push(item);
+  }
+
+  return out;
 }
 
 async function readJson(response) {
@@ -108,7 +217,7 @@ async function fetchProvider(url, init) {
 async function fetchMatchesByDate(host, date, init) {
   const today = new Date().toISOString().slice(0, 10);
   const ttl = date === today ? 10 * 60 * 1000 : 6 * 60 * 60 * 1000;
-  const key = `date:${date}`;
+  const key = `date:${date}:top10`;
   const cached = providerCache.get(key);
   if (cached && Date.now() - cached.time < ttl) return cached.matches;
 
@@ -117,7 +226,7 @@ async function fetchMatchesByDate(host, date, init) {
   const { response, data } = await fetchProvider(url, init);
   if (!response.ok) throw new Error(`Football provider API error ${response.status}`);
 
-  const matches = Array.isArray(data?.response?.matches) ? data.response.matches : [];
+  const matches = flattenProviderMatches(data);
   providerCache.set(key, { time: Date.now(), matches });
   return matches;
 }
@@ -132,13 +241,13 @@ async function translateMatchesRequest(requestUrl, init) {
     if (!response.ok) return response;
 
     const live = Array.isArray(data?.response?.live) ? data.response.live : [];
-    return jsonResponse({ response: live.map(normalizeMatch) });
+    return jsonResponse({ response: normalizeMany(live) });
   }
 
   if (params.get("date")) {
     try {
       const matches = await fetchMatchesByDate(host, params.get("date"), init);
-      return jsonResponse({ response: matches.map(normalizeMatch) });
+      return jsonResponse({ response: normalizeMany(matches) });
     } catch (error) {
       return jsonResponse({ error: error.message }, 502);
     }
@@ -160,13 +269,13 @@ async function translateMatchesRequest(requestUrl, init) {
         matches = matches.filter(m => m?.status?.finished === true);
       } else {
         matches = matches.filter(m => {
-          const kickoff = new Date(m?.status?.utcTime || "").getTime();
+          const kickoff = new Date(m?.status?.utcTime || m?.utcTime || "").getTime();
           if (Number.isNaN(kickoff)) return m?.status?.started !== true && m?.status?.finished !== true;
           return kickoff >= now && m?.status?.finished !== true && m?.status?.cancelled !== true;
         });
       }
 
-      return jsonResponse({ response: matches.map(normalizeMatch) });
+      return jsonResponse({ response: normalizeMany(matches) });
     } catch (error) {
       return jsonResponse({ error: error.message }, 502);
     }
