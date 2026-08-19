@@ -9,17 +9,20 @@
   const style = document.createElement("style");
   style.textContent = `
     .wtv-match-ticker{position:relative;z-index:25;background:#17130a;color:#fff;border-bottom:1px solid rgba(255,255,255,.12);overflow:hidden}
-    .wtv-match-ticker-inner{display:flex;align-items:center;min-height:42px;overflow:hidden;white-space:nowrap}
-    .wtv-match-ticker-label{flex:0 0 auto;position:relative;z-index:2;padding:0 16px;font-size:12px;font-weight:900;letter-spacing:.35px;color:#1f1600;background:linear-gradient(135deg,#f4c542,#d89a00);height:42px;display:flex;align-items:center;box-shadow:12px 0 20px rgba(0,0,0,.16)}
+    .wtv-match-ticker-inner{display:flex;align-items:center;min-height:46px;overflow:hidden;white-space:nowrap}
+    .wtv-match-ticker-label{flex:0 0 auto;position:relative;z-index:2;padding:0 16px;font-size:12px;font-weight:900;letter-spacing:.35px;color:#1f1600;background:linear-gradient(135deg,#f4c542,#d89a00);height:46px;display:flex;align-items:center;box-shadow:12px 0 20px rgba(0,0,0,.16)}
     .wtv-match-ticker-window{overflow:hidden;flex:1;min-width:0}
     .wtv-match-ticker-track{display:inline-flex;align-items:center;gap:42px;min-width:max-content;padding-left:100%;animation:wtvTickerMove var(--wtv-ticker-duration,45s) linear infinite;will-change:transform}
     .wtv-match-ticker:hover .wtv-match-ticker-track{animation-play-state:paused}
-    .wtv-match-item{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:750;color:#fff}
-    .wtv-match-item .league{color:#f7cb52;font-weight:900}
-    .wtv-match-item .time{color:#d5ccba;font-size:12px}
-    .wtv-match-item .vs{color:#9e9688;font-size:11px;font-weight:900}
+    .wtv-match-item{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:750;color:#fff}
+    .wtv-match-item .league{color:#f7cb52;font-weight:900;margin-right:2px}
+    .wtv-match-item .time{color:#d5ccba;font-size:12px;margin-left:2px}
+    .wtv-match-item .vs{color:#9e9688;font-size:11px;font-weight:900;margin:0 2px}
+    .wtv-match-team{display:inline-flex;align-items:center;gap:6px}
+    .wtv-match-team-logo{width:28px;height:28px;object-fit:contain;border-radius:50%;background:#fff;padding:2px;border:1px solid rgba(255,255,255,.22);box-shadow:0 1px 4px rgba(0,0,0,.28);flex:0 0 28px}
+    .wtv-match-team-logo-fallback{width:28px;height:28px;border-radius:50%;display:inline-grid;place-items:center;background:#332b1c;border:1px solid rgba(255,255,255,.18);font-size:13px;flex:0 0 28px}
     @keyframes wtvTickerMove{from{transform:translateX(0)}to{transform:translateX(-100%)}}
-    @media(max-width:620px){.wtv-match-ticker-label{padding:0 10px;font-size:10px}.wtv-match-ticker-inner{min-height:38px}.wtv-match-ticker-label{height:38px}.wtv-match-item{font-size:12px}.wtv-match-ticker-track{gap:28px}}
+    @media(max-width:620px){.wtv-match-ticker-label{padding:0 10px;font-size:10px}.wtv-match-ticker-inner{min-height:42px}.wtv-match-ticker-label{height:42px}.wtv-match-item{font-size:12px}.wtv-match-ticker-track{gap:28px}.wtv-match-team-logo,.wtv-match-team-logo-fallback{width:24px;height:24px;flex-basis:24px}}
     @media(prefers-reduced-motion:reduce){.wtv-match-ticker-track{animation:none;padding-left:12px;overflow-x:auto}}
   `;
   document.head.appendChild(style);
@@ -46,6 +49,26 @@
     if(Number.isNaN(d.getTime())) return "";
     return d.toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
   }
+  function firstValue(...values){return values.find(v=>typeof v === "string" && v.trim()) || "";}
+  function logoUrl(m, side){
+    const team = m?.[side] || m?.[`${side}_team_data`] || {};
+    return firstValue(
+      m?.[`${side}_logo`],
+      m?.[`${side}_team_logo`],
+      m?.[`${side}_badge`],
+      m?.[`${side}_image`],
+      m?.[`${side}_img`],
+      team?.logo,
+      team?.logo_url,
+      team?.badge,
+      team?.image,
+      team?.img
+    );
+  }
+  function logoHtml(url, name){
+    if(!url) return '<span class="wtv-match-team-logo-fallback">⚽</span>';
+    return `<img class="wtv-match-team-logo" src="${esc(url)}" alt="${esc(name)} logo" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<span class=&quot;wtv-match-team-logo-fallback&quot;>⚽</span>'">`;
+  }
 
   async function loadTicker(){
     const track = document.getElementById("wtvMatchTickerTrack");
@@ -59,8 +82,14 @@
         track.style.setProperty("--wtv-ticker-duration","28s");
         return;
       }
-      track.innerHTML = matches.map(m => `<span class="wtv-match-item"><span class="league">${esc(m.league || "Football")}</span><span>${esc(m.home_team || "Home")}</span><span class="vs">VS</span><span>${esc(m.away_team || "Away")}</span><span class="time">${esc(fmtKickoff(m.kickoff))}</span></span>`).join("");
-      track.style.setProperty("--wtv-ticker-duration", Math.max(34, matches.length * 5) + "s");
+      track.innerHTML = matches.map(m => {
+        const homeName = m.home_team || "Home";
+        const awayName = m.away_team || "Away";
+        const homeLogo = logoUrl(m,"home");
+        const awayLogo = logoUrl(m,"away");
+        return `<span class="wtv-match-item"><span class="league">${esc(m.league || "Football")}</span><span class="wtv-match-team">${logoHtml(homeLogo,homeName)}<span>${esc(homeName)}</span></span><span class="vs">VS</span><span class="wtv-match-team">${logoHtml(awayLogo,awayName)}<span>${esc(awayName)}</span></span><span class="time">${esc(fmtKickoff(m.kickoff))}</span></span>`;
+      }).join("");
+      track.style.setProperty("--wtv-ticker-duration", Math.max(38, matches.length * 5.5) + "s");
     }catch(e){
       track.innerHTML = '<span class="wtv-match-item">Upcoming match updates unavailable right now.</span>';
     }
