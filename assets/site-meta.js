@@ -82,10 +82,35 @@
     const liveBox=document.getElementById("liveScoresBox"),upcomingBox=document.getElementById("upcomingBox");if(!liveBox&&!upcomingBox)return;
     const style=document.createElement("style");style.textContent=`.tv-channel-watch{margin-top:10px;padding-top:9px;border-top:1px dashed #eadfc8;font-size:12px;font-weight:700}.tv-channel-line{display:flex;align-items:center;justify-content:center;gap:6px;margin:5px 0;color:#493b18}.tv-channel-line img{width:30px;height:24px;object-fit:contain;border-radius:5px;background:#fff;border:1px solid #eee}`;document.head.appendChild(style);
     let assignments=[];
-    function apply(box){if(!box)return;box.querySelectorAll(".match-card").forEach(card=>{card.querySelector(".tv-channel-watch")?.remove();const teams=[...card.querySelectorAll(".match-teams strong")].map(x=>x.textContent.trim());if(teams.length<2)return;const found=assignments.filter(a=>norm(a.home_team)===norm(teams[0])&&norm(a.away_team)===norm(teams[1]));if(!found.length)return;const wrap=document.createElement("div");wrap.className="tv-channel-watch";const title=document.createElement("div");title.textContent="📺 Watch on";wrap.appendChild(title);found.forEach(a=>{const line=document.createElement("div");line.className="tv-channel-line";if(a.channel_logo){const img=document.createElement("img");img.src=a.channel_logo;img.alt="";img.onerror=()=>img.remove();line.appendChild(img);}const name=document.createElement("span");name.textContent=a.channel_name;line.appendChild(name);wrap.appendChild(line);});card.appendChild(wrap);});}
+    function apply(box){
+      if(!box)return;
+      box.querySelectorAll(".match-card").forEach(card=>{
+        const teams=[...card.querySelectorAll(".match-teams strong")].map(x=>x.textContent.trim());
+        if(teams.length<2)return;
+        const found=assignments.filter(a=>norm(a.home_team)===norm(teams[0])&&norm(a.away_team)===norm(teams[1]));
+        const existing=card.querySelector(".tv-channel-watch");
+        const signature=found.map(a=>`${a.id||""}|${a.channel_name||""}|${a.channel_logo||""}`).sort().join("||");
+        if(!found.length){if(existing)existing.remove();return;}
+        if(existing?.dataset.signature===signature)return;
+        if(existing)existing.remove();
+        const wrap=document.createElement("div");wrap.className="tv-channel-watch";wrap.dataset.signature=signature;
+        const title=document.createElement("div");title.textContent="📺 Watch on";wrap.appendChild(title);
+        found.forEach(a=>{const line=document.createElement("div");line.className="tv-channel-line";if(a.channel_logo){const img=document.createElement("img");img.src=a.channel_logo;img.alt="";img.onerror=()=>img.remove();line.appendChild(img);}const name=document.createElement("span");name.textContent=a.channel_name;line.appendChild(name);wrap.appendChild(line);});
+        card.appendChild(wrap);
+      });
+    }
     function applyAll(){apply(liveBox);apply(upcomingBox);}
     async function refresh(){try{const r=await fetch("/api/match-tv-channels",{cache:"no-store"}),d=await r.json();assignments=d.assignments||[];applyAll();}catch(e){console.warn("TV channel display unavailable",e);}}
-    [liveBox,upcomingBox].filter(Boolean).forEach(box=>new MutationObserver(()=>apply(box)).observe(box,{childList:true,subtree:true}));refresh();setInterval(refresh,30000);
+    [liveBox,upcomingBox].filter(Boolean).forEach(box=>{
+      let queued=false;
+      const observer=new MutationObserver(()=>{
+        if(queued)return;
+        queued=true;
+        requestAnimationFrame(()=>{queued=false;apply(box);});
+      });
+      observer.observe(box,{childList:true,subtree:true});
+    });
+    refresh();setInterval(refresh,60000);
   }
   function init(){setupAdmin();setupPublic();}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
