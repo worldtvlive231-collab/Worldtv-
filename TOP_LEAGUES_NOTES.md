@@ -1,1 +1,0 @@
-Top football feed is intentionally limited to: Premier League, Serie A, La Liga, Bundesliga, Ligue 1, EFL Championship, Belgian Pro League, Primeira Liga, Brasileirão Serie A, and Eredivisie. Team logos are passed through from the RapidAPI provider when supplied.
