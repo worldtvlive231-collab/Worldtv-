@@ -80,3 +80,27 @@ const path = require("path");
     return originalPost.call(this, route, ...handlers);
   };
 })();
+
+// Ghana retail price for the WORLD TV Box is GH₵850. International checkout
+// pricing is handled separately as the local-currency equivalent of US$100.
+(function setWorldTvBoxGhanaPrice(){
+  try{
+    const Database = require("better-sqlite3");
+    const dbPath = path.join(__dirname, "data", "worldtv.sqlite");
+    if(!fs.existsSync(dbPath)) return;
+    const db = new Database(dbPath);
+    const hasProducts = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='products'").get();
+    if(hasProducts){
+      const result = db.prepare(`
+        UPDATE products
+        SET price_ghs=850, updated_at=CURRENT_TIMESTAMP
+        WHERE lower(name) LIKE '%world tv%box%'
+           OR lower(name) LIKE '%android tv box%'
+      `).run();
+      if(result.changes) console.log(`[pricing] Updated ${result.changes} WORLD TV Box product(s) to GH₵850 for Ghana.`);
+    }
+    db.close();
+  }catch(err){
+    console.warn("[pricing] Could not apply Ghana TV box price:", err.message);
+  }
+})();
