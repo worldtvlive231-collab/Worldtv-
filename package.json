@@ -4,9 +4,9 @@
   "private": true,
   "main": "server.js",
   "scripts": {
-    "start": "node -r ./football-fetch-adapter.js server.js",
-    "dev": "node --watch -r ./football-fetch-adapter.js server.js",
-    "production": "NODE_ENV=production node -r ./football-fetch-adapter.js server.js"
+    "start": "node -r ./football-fetch-adapter.js -r ./tv-channel-manager.js server.js",
+    "dev": "node --watch -r ./football-fetch-adapter.js -r ./tv-channel-manager.js server.js",
+    "production": "NODE_ENV=production node -r ./football-fetch-adapter.js -r ./tv-channel-manager.js server.js"
   },
   "dependencies": {
     "better-sqlite3": "9.6.0",
