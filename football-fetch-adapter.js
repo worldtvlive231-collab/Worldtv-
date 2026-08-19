@@ -28,13 +28,13 @@ function datesInclusive(from,to,maxDays=8){
  for(let d=start;d<=end&&out.length<maxDays;d=new Date(d.getTime()+86400000)) out.push(d.toISOString().slice(0,10));
  return out;
 }
-function leagueIdOf(m){return m?.leagueId||m?._league?.id||m?.league?.id||m?.tournament?.id||null;}
+function leagueIdOf(m){return m?.leagueId||m?._league?.leagueId||m?._league?.id||m?.league?.leagueId||m?.league?.id||m?.tournament?.id||m?.competition?.id||null;}
 function teamLogo(t){
  const explicit=t?.logo||t?.image||t?.imageUrl||t?.imagePath||t?.img;
  return explicit||(t?.id?`https://images.fotmob.com/image_resources/logo/teamlogo/${encodeURIComponent(t.id)}.png`:null);
 }
-function rawLeagueName(m){return clean(m?._resolvedLeague?.name||m?._league?.localizedName||m?._league?.name||m?.league?.name||m?.tournament?.name||m?.tournament?.leagueName||m?.leagueName||m?.competition?.name);}
-function rawCountryCode(m){return code(m?._resolvedLeague?.ccode||m?._league?.ccode||m?._league?.countryCode||m?.tournament?.ccode||m?.tournament?.countryCode||m?.league?.ccode||m?.league?.countryCode||m?.countryCode);}
+function rawLeagueName(m){return clean(m?._resolvedLeague?.name||m?._league?.localizedName||m?._league?.leagueName||m?._league?.parentLeagueName||m?._league?.tournamentName||m?._league?.name||m?.league?.localizedName||m?.league?.leagueName||m?.league?.parentLeagueName||m?.league?.name||m?.tournament?.name||m?.tournament?.leagueName||m?.leagueName||m?.parentLeagueName||m?.competition?.name);}
+function rawCountryCode(m){return code(m?._resolvedLeague?.ccode||m?._league?.ccode||m?._league?.countryCode||m?._league?.country?.code||m?._league?.country||m?.tournament?.ccode||m?.tournament?.countryCode||m?.league?.ccode||m?.league?.countryCode||m?.league?.country?.code||m?.countryCode||m?.country?.code);}
 function topLeagueFor(m){
  const name=rawLeagueName(m),country=rawCountryCode(m);
  if(!name)return null;
@@ -68,10 +68,11 @@ function flattenProviderMatches(data){
  for(const item of raw){
   if(!item||typeof item!=="object")continue;
   if(Array.isArray(item.matches)){
-   const meta=item.league&&typeof item.league==="object"?item.league:item;
+   const meta=item.league&&typeof item.league==="object"?{...item,...item.league}:item;
    for(const m of item.matches)if(m&&typeof m==="object")out.push({...m,_league:meta});
   }else if(item.league&&Array.isArray(item.league.matches)){
-   for(const m of item.league.matches)if(m&&typeof m==="object")out.push({...m,_league:item.league});
+   const meta={...item,...item.league};
+   for(const m of item.league.matches)if(m&&typeof m==="object")out.push({...m,_league:meta});
   }else out.push(item);
  }
  return out;
@@ -79,8 +80,9 @@ function flattenProviderMatches(data){
 async function readJson(r){const t=await r.text();try{return JSON.parse(t)}catch{throw new Error(`Football provider returned invalid JSON (${r.status})`)}}
 async function fetchProvider(url,init){const r=await nativeFetch(url,init);return{response:r,data:r.ok?await readJson(r):null};}
 function detailLeagueMeta(data,leagueId){
- const root=data?.response||data,det=root?.detail||root?.general||root;
- const name=clean(det?.leagueName||det?.parentLeagueName||det?.name),ccode=code(det?.countryCode||det?.ccode||det?.country);
+ const root=data?.response||data,det=root?.detail||root?.general||root?.matchFacts||root;
+ const league=det?.league||det?.tournament||root?.league||root?.tournament||{};
+ const name=clean(det?.leagueName||det?.parentLeagueName||league?.localizedName||league?.leagueName||league?.name||det?.name),ccode=code(det?.countryCode||det?.ccode||league?.ccode||league?.countryCode||league?.country?.code||det?.country);
  if(!name||/^League\s+\d+$/i.test(name))return null;
  return{id:leagueId,name,ccode,logo:leagueId?`https://images.fotmob.com/image_resources/logo/leaguelogo/dark/${encodeURIComponent(leagueId)}.png`:null};
 }
@@ -102,10 +104,6 @@ async function resolveLeagueMeta(host,m,init){
 async function enrichLeagueMetadata(matches,host,init,maxLookups=60){
  const groups=new Map();
  for(const m of matches){
-  // A readable league name alone is not enough for ambiguous names such as
-  // Premier League, Serie A, Championship or Pro League. If the match cannot
-  // already be positively identified as one of our top leagues, resolve its
-  // league metadata so country information is available before filtering.
   if(topLeagueFor(m))continue;
   const lid=leagueIdOf(m);if(!lid)continue;
   const k=String(lid),g=groups.get(k)||{matches:[]};g.matches.push(m);groups.set(k,g);
@@ -123,7 +121,7 @@ async function enrichLeagueMetadata(matches,host,init,maxLookups=60){
 }
 async function normalizeMany(matches,host,init){await enrichLeagueMetadata(matches,host,init);return matches.map(normalizeMatch).filter(Boolean);}
 async function fetchMatchesByDate(host,date,init){
- const today=new Date().toISOString().slice(0,10),ttl=date===today?600000:21600000,key=`date:${date}:top10-v3`,cached=providerCache.get(key);
+ const today=new Date().toISOString().slice(0,10),ttl=date===today?600000:21600000,key=`date:${date}:top10-v4`,cached=providerCache.get(key);
  if(cached&&Date.now()-cached.time<ttl)return cached.matches;
  const {response,data}=await fetchProvider(`https://${host}/football-get-matches-by-date?date=${encodeURIComponent(fmtDate(date))}`,init);
  if(!response.ok)throw new Error(`Football provider API error ${response.status}`);
