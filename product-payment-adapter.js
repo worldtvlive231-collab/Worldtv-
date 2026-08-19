@@ -110,15 +110,26 @@ function registerRoutes(app){
     try{
       if(!process.env.PAYSTACK_SECRET_KEY) return res.status(503).json({error:"Paystack is not configured"});
       const orderNumber=String(req.body?.order_number||"").trim();
+      const requestedChannel=String(req.body?.channel||"").trim();
+      const channel=requestedChannel === "mobile_money" || requestedChannel === "card" ? requestedChannel : null;
       const order=requirePayableOrder(orderNumber);
       if(!String(order.email||"").trim()) return res.status(400).json({error:"Customer email is required for Paystack payment"});
       const reference=`WTVP-${Date.now()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
       const callback=`${publicBase()}/order.html?payment=paystack&order=${encodeURIComponent(orderNumber)}&payment_reference=${encodeURIComponent(reference)}`;
-      const r=await fetch("https://api.paystack.co/transaction/initialize",{method:"POST",headers:{Authorization:`Bearer ${process.env.PAYSTACK_SECRET_KEY}`,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({email:String(order.email).trim(),amount:Math.round(Number(order.total_ghs)*100),currency:"GHS",reference,callback_url:callback,metadata:{order_number:orderNumber,customer_name:order.customer_name,product:order.product_name}})});
+      const payload={
+        email:String(order.email).trim(),
+        amount:Math.round(Number(order.total_ghs)*100),
+        currency:"GHS",
+        reference,
+        callback_url:callback,
+        metadata:{order_number:orderNumber,customer_name:order.customer_name,product:order.product_name,payment_channel:channel||"paystack"}
+      };
+      if(channel) payload.channels=[channel];
+      const r=await fetch("https://api.paystack.co/transaction/initialize",{method:"POST",headers:{Authorization:`Bearer ${process.env.PAYSTACK_SECRET_KEY}`,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(payload)});
       const d=await r.json().catch(()=>({}));
       if(!r.ok || !d.status || !d.data?.authorization_url) return res.status(502).json({error:d.message||"Could not start Paystack payment"});
       db.prepare(`INSERT INTO product_payment_attempts(order_number,provider,provider_reference,amount_ghs,amount_provider,provider_currency,status) VALUES(?,?,?,?,?,?,?)`).run(orderNumber,"paystack",reference,Number(order.total_ghs),Number(order.total_ghs),"GHS","pending");
-      res.json({ok:true,authorization_url:d.data.authorization_url,reference});
+      res.json({ok:true,authorization_url:d.data.authorization_url,reference,channel:channel||"all"});
     }catch(e){res.status(e.status||500).json({error:e.message||"Could not start Paystack payment"});}
   });
 
@@ -136,7 +147,8 @@ function registerRoutes(app){
       const paidGhs=Number(d.data.amount)/100;
       if(d.data.currency!=="GHS" || Math.abs(paidGhs-Number(order.total_ghs))>0.001) return res.status(400).json({error:"Payment amount does not match this order"});
       markPaid(orderNumber,"paystack",reference);
-      res.json({ok:true,paid:true,order_number:orderNumber,total_ghs:Number(order.total_ghs),provider:"Paystack"});
+      const providerLabel=d.data.channel==="mobile_money"?"Mobile Money":d.data.channel==="card"?"Card":"Paystack";
+      res.json({ok:true,paid:true,order_number:orderNumber,total_ghs:Number(order.total_ghs),provider:providerLabel});
     }catch(e){res.status(e.status||500).json({error:e.message||"Could not verify Paystack payment"});}
   });
 
