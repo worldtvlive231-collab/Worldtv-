@@ -4,9 +4,9 @@
   "private": true,
   "main": "server.js",
   "scripts": {
-    "start": "node -r ./runtime-bootstrap.js -r ./football-fetch-adapter.js -r ./free-livescore-provider-test.js -r ./tv-channel-manager.js -r ./paypal-payment-adapter.js server.js",
-    "dev": "node --watch -r ./runtime-bootstrap.js -r ./football-fetch-adapter.js -r ./free-livescore-provider-test.js -r ./tv-channel-manager.js -r ./paypal-payment-adapter.js server.js",
-    "production": "NODE_ENV=production node -r ./runtime-bootstrap.js -r ./football-fetch-adapter.js -r ./free-livescore-provider-test.js -r ./tv-channel-manager.js -r ./paypal-payment-adapter.js server.js"
+    "start": "node -r ./runtime-bootstrap.js -r ./football-fetch-adapter.js -r ./free-livescore-provider-test.js -r ./tv-channel-manager.js -r ./product-payment-adapter.js -r ./paypal-payment-adapter.js server.js",
+    "dev": "node --watch -r ./runtime-bootstrap.js -r ./football-fetch-adapter.js -r ./free-livescore-provider-test.js -r ./tv-channel-manager.js -r ./product-payment-adapter.js -r ./paypal-payment-adapter.js server.js",
+    "production": "NODE_ENV=production node -r ./runtime-bootstrap.js -r ./football-fetch-adapter.js -r ./free-livescore-provider-test.js -r ./tv-channel-manager.js -r ./product-payment-adapter.js -r ./paypal-payment-adapter.js server.js"
   },
   "dependencies": {
     "better-sqlite3": "9.6.0",
