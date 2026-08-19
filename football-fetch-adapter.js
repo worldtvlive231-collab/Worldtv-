@@ -4,17 +4,20 @@ const providerCache=new Map();
 const leagueMetaCache=new Map();
 if(typeof nativeFetch!=="function") throw new Error("Global fetch is required");
 
+// This provider mirrors FotMob league/team IDs. Prefer the stable league ID first,
+// then fall back to league-name/country matching for resilience if the provider
+// changes the surrounding response metadata.
 const TOP_LEAGUES=[
- {canonical:"Premier League",countries:["ENG","GB","EN"],names:[/^premier league$/i]},
- {canonical:"Serie A",countries:["ITA","IT"],names:[/^serie a$/i]},
- {canonical:"La Liga",countries:["ESP","ES"],names:[/^la\s*liga$/i,/^laliga$/i]},
- {canonical:"Bundesliga",countries:["GER","DEU","DE"],names:[/^bundesliga$/i]},
- {canonical:"Ligue 1",countries:["FRA","FR"],names:[/^ligue 1$/i]},
- {canonical:"EFL Championship",countries:["ENG","GB","EN"],names:[/^championship$/i,/^efl championship$/i]},
- {canonical:"Belgian Pro League",countries:["BEL","BE"],names:[/^belgian pro league$/i,/^jupiler pro league$/i,/^pro league$/i,/^first division a$/i]},
- {canonical:"Primeira Liga",countries:["POR","PT"],names:[/^primeira liga$/i,/^liga portugal$/i,/^liga portugal betclic$/i]},
- {canonical:"Brasileirão Serie A",countries:["BRA","BR"],names:[/^brasileir[aã]o.*serie a$/i,/^brasileir[aã]o$/i,/^serie a$/i]},
- {canonical:"Eredivisie",countries:["NED","NLD","NL"],names:[/^eredivisie$/i]}
+ {canonical:"Premier League",ids:[47],countries:["ENG","GB","EN"],names:[/^premier league$/i]},
+ {canonical:"Serie A",ids:[55],countries:["ITA","IT"],names:[/^serie a$/i]},
+ {canonical:"La Liga",ids:[87],countries:["ESP","ES"],names:[/^la\s*liga$/i,/^laliga$/i]},
+ {canonical:"Bundesliga",ids:[54],countries:["GER","DEU","DE"],names:[/^bundesliga$/i]},
+ {canonical:"Ligue 1",ids:[53],countries:["FRA","FR"],names:[/^ligue 1$/i]},
+ {canonical:"EFL Championship",ids:[48],countries:["ENG","GB","EN"],names:[/^championship$/i,/^efl championship$/i]},
+ {canonical:"Belgian Pro League",ids:[40],countries:["BEL","BE"],names:[/^belgian pro league$/i,/^jupiler pro league$/i,/^pro league$/i,/^first division a$/i]},
+ {canonical:"Primeira Liga",ids:[61],countries:["POR","PT"],names:[/^primeira liga$/i,/^liga portugal$/i,/^liga portugal betclic$/i]},
+ {canonical:"Brasileirão Serie A",ids:[268],countries:["BRA","BR"],names:[/^brasileir[aã]o.*serie a$/i,/^brasileir[aã]o$/i,/^serie a$/i]},
+ {canonical:"Eredivisie",ids:[57],countries:["NED","NLD","NL"],names:[/^eredivisie$/i]}
 ];
 
 const clean=v=>String(v||"").trim();
@@ -36,6 +39,11 @@ function teamLogo(t){
 function rawLeagueName(m){return clean(m?._resolvedLeague?.name||m?._league?.localizedName||m?._league?.leagueName||m?._league?.parentLeagueName||m?._league?.tournamentName||m?._league?.name||m?.league?.localizedName||m?.league?.leagueName||m?.league?.parentLeagueName||m?.league?.name||m?.tournament?.name||m?.tournament?.leagueName||m?.leagueName||m?.parentLeagueName||m?.competition?.name);}
 function rawCountryCode(m){return code(m?._resolvedLeague?.ccode||m?._league?.ccode||m?._league?.countryCode||m?._league?.country?.code||m?._league?.country||m?.tournament?.ccode||m?.tournament?.countryCode||m?.league?.ccode||m?.league?.countryCode||m?.league?.country?.code||m?.countryCode||m?.country?.code);}
 function topLeagueFor(m){
+ const lid=Number(leagueIdOf(m));
+ if(Number.isFinite(lid)){
+  const byId=TOP_LEAGUES.find(l=>l.ids.includes(lid));
+  if(byId)return byId;
+ }
  const name=rawLeagueName(m),country=rawCountryCode(m);
  if(!name)return null;
  for(const l of TOP_LEAGUES){
@@ -121,7 +129,7 @@ async function enrichLeagueMetadata(matches,host,init,maxLookups=60){
 }
 async function normalizeMany(matches,host,init){await enrichLeagueMetadata(matches,host,init);return matches.map(normalizeMatch).filter(Boolean);}
 async function fetchMatchesByDate(host,date,init){
- const today=new Date().toISOString().slice(0,10),ttl=date===today?600000:21600000,key=`date:${date}:top10-v4`,cached=providerCache.get(key);
+ const today=new Date().toISOString().slice(0,10),ttl=date===today?600000:21600000,key=`date:${date}:top10-v5`,cached=providerCache.get(key);
  if(cached&&Date.now()-cached.time<ttl)return cached.matches;
  const {response,data}=await fetchProvider(`https://${host}/football-get-matches-by-date?date=${encodeURIComponent(fmtDate(date))}`,init);
  if(!response.ok)throw new Error(`Football provider API error ${response.status}`);
