@@ -78,6 +78,11 @@
     return `<img class="wtv-match-team-logo" src="${esc(url)}" alt="${esc(name)} logo" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<span class=&quot;wtv-match-team-logo-fallback&quot;>⚽</span>'">`;
   }
 
+  function refreshHeroCurrency(){
+    const cc=window.CurrencyConverter;
+    if(cc&&typeof cc.updateAllPrices==="function") cc.updateAllPrices(cc.activeCurrency||"USD");
+  }
+
   async function upgradeHeroProductCard(){
     const card = document.querySelector(".hero-card");
     if(!card || card.dataset.productPromoReady === "1") return;
@@ -97,7 +102,7 @@
       <p>Turn any TV with an HDMI port into a smart entertainment hub with our <strong>WORLD TV Box</strong>.</p>
       <p>Enjoy <strong>4,000+ Live TV Channels</strong>, <strong>6,000+ Movies &amp; Series</strong>, Kids &amp; Anime, plus Live Sports — all in one box.</p>
       <div class="wtv-product-highlights"><span>📺 4,000+ Live Channels</span><span>🎬 6,000+ Movies &amp; Series</span><span>👧 Kids &amp; Anime</span><span>⚽ Live Sports</span></div>
-      <div class="wtv-hero-product-price" id="wtvHeroBoxPrice">WORLD TV Box + 1-Year Subscription<small>Secure checkout • Shipping details collected at order</small></div>
+      <div class="wtv-hero-product-price"><div id="wtvHeroBoxPrice">WORLD TV Box + 1-Year Subscription</div><small>Secure checkout • Shipping details collected at order</small></div>
       <a class="btn primary wtv-hero-buy-btn" id="wtvHeroBuyNow" href="/products.html">🛒 Buy Now</a>`;
     card.appendChild(copy);
 
@@ -118,7 +123,10 @@
       const price = document.getElementById("wtvHeroBoxPrice");
       const ghs = Number(product.price_ghs ?? product.price ?? 0);
       if(price && Number.isFinite(ghs) && ghs > 0){
-        price.innerHTML = `GH₵${ghs.toFixed(2)}<small>WORLD TV Box + 1-Year Subscription • Secure checkout</small>`;
+        price.setAttribute("data-price-ghs",String(ghs));
+        price.textContent=`GH₵${ghs.toFixed(2)}`;
+        refreshHeroCurrency();
+        setTimeout(refreshHeroCurrency,700);
       }
     }catch(_){
       // Keep the Buy Now link pointed at the product catalog if product lookup is unavailable.
@@ -150,6 +158,7 @@
     }
   }
 
+  window.addEventListener("worldtv:currency-changed",refreshHeroCurrency);
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, {once:true});
   else mount();
   setInterval(loadTicker, 60000);
