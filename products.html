@@ -18,22 +18,25 @@ function waLink(p){
  const text=encodeURIComponent(`Hello World TV, I am interested in ${p.name}${p.price_ghs!=null?` for GH₵${Number(p.price_ghs).toFixed(2)}`:""}.`);
  return `https://wa.me/${n}?text=${text}`;
 }
+function productImageUrl(url){
+ if(!url) return "";
+ if(url.startsWith("/uploads/")) return "/public"+url;
+ return url;
+}
 (async()=>{
  const products=await fetch("/api/products").then(r=>r.json());
  const grid=document.getElementById("grid");
  if(!products.length){grid.innerHTML="<p>No products added yet.</p>";return}
  grid.innerHTML=products.map(p=>`<article class="card">
-   <div class="pic">${p.image_url?`<img src="${p.image_url}" alt="${p.name}">`:`<div class="placeholder">📦</div>`}</div>
+   <div class="pic">${p.image_url?`<img src="${productImageUrl(p.image_url)}" alt="${p.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">`:`""}<div class="placeholder" style="${p.image_url?"display:none":"display:grid"};place-items:center;width:100%;height:100%">📦</div></div>
    <div class="body">
      <span class="pill">${p.category}</span>
      <h3>${p.name}</h3>
      <p class="muted">${p.description||""}</p>
-     ${p.price_ghs!=null?`<div class="price" data-price-ghs="${p.price_ghs}">GH₵${Number(p.price_ghs).toFixed(2)}</div>`:""
-}
+     ${p.price_ghs!=null?`<div class="price" data-price-ghs="${p.price_ghs}">GH₵${Number(p.price_ghs).toFixed(2)}</div>`:""}
      <p class="muted">${p.stock_status==="in_stock"?"In stock":p.stock_status==="preorder"?"Pre-order":"Out of stock"}</p>
      <a class="btn" href="/order.html?product=${p.id}">Order on Website</a> <a class="btn" target="_blank" rel="noopener" href="${waLink(p)}">WhatsApp</a>
    </div>
  </article>`).join("");
 })();
 </script><script src="/assets/pwa.js"></script><script src="/assets/currency-converter.js"></script></body></html>
-
