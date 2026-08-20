@@ -11,9 +11,9 @@ const Database = require("better-sqlite3");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SUBSCRIPTION_PROMO_USD = 23;
+const CUSTOMER_SESSION_DAYS = 30;
 const db = new Database(path.join(__dirname, 'data', 'worldtv.sqlite'));
 const adminSessions = new Map();
-const customerSessions = new Map();
 
 const uploadDir = path.join(__dirname, "public", "uploads");
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -70,6 +70,12 @@ CREATE TABLE IF NOT EXISTS orders(
  status TEXT NOT NULL DEFAULT 'pending',
  code_id INTEGER,
  paid_at TEXT,
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS customer_sessions(
+ token_hash TEXT PRIMARY KEY,
+ user_id INTEGER NOT NULL,
+ expires_at TEXT NOT NULL,
  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS products(
@@ -1221,6 +1227,18 @@ app.get("/api/app/info", (req,res)=>{
 
 /* Customer auth */
 
+function customerTokenHash(token){
+  return crypto.createHash("sha256").update(String(token)).digest("hex");
+}
+
+function createCustomerSession(user){
+  const token=crypto.randomBytes(32).toString("hex");
+  const expiresAt=new Date(Date.now()+CUSTOMER_SESSION_DAYS*86400000).toISOString();
+  db.prepare("INSERT INTO customer_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)")
+    .run(customerTokenHash(token),user.id,expiresAt);
+  return token;
+}
+
 // Middleware to validate customer token
 function customerOnly(req, res, next) {
   const token = req.headers["x-customer-token"];
@@ -1228,11 +1246,16 @@ function customerOnly(req, res, next) {
     return res.status(401).json({ error: "Unauthorized" });
   }
   
-  req.customer = customerSessions.get(token);
-  if (!req.customer) {
+  const session=db.prepare(`
+    SELECT s.user_id AS userId,u.email
+    FROM customer_sessions s
+    JOIN users u ON u.id=s.user_id
+    WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP
+  `).get(customerTokenHash(token));
+  if (!session) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-  
+  req.customer=session;
   next();
 }
 
@@ -1257,8 +1280,7 @@ app.post("/api/customer/register",async(req,res)=>{
     }catch(e){}
   }
 }
-    const token=crypto.randomBytes(32).toString("hex");
-    customerSessions.set(token,{userId:result.lastInsertRowid,email:cleanEmail});
+    const token=createCustomerSession({id:result.lastInsertRowid});
     res.json({token});
   }catch(e){res.status(500).json({error:"Could not create account"});}
 });
@@ -1269,13 +1291,14 @@ app.post("/api/customer/login",loginRateLimit,async(req,res)=>{
     if(!user||!user.password_hash) return res.status(401).json({error:"Invalid email or password"});
     const ok=await bcrypt.compare(String(req.body?.password||""),user.password_hash);
     if(!ok) return res.status(401).json({error:"Invalid email or password"});
-    const token=crypto.randomBytes(32).toString("hex");
-    customerSessions.set(token,{userId:user.id,email:user.email});
+    db.prepare("DELETE FROM customer_sessions WHERE expires_at<=CURRENT_TIMESTAMP").run();
+    const token=createCustomerSession(user);
     res.json({token});
   }catch(e){res.status(500).json({error:"Could not sign in"});}
 });
 app.post("/api/customer/logout",customerOnly,(req,res)=>{
-  customerSessions.delete(req.headers["x-customer-token"]);
+  db.prepare("DELETE FROM customer_sessions WHERE token_hash=?")
+    .run(customerTokenHash(req.headers["x-customer-token"]));
   res.json({ok:true});
 });
 app.get("/api/customer/me",customerOnly,(req,res)=>{

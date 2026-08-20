@@ -25,6 +25,10 @@ function setBusy(on){
 function showError(text){
   document.getElementById("msg").innerHTML=`<div class="error">${String(text||"Payment could not be completed.")}</div>`;
 }
+function requireFreshLogin(){
+  localStorage.removeItem("wtv_customer_token");
+  location.href="/login.html?next="+encodeURIComponent("/subscribe.html");
+}
 
 (async()=>{
   try{
@@ -66,6 +70,7 @@ async function createCheckoutRequest(){
     })
   });
   const data=await response.json().catch(()=>({}));
+  if(response.status===401){requireFreshLogin();throw new Error("Please sign in again to continue payment.")}
   if(!response.ok) throw new Error(data.error||"Could not create subscription request");
   return data;
 }
@@ -83,6 +88,7 @@ async function payWithPaystack(){
       body:JSON.stringify({reference:requestData.reference})
     });
     const paymentData=await paymentResponse.json().catch(()=>({}));
+    if(paymentResponse.status===401){requireFreshLogin();throw new Error("Please sign in again to continue payment.")}
     if(!paymentResponse.ok) throw new Error(paymentData.error||"Could not start Paystack payment");
     if(!paymentData.authorization_url) throw new Error("Paystack checkout URL was not received.");
     window.location.href=paymentData.authorization_url;
