@@ -1,23 +1,58 @@
-WORLD TV — EMAIL DELIVERY SETUP
+WORLD TV — EMAIL DELIVERY & AUTOMATIC SALES RECOVERY
 
-The website now has an email queue, but it does NOT send external email yet.
+The website email queue is now connected to an optional Resend delivery worker.
+No email API credential is stored in public HTML or committed to GitHub.
 
-After hosting, connect a transactional email provider. The server can then process
-rows in the email_queue table and mark each as sent or failed.
+RAILWAY VARIABLES TO ADD
+- PUBLIC_BASE_URL=https://myworldtvlive.com
+- RESEND_API_KEY=re_...
+- EMAIL_FROM=WORLD TV <support@myworldtvlive.com>
+- SALES_RECOVERY_SIGNING_SECRET=<a long random secret>
 
-Recommended production behavior:
-- Send welcome email after registration.
-- Send subscription activation email with the customer's assigned code.
-- Send renewal reminders before expiry.
-- Send order-status updates.
-- Send password-reset links rather than passwords.
-- Keep API credentials only in environment variables, never in public HTML.
+Optional tuning:
+- SALES_RECOVERY_INTERVAL_MINUTES=30
+- EMAIL_QUEUE_INTERVAL_SECONDS=60
+- EMAIL_QUEUE_BATCH_SIZE=15
 
-Do not use a personal mailbox password directly in the website code.
+IMPORTANT
+- Verify the sending domain/address in Resend before using a production EMAIL_FROM value.
+- Keep RESEND_API_KEY and SALES_RECOVERY_SIGNING_SECRET only in Railway environment variables.
+- Do not place personal mailbox passwords in website code.
 
+AUTOMATIC SALES RECOVERY
+The recovery worker safely adds its own tables and does not recreate or wipe customers,
+subscription codes, orders, products, subscriptions, or checkout data.
 
-PASSWORD RESET
-- Set PUBLIC_BASE_URL to the final HTTPS website address, for example:
-  https://your-domain.example
-- Password reset links expire after 1 hour and are single-use.
-- The reset link is queued in Email Center until an external email provider is connected.
+It automatically identifies:
+1. Registered customers who have not completed a paid order after 2 hours.
+2. The latest checkout request still awaiting payment after 1 hour (within 7 days).
+3. Latest active subscriptions expiring within 3 days.
+4. Latest subscriptions that expired within the last 14 days and were not renewed.
+
+Duplicate protection:
+- Each signup, checkout reference, or subscription-expiry event can generate only one
+  matching sales-recovery reminder.
+- The latest abandoned checkout takes priority over a generic registration reminder.
+- Customers can opt out of sales-recovery reminders with the unsubscribe link included
+  in recovery emails. Essential account/payment emails remain unaffected.
+- Email delivery retries are capped at 5 attempts per queued email.
+- Each paid order can be attributed to only one recovery event.
+
+ADMIN SALES RECOVERY VIEW
+Open:
+  https://myworldtvlive.com/sales-recovery.html
+
+The page uses the existing admin token stored by admin.html and shows:
+- recovery events queued/sent/failed
+- customers recovered after a reminder
+- provider status
+- last automation run
+- recent recovery activity
+- manual Run Recovery and Process Email Queue controls
+
+A Sales Recovery link is also added to the existing Admin Dashboard navigation.
+
+PASSWORD RESET AND EXISTING EMAILS
+Password-reset, activation, broadcast, and other messages continue using the existing
+email_queue table. Once Resend is configured, the same worker delivers those queued
+messages automatically as well as sales-recovery reminders.
