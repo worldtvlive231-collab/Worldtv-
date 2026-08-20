@@ -65,7 +65,7 @@ async function logout(){try{await api("/api/customer/logout",{method:"POST"})}ca
       const plan=plans[0];
       const durationDays=plan.duration_days;
       const duration=durationDays===365?"1 Year":durationDays===30?"1 Month":`${durationDays} days`;
-      document.getElementById("planDisplay").innerHTML=`<b>${duration} — <span data-price-ghs="${Number(plan.price_ghs)}"></span></b>`;if(window.CurrencyConverter){CurrencyConverter.updateAllPrices(CurrencyConverter.activeCurrency);}    }
+      document.getElementById("planDisplay").innerHTML=`<b>${duration} — <span data-price-usd="${Number(plan.price_usd||23)}"></span></b>`;if(window.CurrencyConverter){CurrencyConverter.updateAllPrices(CurrencyConverter.activeCurrency);}    }
   }catch(e){
     console.error("Failed to load plan:",e);
   }

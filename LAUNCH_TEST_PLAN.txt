@@ -7,7 +7,7 @@ CUSTOMER
 [ ] Create Account works
 [ ] Sign In works
 [ ] Forgot Password request works
-[ ] Subscription page shows 1 Year — GH₵299
+[ ] Subscription page shows 1 Year — US$23 worldwide promotion
 [ ] Coupon validation works
 [ ] Customer can create subscription request
 [ ] Customer can view subscription/code after activation
