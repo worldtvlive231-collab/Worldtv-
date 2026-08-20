@@ -162,14 +162,14 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <section id="pricingTab" class="hide">
 <div class="card">
   <h2>Pricing Manager - Subscription Plans</h2>
-  <p class="muted">Edit all subscription plan prices from one place.</p>
+  <p class="muted">Edit the worldwide USD base price used for subscriptions in every country.</p>
   <div style="overflow:auto">
     <table>
       <thead>
         <tr>
           <th>Plan Name</th>
-          <th>Current Price (GH₵)</th>
-          <th>New Price (GH₵)</th>
+          <th>Current Price (USD)</th>
+          <th>New Price (USD)</th>
           <th>Duration (Days)</th>
           <th>Active</th>
           <th>Action</th>
@@ -606,7 +606,7 @@ function showTab(id,btn){
   if(id==="analyticsTab") startAnalyticsV2();
   else stopAnalyticsV2();
 }
-async function showDashboard(){$("login").classList.add("hide");$("dashboard").classList.remove("hide");$("logoutBtn").classList.remove("hide");const plans=await fetch("/api/plans").then(r=>r.json());$("plan").innerHTML=plans.map(p=>`<option value="${p.id}">${p.name} — GH₵${p.price_ghs}</option>`).join("");await refreshAll()}
+async function showDashboard(){$("login").classList.add("hide");$("dashboard").classList.remove("hide");$("logoutBtn").classList.remove("hide");const plans=await fetch("/api/plans").then(r=>r.json());$("plan").innerHTML=plans.map(p=>`<option value="${p.id}">${p.name} — $${Number(p.price_usd).toFixed(2)} USD</option>`).join("");await refreshAll()}
 async function refreshAll(){const s=await api("/api/admin/stats");$("total").textContent=s.total;$("unused").textContent=s.unused;$("used").textContent=s.used;$("customersCount").textContent=s.customers;$("productsCount").textContent=s.products;await loadCustomers();await loadProducts();await loadCodes();await loadPromotions();await loadServices();await loadSupport();await loadSettings();await loadReports();await loadContent();await loadProductOrders();await loadCoupons();await loadReferrals();await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue();await loadPricingData();await loadSalesDashboard();await loadResellers()}
 
 async function loadCustomers(){const q=$("customerSearch").value.trim();const d=await api("/api/admin/customers"+(q?`?q=${encodeURIComponent(q)}`:""));$("customerRows").innerHTML=d.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.email}</td><td>${c.order_count}</td><td>${c.paid_orders}</td><td>${c.latest_expiry?new Date(c.latest_expiry).toLocaleDateString():"—"}</td><td><button class="btn secondary" onclick="openCustomer(${c.id})">Manage</button></td></tr>`).join("")}
@@ -855,7 +855,15 @@ async function deleteCoupon(id){if(!confirm("Delete coupon?"))return;await api(`
 async function loadReferrals(){const d=await api("/api/admin/referrals");$("referralRows").innerHTML=d.map(r=>`<tr><td><b>${r.referral_code}</b></td><td>${r.referrer_name}<br><span class="muted">${r.referrer_email}</span></td><td>${r.referred_name}<br><span class="muted">${r.referred_email}</span></td><td>${new Date(r.created_at).toLocaleString()}</td></tr>`).join("")}
 
 
-async function loadSubscriptionRequests(){const d=await api("/api/admin/checkout-requests");$("subscriptionRequestRows").innerHTML=d.map(x=>`<tr><td><b>${x.reference}</b></td><td>${x.customer_name}<br><span class="muted">${x.email}</span></td><td>${x.plan_name}</td><td>GH₵${Number(x.final_amount_ghs).toFixed(2)}</td><td>${x.coupon_code||"—"}</td><td>${x.status}</td><td>${x.status==="awaiting_payment"?`<button class="btn secondary" onclick="confirmSubPayment(${x.id})">Confirm Payment</button>`:""} ${x.status==="payment_confirmed"?`<button class="btn primary" onclick="fulfillSub(${x.id})">Issue Code</button>`:""}</td></tr>`).join("")}
+async function loadSubscriptionRequests(){
+ const d=await api("/api/admin/checkout-requests");
+ $("subscriptionRequestRows").innerHTML=d.map(x=>{
+  const amount=x.final_amount_usd!=null
+   ? `<b>$${Number(x.final_amount_usd).toFixed(2)} USD</b><br><span class="muted">Paystack: GH₵${Number(x.final_amount_ghs).toFixed(2)}</span>`
+   : `GH₵${Number(x.final_amount_ghs).toFixed(2)}`;
+  return `<tr><td><b>${x.reference}</b></td><td>${x.customer_name}<br><span class="muted">${x.email}</span></td><td>${x.plan_name}</td><td>${amount}</td><td>${x.coupon_code||"—"}</td><td>${x.status}</td><td>${x.status==="awaiting_payment"?`<button class="btn secondary" onclick="confirmSubPayment(${x.id})">Confirm Payment</button>`:""} ${x.status==="payment_confirmed"?`<button class="btn primary" onclick="fulfillSub(${x.id})">Issue Code</button>`:""}</td></tr>`;
+ }).join("")
+}
 async function confirmSubPayment(id){if(!confirm("Confirm that you have received this customer's payment?"))return;await api(`/api/admin/checkout-requests/${id}/status`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"payment_confirmed"})});await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue()}
 async function fulfillSub(id){if(!confirm("Issue one unused subscription code to this customer?"))return;try{const d=await api(`/api/admin/checkout-requests/${id}/fulfill`,{method:"POST"});alert("Subscription activated. Code: "+d.code);await refreshAll()}catch(e){alert(e.message)}}
 
@@ -876,8 +884,8 @@ async function loadPricingData(){
     $("pricingPlansRows").innerHTML = plans.map(p => `
       <tr>
         <td><b>${p.name}</b></td>
-        <td>GH₵${p.price_ghs.toFixed(2)}</td>
-        <td><input type="number" step="0.01" min="0" placeholder="${p.price_ghs}" data-plan-id="${p.id}" class="plan-price-input" style="width:100%"></td>
+        <td>$${Number(p.price_usd).toFixed(2)} USD</td>
+        <td><input type="number" step="0.01" min="0.01" placeholder="${Number(p.price_usd).toFixed(2)}" data-plan-id="${p.id}" class="plan-price-input" style="width:100%"></td>
         <td>${p.duration_days} days</td>
         <td><span class="pill">${p.active ? 'Active' : 'Inactive'}</span></td>
         <td><button class="btn secondary" onclick="updatePlanPrice(${p.id})">Update</button></td>
@@ -902,8 +910,8 @@ async function updatePlanPrice(planId) {
   const input = document.querySelector(`input[data-plan-id="${planId}"]`);
   const newPrice = parseFloat(input.value);
   
-  if (!newPrice && newPrice !== 0) {
-    alert("Please enter a valid price");
+  if (!Number.isFinite(newPrice) || newPrice <= 0) {
+    alert("Please enter a valid USD price");
     return;
   }
   
@@ -911,7 +919,7 @@ async function updatePlanPrice(planId) {
     await api(`/api/admin/pricing/plans/${planId}`, {
       method: "PATCH",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({price_ghs: newPrice})
+      body: JSON.stringify({price_usd: newPrice})
     });
     alert("Plan price updated successfully!");
     await loadPricingData();

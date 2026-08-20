@@ -10,6 +10,7 @@ const Database = require("better-sqlite3");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const SUBSCRIPTION_PROMO_USD = 23;
 const db = new Database(path.join(__dirname, 'data', 'worldtv.sqlite'));
 const adminSessions = new Map();
 const customerSessions = new Map();
@@ -46,6 +47,7 @@ CREATE TABLE IF NOT EXISTS plans(
  id INTEGER PRIMARY KEY AUTOINCREMENT,
  name TEXT NOT NULL,
  price_ghs INTEGER NOT NULL,
+ price_usd REAL NOT NULL DEFAULT 23,
  duration_days INTEGER NOT NULL,
  active INTEGER NOT NULL DEFAULT 1
 );
@@ -216,9 +218,17 @@ const ANALYTICS_GEO_FAIL_TTL = 5 * 60 * 1000;
 const ANALYTICS_ONLINE_WINDOW_SECONDS = 60;
 
 
+// Keep the existing GHS column for historical reports while subscription
+// checkout uses one USD base price worldwide. This migration only adds and
+// backfills the new price field; it does not recreate any business table.
+try{db.prepare("ALTER TABLE plans ADD COLUMN price_usd REAL").run();}catch(e){}
+
 if(!db.prepare("SELECT id FROM plans WHERE name=?").get("1 Year")){
-  db.prepare("INSERT INTO plans(name,price_ghs,duration_days) VALUES(?,?,?)").run("1 Year",299,365);
+  db.prepare("INSERT INTO plans(name,price_ghs,price_usd,duration_days) VALUES(?,?,?,?)")
+    .run("1 Year",299,SUBSCRIPTION_PROMO_USD,365);
 }
+db.prepare("UPDATE plans SET price_usd=? WHERE price_usd IS NULL OR price_usd<=0")
+  .run(SUBSCRIPTION_PROMO_USD);
 
 
 try{db.prepare("ALTER TABLE users ADD COLUMN referral_code TEXT").run();}catch(e){}
@@ -1533,7 +1543,7 @@ app.delete("/api/admin/products/:id",adminOnly,(req,res)=>{
 
 /* Pricing Manager API */
 app.get("/api/admin/pricing/plans", adminOnly, (req,res)=>{
-  res.json(db.prepare("SELECT id,name,price_ghs,duration_days,active FROM plans ORDER BY id").all());
+  res.json(db.prepare("SELECT id,name,price_usd,duration_days,active FROM plans ORDER BY id").all());
 });
 
 app.get("/api/admin/pricing/products", adminOnly, (req,res)=>{
@@ -1541,14 +1551,15 @@ app.get("/api/admin/pricing/products", adminOnly, (req,res)=>{
 });
 
 app.patch("/api/admin/pricing/plans/:planId", adminOnly, (req,res)=>{
-  const {price_ghs} = req.body || {};
-  if(price_ghs === undefined || price_ghs === null) return res.status(400).json({error: "Price is required"});
+  const {price_usd} = req.body || {};
+  const nextPrice = Number(price_usd);
+  if(!Number.isFinite(nextPrice) || nextPrice <= 0) return res.status(400).json({error: "A valid USD price is required"});
   
   const plan = db.prepare("SELECT * FROM plans WHERE id=?").get(req.params.planId);
   if(!plan) return res.status(404).json({error: "Plan not found"});
   
-  db.prepare("UPDATE plans SET price_ghs=? WHERE id=?").run(Math.max(0, Number(price_ghs)), req.params.planId);
-  audit("plan_price_updated", "plan", req.params.planId, `Price changed from GH₵${plan.price_ghs} to GH₵${price_ghs}`);
+  db.prepare("UPDATE plans SET price_usd=? WHERE id=?").run(nextPrice, req.params.planId);
+  audit("plan_price_updated", "plan", req.params.planId, `USD price changed from $${Number(plan.price_usd).toFixed(2)} to $${nextPrice.toFixed(2)}`);
   
   res.json(db.prepare("SELECT * FROM plans WHERE id=?").get(req.params.planId));
 });
@@ -2039,6 +2050,10 @@ CREATE TABLE IF NOT EXISTS checkout_requests(
  user_id INTEGER NOT NULL,
  plan_id INTEGER NOT NULL,
  coupon_code TEXT,
+ original_amount_usd REAL,
+ discount_usd REAL,
+ final_amount_usd REAL,
+ fx_ghs_per_usd REAL,
  original_amount_ghs REAL NOT NULL,
  discount_ghs REAL NOT NULL DEFAULT 0,
  final_amount_ghs REAL NOT NULL,
@@ -2048,6 +2063,18 @@ CREATE TABLE IF NOT EXISTS checkout_requests(
  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 `);
+
+// Preserve every existing checkout while adding USD snapshots for the new
+// worldwide subscription price. Older pending checkouts continue to use their
+// original stored GHS amount.
+for(const column of [
+  "original_amount_usd REAL",
+  "discount_usd REAL",
+  "final_amount_usd REAL",
+  "fx_ghs_per_usd REAL"
+]){
+  try{db.prepare(`ALTER TABLE checkout_requests ADD COLUMN ${column}`).run();}catch(e){}
+}
 
 
 db.exec(`
@@ -2513,27 +2540,72 @@ app.get("/api/admin/referrals",adminOnly,(req,res)=>{
 });
 
 
-/* Subscription checkout requests — payment gateway intentionally deferred */
-app.post("/api/customer/checkout-request",customerOnly,(req,res)=>{
- const planId=Number(req.body?.planId||1);
- const couponCode=String(req.body?.coupon_code||"").trim().toUpperCase();
- const plan=db.prepare("SELECT * FROM plans WHERE id=? AND active=1").get(planId);
- if(!plan) return res.status(400).json({error:"Invalid subscription plan"});
- let discount=0,coupon=null;
- if(couponCode){
-   coupon=db.prepare("SELECT * FROM coupons WHERE code=? AND active=1").get(couponCode);
-   if(!coupon) return res.status(400).json({error:"Invalid coupon code"});
-   if(!["subscription","all"].includes(coupon.applies_to)) return res.status(400).json({error:"Coupon does not apply to subscriptions"});
-   if(coupon.expires_at && new Date(coupon.expires_at)<=new Date()) return res.status(400).json({error:"Coupon has expired"});
-   if(coupon.max_uses!=null && coupon.used_count>=coupon.max_uses) return res.status(400).json({error:"Coupon usage limit reached"});
-   discount=coupon.discount_type==="percent"?plan.price_ghs*(coupon.discount_value/100):coupon.discount_value;
-   discount=Math.max(0,Math.min(plan.price_ghs,discount));
+/* Subscription checkout requests — US$23 worldwide base price */
+app.post("/api/customer/checkout-request",customerOnly,async(req,res)=>{
+ try{
+   const planId=Number(req.body?.planId||1);
+   const couponCode=String(req.body?.coupon_code||"").trim().toUpperCase();
+   const ratesResult=await getExchangeRates();
+   const usdPerGhs=Number(ratesResult?.rates?.USD||ratesResult?.data?.rates?.USD);
+   if(!Number.isFinite(usdPerGhs)||usdPerGhs<=0){
+     return res.status(503).json({error:"The current USD exchange rate is unavailable. Please try again."});
+   }
+
+   const plan=db.prepare("SELECT * FROM plans WHERE id=? AND active=1").get(planId);
+   if(!plan) return res.status(400).json({error:"Invalid subscription plan"});
+
+   const ghsPerUsd=1/usdPerGhs;
+   const originalUsd=Number(plan.price_usd||SUBSCRIPTION_PROMO_USD);
+   if(!Number.isFinite(originalUsd)||originalUsd<=0){
+     return res.status(500).json({error:"Subscription price is not configured"});
+   }
+
+   let discountUsd=0,coupon=null;
+   if(couponCode){
+     coupon=db.prepare("SELECT * FROM coupons WHERE code=? AND active=1").get(couponCode);
+     if(!coupon) return res.status(400).json({error:"Invalid coupon code"});
+     if(!["subscription","all"].includes(coupon.applies_to)) return res.status(400).json({error:"Coupon does not apply to subscriptions"});
+     if(coupon.expires_at && new Date(coupon.expires_at)<=new Date()) return res.status(400).json({error:"Coupon has expired"});
+     if(coupon.max_uses!=null && coupon.used_count>=coupon.max_uses) return res.status(400).json({error:"Coupon usage limit reached"});
+     // Existing fixed-value coupons remain denominated in GHS; percentage
+     // coupons apply directly to the new USD base price.
+     discountUsd=coupon.discount_type==="percent"
+       ? originalUsd*(Number(coupon.discount_value)/100)
+       : Number(coupon.discount_value)*usdPerGhs;
+     discountUsd=Math.max(0,Math.min(originalUsd,discountUsd));
+   }
+
+   const finalUsd=Number((originalUsd-discountUsd).toFixed(2));
+   const originalGhs=Number((originalUsd*ghsPerUsd).toFixed(2));
+   const discountGhs=Number((discountUsd*ghsPerUsd).toFixed(2));
+   const finalGhs=Number((finalUsd*ghsPerUsd).toFixed(2));
+   const reference="WTV-SUB-"+Date.now()+"-"+crypto.randomBytes(3).toString("hex").toUpperCase();
+
+   db.prepare(`INSERT INTO checkout_requests(
+     reference,user_id,plan_id,coupon_code,
+     original_amount_usd,discount_usd,final_amount_usd,fx_ghs_per_usd,
+     original_amount_ghs,discount_ghs,final_amount_ghs
+   ) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).run(
+     reference,req.customer.userId,plan.id,couponCode||null,
+     originalUsd,Number(discountUsd.toFixed(2)),finalUsd,Number(ghsPerUsd.toFixed(6)),
+     originalGhs,discountGhs,finalGhs
+   );
+
+   res.json({
+     ok:true,
+     reference,
+     plan:plan.name,
+     currency:"USD",
+     original_amount_usd:originalUsd,
+     discount_usd:Number(discountUsd.toFixed(2)),
+     final_amount_usd:finalUsd,
+     paystack_amount_ghs:finalGhs,
+     status:"awaiting_payment"
+   });
+ }catch(error){
+   console.error("Subscription checkout request error:",error);
+   res.status(500).json({error:"Could not create the subscription checkout"});
  }
- const finalAmount=Number((plan.price_ghs-discount).toFixed(2));
- const reference="WTV-SUB-"+Date.now()+"-"+crypto.randomBytes(3).toString("hex").toUpperCase();
- db.prepare(`INSERT INTO checkout_requests(reference,user_id,plan_id,coupon_code,original_amount_ghs,discount_ghs,final_amount_ghs)
- VALUES(?,?,?,?,?,?,?)`).run(reference,req.customer.userId,plan.id,couponCode||null,plan.price_ghs,Number(discount.toFixed(2)),finalAmount);
- res.json({ok:true,reference,plan:plan.name,original_amount_ghs:plan.price_ghs,discount_ghs:Number(discount.toFixed(2)),final_amount_ghs:finalAmount,status:"awaiting_payment"});
 });
 
 app.get("/api/customer/checkout-requests",customerOnly,(req,res)=>{
@@ -2689,9 +2761,11 @@ app.get("/health",(req,res)=>{
 app.get("/api/public-config",(req,res)=>{
   res.json({
     site_name:"World TV",
-    subscription_price_ghs:299,
+    subscription_price_usd:SUBSCRIPTION_PROMO_USD,
+    subscription_currency:"USD",
+    subscription_promotion:{active:true,label:"Limited-Time Worldwide Price Drop"},
     domain:process.env.PUBLIC_BASE_URL||"",
-    payments_enabled:false
+    payments_enabled:Boolean(process.env.PAYSTACK_SECRET_KEY||process.env.PAYPAL_CLIENT_ID)
   });
 });
 

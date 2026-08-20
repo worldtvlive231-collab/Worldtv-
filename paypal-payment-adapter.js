@@ -287,7 +287,13 @@ function registerRoutes(app){
         return res.status(409).json({error:"This checkout request was cancelled"});
       }
 
-      const amountUsd = await usdAmountForGhs(checkout.final_amount_ghs);
+      // New promotion checkouts store an exact USD amount so every country
+      // receives the same US$23 base price. Keep the conversion fallback for
+      // older pending checkouts created before the USD-price migration.
+      const storedUsd = Number(checkout.final_amount_usd);
+      const amountUsd = Number.isFinite(storedUsd) && storedUsd > 0
+        ? Number(storedUsd.toFixed(2))
+        : await usdAmountForGhs(checkout.final_amount_ghs);
       const base = String(process.env.PUBLIC_BASE_URL || "").replace(/\/$/, "");
       if(!base || !base.startsWith("https://")){
         return res.status(500).json({error:"PUBLIC_BASE_URL must be configured with HTTPS for PayPal"});

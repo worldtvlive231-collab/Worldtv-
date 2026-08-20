@@ -150,7 +150,7 @@ COUPON + REFERRAL STAGE
 
 
 SUBSCRIPTION CHECKOUT PREPARATION STAGE
-- Dedicated Subscribe page for the GH₵299/year plan
+- Dedicated Subscribe page for the worldwide US$23/year promotional plan
 - Logged-in customers can create subscription requests
 - Coupon discounts are calculated before the request is saved
 - Unique subscription reference number
