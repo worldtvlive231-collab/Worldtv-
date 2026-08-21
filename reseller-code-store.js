@@ -8,6 +8,9 @@ const Database = require('better-sqlite3');
 
 const db = new Database(path.join(process.cwd(), 'data', 'worldtv.sqlite'));
 db.pragma('journal_mode=WAL');
+const RESELLER_CODE_PRICE_USD = 19;
+const MIN_RESELLER_CODES = 10;
+
 db.exec(`
 CREATE TABLE IF NOT EXISTS reseller_code_purchases(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,23 +28,8 @@ CREATE TABLE IF NOT EXISTS reseller_code_purchases(
 CREATE INDEX IF NOT EXISTS idx_reseller_code_purchases_reseller
   ON reseller_code_purchases(reseller_id, created_at DESC);
 `);
-
-function cleanNumber(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function configuredPrice() {
-  const envPrice = cleanNumber(process.env.RESELLER_CODE_PRICE_GHS);
-  if (envPrice > 0) return envPrice;
-  try {
-    const row = db.prepare("SELECT value FROM site_settings WHERE key='reseller_code_price_ghs'").get();
-    const dbPrice = cleanNumber(row && row.value);
-    return dbPrice > 0 ? dbPrice : 0;
-  } catch (e) {
-    return 0;
-  }
-}
+try{db.prepare('ALTER TABLE reseller_code_purchases ADD COLUMN unit_price_usd REAL').run();}catch(e){}
+try{db.prepare('ALTER TABLE reseller_code_purchases ADD COLUMN amount_usd REAL').run();}catch(e){}
 
 function paystackRequest(method, endpoint, payload) {
   return new Promise((resolve, reject) => {
@@ -77,9 +65,11 @@ function paystackRequest(method, endpoint, payload) {
 }
 
 function getStore(req, res) {
-  const price = configuredPrice();
   const history = db.prepare(`
-    SELECT reference, code_count, unit_price_ghs, amount_ghs, status, created_at, paid_at
+    SELECT reference, code_count,
+           COALESCE(unit_price_usd, unit_price_ghs) AS unit_price_usd,
+           COALESCE(amount_usd, amount_ghs) AS amount_usd,
+           amount_ghs, status, created_at, paid_at
     FROM reseller_code_purchases
     WHERE reseller_id=?
     ORDER BY id DESC
@@ -91,8 +81,11 @@ function getStore(req, res) {
     WHERE reseller_id=?
   `).get(req.resellerId) || { allocated_count: 0, used_count: 0, available_count: 0 };
   res.json({
-    unit_price_ghs: price,
-    configured: price > 0,
+    unit_price_usd: RESELLER_CODE_PRICE_USD,
+    unit_price_ghs: RESELLER_CODE_PRICE_USD,
+    currency: 'USD',
+    minimum_codes: MIN_RESELLER_CODES,
+    configured: true,
     payment_configured: Boolean(String(process.env.PAYSTACK_SECRET_KEY || '').trim()),
     quota,
     history
@@ -101,36 +94,34 @@ function getStore(req, res) {
 
 async function initializePurchase(req, res) {
   try {
-    const count = Math.floor(cleanNumber(req.body && req.body.count));
-    if (count < 1 || count > 1000) {
-      return res.status(400).json({ error: 'Choose between 1 and 1000 codes.' });
+    const count = Math.floor(Number(req.body && req.body.count));
+    if (!Number.isFinite(count) || count < MIN_RESELLER_CODES || count > 1000) {
+      return res.status(400).json({ error: `Minimum purchase is ${MIN_RESELLER_CODES} codes.` });
     }
-    const unitPrice = configuredPrice();
-    if (!(unitPrice > 0)) {
-      return res.status(400).json({ error: 'Reseller code price has not been configured yet.' });
-    }
-    const reseller = db.prepare('SELECT id,name,email FROM resellers WHERE id=? AND status=\'active\'').get(req.resellerId);
+    const reseller = db.prepare("SELECT id,name,email FROM resellers WHERE id=? AND status='active'").get(req.resellerId);
     if (!reseller) return res.status(401).json({ error: 'Unauthorized' });
 
-    const amountGhs = Number((unitPrice * count).toFixed(2));
+    const amountUsd = Number((RESELLER_CODE_PRICE_USD * count).toFixed(2));
     const reference = `WTV-RC-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
     db.prepare(`
-      INSERT INTO reseller_code_purchases(reseller_id,reference,code_count,unit_price_ghs,amount_ghs,status)
-      VALUES(?,?,?,?,?,'pending')
-    `).run(req.resellerId, reference, count, unitPrice, amountGhs);
+      INSERT INTO reseller_code_purchases(
+        reseller_id,reference,code_count,unit_price_ghs,amount_ghs,unit_price_usd,amount_usd,status
+      ) VALUES(?,?,?,?,?,?,?,'pending')
+    `).run(req.resellerId, reference, count, RESELLER_CODE_PRICE_USD, amountUsd, RESELLER_CODE_PRICE_USD, amountUsd);
 
     const baseUrl = String(process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
     const callbackUrl = `${baseUrl}/reseller?code_purchase_ref=${encodeURIComponent(reference)}`;
     const initialized = await paystackRequest('POST', '/transaction/initialize', {
       email: reseller.email,
-      amount: Math.round(amountGhs * 100),
-      currency: 'GHS',
+      amount: Math.round(amountUsd * 100),
+      currency: 'USD',
       reference,
       callback_url: callbackUrl,
       metadata: {
         purchase_type: 'reseller_code_credits',
         reseller_id: String(req.resellerId),
-        code_count: count
+        code_count: count,
+        unit_price_usd: RESELLER_CODE_PRICE_USD
       }
     });
 
@@ -138,8 +129,9 @@ async function initializePurchase(req, res) {
       ok: true,
       reference,
       count,
-      unit_price_ghs: unitPrice,
-      amount_ghs: amountGhs,
+      unit_price_usd: RESELLER_CODE_PRICE_USD,
+      amount_usd: amountUsd,
+      currency: 'USD',
       authorization_url: initialized.data && initialized.data.authorization_url
     });
   } catch (e) {
@@ -164,8 +156,8 @@ async function verifyPurchase(req, res) {
 
     const verified = await paystackRequest('GET', `/transaction/verify/${encodeURIComponent(reference)}`);
     const tx = verified.data || {};
-    const expectedPesewas = Math.round(Number(purchase.amount_ghs) * 100);
-    if (tx.status !== 'success' || Number(tx.amount) !== expectedPesewas || String(tx.currency || '').toUpperCase() !== 'GHS') {
+    const expectedCents = Math.round(Number(purchase.amount_usd || purchase.amount_ghs) * 100);
+    if (tx.status !== 'success' || Number(tx.amount) !== expectedCents || String(tx.currency || '').toUpperCase() !== 'USD') {
       return res.status(400).json({ error: 'Payment has not been completed successfully.' });
     }
 
@@ -204,17 +196,7 @@ async function verifyPurchase(req, res) {
 }
 
 function getAdminPrice(req, res) {
-  res.json({ unit_price_ghs: configuredPrice(), source: cleanNumber(process.env.RESELLER_CODE_PRICE_GHS) > 0 ? 'environment' : 'database' });
-}
-
-function setAdminPrice(req, res) {
-  const price = cleanNumber(req.body && req.body.unit_price_ghs);
-  if (!(price > 0)) return res.status(400).json({ error: 'Enter a reseller price greater than 0.' });
-  db.prepare(`
-    INSERT INTO site_settings(key,value) VALUES('reseller_code_price_ghs',?)
-    ON CONFLICT(key) DO UPDATE SET value=excluded.value
-  `).run(String(Number(price.toFixed(2))));
-  res.json({ ok: true, unit_price_ghs: configuredPrice() });
+  res.json({ unit_price_usd: RESELLER_CODE_PRICE_USD, minimum_codes: MIN_RESELLER_CODES, currency: 'USD', fixed: true });
 }
 
 const originalPost = express.application.post;
@@ -227,7 +209,6 @@ express.application.post = function patchedPost(routePath, ...handlers) {
     const adminOnly = handlers[0];
     if (typeof adminOnly === 'function') {
       originalGet.call(this, '/api/admin/reseller-code-price', adminOnly, getAdminPrice);
-      originalPost.call(this, '/api/admin/reseller-code-price', adminOnly, setAdminPrice);
       this.__wtvResellerPriceAdminRoutes = true;
     }
   }
