@@ -23,7 +23,7 @@
       if(count){count.min=String(MIN_CODES);if(Number(count.value)<MIN_CODES)count.value=String(MIN_CODES);}
       if($('unitPrice'))$('unitPrice').textContent=usd(d.unit_price_usd||UNIT_USD);
       if($('purchaseTotal'))$('purchaseTotal').textContent=usd((Number(count?.value)||MIN_CODES)*(d.unit_price_usd||UNIT_USD));
-      if($('storeStatus')){$('storeStatus').className='msg success';$('storeStatus').textContent=`Reseller price is ${usd(d.unit_price_usd||UNIT_USD)} per 1-year code. Minimum purchase: ${MIN_CODES} codes (${usd(MIN_CODES*(d.unit_price_usd||UNIT_USD))}). Paid credits are added automatically after successful payment.`;}
+      if($('storeStatus')){$('storeStatus').className='msg success';$('storeStatus').textContent=`Reseller price is ${usd(d.unit_price_usd||UNIT_USD)} per 1-year code. Minimum purchase: ${MIN_CODES} codes (${usd(MIN_CODES*(d.unit_price_usd||UNIT_USD))}). Paystack will charge the current GHS equivalent at checkout, then your paid code credits are added automatically.`;}
       if($('buyCodesBtn'))$('buyCodesBtn').disabled=!d.payment_configured;
       document.querySelector('.store .note')?.replaceChildren(document.createTextNode(`Code packages start at ${MIN_CODES} codes. You can buy ${MIN_CODES} or more, and you can generate only the number of credits you have paid for.`));
       const rows=d.history||[];
@@ -46,7 +46,7 @@
     try{
       const r=await fetch('/api/reseller/code-purchases/initialize',{method:'POST',headers:{'Content-Type':'application/json','x-reseller-token':token},body:JSON.stringify({count})});
       const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not start payment.');
-      if(out){out.className='msg success';out.textContent=`Opening secure payment for ${count} codes (${usd(count*UNIT_USD)})...`;}
+      if(out){out.className='msg success';out.textContent=`Opening secure payment for ${count} codes (${usd(d.amount_usd||count*UNIT_USD)}). Paystack will charge approximately GH₵${Number(d.amount_ghs||0).toFixed(2)}.`;}
       location.href=d.authorization_url;
     }catch(e){if(out){out.className='msg error';out.textContent=e.message;}if(btn)btn.disabled=false;}
   };

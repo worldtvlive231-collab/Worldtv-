@@ -5,6 +5,7 @@ const https = require('https');
 const crypto = require('crypto');
 const express = require('express');
 const Database = require('better-sqlite3');
+const { getExchangeRates } = require('./exchange-rates');
 
 const db = new Database(path.join(process.cwd(), 'data', 'worldtv.sqlite'));
 db.pragma('journal_mode=WAL');
@@ -64,12 +65,19 @@ function paystackRequest(method, endpoint, payload) {
   });
 }
 
+async function usdToGhs(amountUsd) {
+  const fx = await getExchangeRates();
+  const usdPerGhs = Number(fx && fx.rates && fx.rates.USD);
+  if (!(usdPerGhs > 0)) throw new Error('Could not calculate the current USD to GHS exchange rate. Please try again.');
+  return Number((Number(amountUsd) / usdPerGhs).toFixed(2));
+}
+
 function getStore(req, res) {
   const history = db.prepare(`
     SELECT reference, code_count,
-           COALESCE(unit_price_usd, unit_price_ghs) AS unit_price_usd,
-           COALESCE(amount_usd, amount_ghs) AS amount_usd,
-           amount_ghs, status, created_at, paid_at
+           COALESCE(unit_price_usd, 19) AS unit_price_usd,
+           COALESCE(amount_usd, 19 * code_count) AS amount_usd,
+           unit_price_ghs, amount_ghs, status, created_at, paid_at
     FROM reseller_code_purchases
     WHERE reseller_id=?
     ORDER BY id DESC
@@ -82,8 +90,8 @@ function getStore(req, res) {
   `).get(req.resellerId) || { allocated_count: 0, used_count: 0, available_count: 0 };
   res.json({
     unit_price_usd: RESELLER_CODE_PRICE_USD,
-    unit_price_ghs: RESELLER_CODE_PRICE_USD,
     currency: 'USD',
+    checkout_currency: 'GHS',
     minimum_codes: MIN_RESELLER_CODES,
     configured: true,
     payment_configured: Boolean(String(process.env.PAYSTACK_SECRET_KEY || '').trim()),
@@ -102,26 +110,31 @@ async function initializePurchase(req, res) {
     if (!reseller) return res.status(401).json({ error: 'Unauthorized' });
 
     const amountUsd = Number((RESELLER_CODE_PRICE_USD * count).toFixed(2));
+    const amountGhs = await usdToGhs(amountUsd);
+    const unitPriceGhs = Number((amountGhs / count).toFixed(2));
     const reference = `WTV-RC-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
     db.prepare(`
       INSERT INTO reseller_code_purchases(
         reseller_id,reference,code_count,unit_price_ghs,amount_ghs,unit_price_usd,amount_usd,status
       ) VALUES(?,?,?,?,?,?,?,'pending')
-    `).run(req.resellerId, reference, count, RESELLER_CODE_PRICE_USD, amountUsd, RESELLER_CODE_PRICE_USD, amountUsd);
+    `).run(req.resellerId, reference, count, unitPriceGhs, amountGhs, RESELLER_CODE_PRICE_USD, amountUsd);
 
     const baseUrl = String(process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
     const callbackUrl = `${baseUrl}/reseller?code_purchase_ref=${encodeURIComponent(reference)}`;
     const initialized = await paystackRequest('POST', '/transaction/initialize', {
       email: reseller.email,
-      amount: Math.round(amountUsd * 100),
-      currency: 'USD',
+      amount: Math.round(amountGhs * 100),
+      currency: 'GHS',
       reference,
       callback_url: callbackUrl,
       metadata: {
         purchase_type: 'reseller_code_credits',
         reseller_id: String(req.resellerId),
         code_count: count,
-        unit_price_usd: RESELLER_CODE_PRICE_USD
+        unit_price_usd: RESELLER_CODE_PRICE_USD,
+        amount_usd: amountUsd,
+        charged_currency: 'GHS',
+        charged_amount_ghs: amountGhs
       }
     });
 
@@ -131,7 +144,9 @@ async function initializePurchase(req, res) {
       count,
       unit_price_usd: RESELLER_CODE_PRICE_USD,
       amount_usd: amountUsd,
-      currency: 'USD',
+      amount_ghs: amountGhs,
+      display_currency: 'USD',
+      checkout_currency: 'GHS',
       authorization_url: initialized.data && initialized.data.authorization_url
     });
   } catch (e) {
@@ -156,8 +171,8 @@ async function verifyPurchase(req, res) {
 
     const verified = await paystackRequest('GET', `/transaction/verify/${encodeURIComponent(reference)}`);
     const tx = verified.data || {};
-    const expectedCents = Math.round(Number(purchase.amount_usd || purchase.amount_ghs) * 100);
-    if (tx.status !== 'success' || Number(tx.amount) !== expectedCents || String(tx.currency || '').toUpperCase() !== 'USD') {
+    const expectedPesewas = Math.round(Number(purchase.amount_ghs) * 100);
+    if (tx.status !== 'success' || Number(tx.amount) !== expectedPesewas || String(tx.currency || '').toUpperCase() !== 'GHS') {
       return res.status(400).json({ error: 'Payment has not been completed successfully.' });
     }
 
@@ -195,7 +210,7 @@ async function verifyPurchase(req, res) {
 }
 
 function getAdminPrice(req, res) {
-  res.json({ unit_price_usd: RESELLER_CODE_PRICE_USD, minimum_codes: MIN_RESELLER_CODES, currency: 'USD', fixed: true });
+  res.json({ unit_price_usd: RESELLER_CODE_PRICE_USD, minimum_codes: MIN_RESELLER_CODES, currency: 'USD', checkout_currency: 'GHS', fixed: true });
 }
 
 const originalPost = express.application.post;
