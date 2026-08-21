@@ -106,3 +106,34 @@ express.application.post = function resellerAdminPoolPost(routePath, ...handlers
   }
   return previousPost.call(this, routePath, ...handlers);
 };
+
+const previousGet = express.application.get;
+express.application.get = function resellerAdminPoolGet(routePath, ...handlers) {
+  if (routePath === '/api/admin/stats' && handlers.length) {
+    const finalHandler = handlers[handlers.length - 1];
+    if (typeof finalHandler === 'function') {
+      const wrapped = function adminStatsWithUnassignedPool(req, res, next) {
+        const originalJson = res.json.bind(res);
+        res.json = payload => {
+          if (payload && typeof payload === 'object') {
+            const available = db.prepare(`
+              SELECT COUNT(*) AS count
+              FROM subscription_codes
+              WHERE status='unused' AND user_id IS NULL AND reseller_id IS NULL
+            `).get().count;
+            payload.unused = available;
+            payload.reseller_allocated_unused = db.prepare(`
+              SELECT COUNT(*) AS count
+              FROM subscription_codes
+              WHERE status='unused' AND reseller_id IS NOT NULL
+            `).get().count;
+          }
+          return originalJson(payload);
+        };
+        return finalHandler(req, res, next);
+      };
+      return previousGet.call(this, routePath, ...handlers.slice(0, -1), wrapped);
+    }
+  }
+  return previousGet.call(this, routePath, ...handlers);
+};
