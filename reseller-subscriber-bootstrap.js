@@ -4,6 +4,27 @@ const path = require('path');
 const express = require('express');
 const Database = require('better-sqlite3');
 
+// Older reseller code generation in server.js inserts only code/status/reseller_id,
+// while subscription_codes.plan_id is NOT NULL. Patch that one legacy statement
+// at startup so reseller codes automatically use the active subscription plan.
+// The replacement keeps the same two .run(code, resellerId) parameters.
+const originalPrepare = Database.prototype.prepare;
+Database.prototype.prepare = function resellerPlanAwarePrepare(sql, ...args) {
+  const normalized = String(sql || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  if (normalized === "insert into subscription_codes(code, status, reseller_id) values(?, 'active', ?)") {
+    sql = `
+      INSERT INTO subscription_codes(code, plan_id, status, reseller_id)
+      VALUES(
+        ?,
+        (SELECT id FROM plans WHERE active=1 ORDER BY id ASC LIMIT 1),
+        'active',
+        ?
+      )
+    `;
+  }
+  return originalPrepare.call(this, sql, ...args);
+};
+
 const db = new Database(path.join(process.cwd(), 'data', 'worldtv.sqlite'));
 db.pragma('journal_mode=WAL');
 db.exec(`

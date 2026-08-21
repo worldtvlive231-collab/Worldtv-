@@ -106,13 +106,21 @@ app.post("/api/reseller/generate-codes", resellerOnly, (req, res) => {
       const available = quota ? quota.available_count : 0;
       return res.status(400).json({ error: `Not enough codes available. You have ${available} codes available. Contact admin to allocate more.` });
     }
+
+    // Every subscription code must belong to a plan. Use the first active
+    // plan so reseller-generated codes match the same subscription schema as
+    // admin/payment generated codes and never violate plan_id NOT NULL.
+    const plan = db.prepare("SELECT id FROM plans WHERE active = 1 ORDER BY id ASC LIMIT 1").get();
+    if (!plan) {
+      return res.status(409).json({ error: "No active subscription plan is available. Ask admin to activate a plan first." });
+    }
     
     // Generate codes
     const generated = [];
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     
     // Use a transaction for atomicity
-    const insertStmt = db.prepare("INSERT INTO subscription_codes(code, status, reseller_id) VALUES(?, 'active', ?)");
+    const insertStmt = db.prepare("INSERT INTO subscription_codes(code, plan_id, status, reseller_id) VALUES(?, ?, 'active', ?)");
     const updateStmt = db.prepare("UPDATE reseller_code_allocation SET available_count = available_count - ? WHERE reseller_id = ?");
     
     const transaction = db.transaction(() => {
@@ -121,7 +129,7 @@ app.post("/api/reseller/generate-codes", resellerOnly, (req, res) => {
         for (let j = 0; j < 8; j++) {
           code += chars.charAt(Math.floor(Math.random() * chars.length));
         }
-        insertStmt.run(code, req.resellerId);
+        insertStmt.run(code, plan.id, req.resellerId);
         generated.push(code);
       }
       updateStmt.run(genCount, req.resellerId);
@@ -129,7 +137,7 @@ app.post("/api/reseller/generate-codes", resellerOnly, (req, res) => {
     
     transaction();
     
-    res.json({ ok: true, generated, count: genCount });
+    res.json({ ok: true, generated, count: genCount, plan_id: plan.id });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
