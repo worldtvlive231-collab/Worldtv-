@@ -12,7 +12,34 @@
       const card=document.createElement('div');card.id='resellerPricingBanner';card.className='card';card.innerHTML=`<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap"><img src="/world-tv-logo.png" alt="WORLD TV" style="width:110px;height:70px;object-fit:contain"><div><h2 style="margin:0 0 6px">WORLD TV Reseller Code Pricing</h2><div style="font-size:30px;font-weight:900;color:#d89a00">$19 USD <span style="font-size:15px;color:#716958">per 1-year code</span></div><p class="muted" style="margin:6px 0 0">Minimum package: <b>10 codes</b> • Minimum checkout: <b>$190 USD</b>. Resellers can generate only paid/allocated code credits.</p></div></div>`;
       tab.insertBefore(card,tab.firstChild);
     }
+    ensureSubscribersCard();
   }
+
+  function ensureSubscribersCard(){
+    const tab=document.getElementById('resellersTab');
+    if(!tab||document.getElementById('resellerSubscribersAdminCard'))return;
+    const card=document.createElement('div');
+    card.id='resellerSubscribersAdminCard';card.className='card';
+    card.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap"><div><h2 style="margin-bottom:6px">Reseller Subscribers</h2><p class="muted" style="margin-top:0">Customer information registered by resellers after code generation.</p></div><div style="min-width:260px;display:flex;gap:8px"><input id="resellerSubscriberSearch" placeholder="Search name, phone, email or code" style="margin:0"><button class="btn secondary" id="resellerSubscriberSearchBtn">Search</button></div></div><div style="display:flex;gap:12px;flex-wrap:wrap;margin:12px 0"><span class="pill">Registered Subscribers: <b id="resellerSubscriberCount">0</b></span><button class="btn secondary" id="resellerSubscriberRefreshBtn">Refresh</button></div><div id="resellerSubscriberMsg" class="muted"></div><div style="overflow:auto"><table><thead><tr><th>Reseller</th><th>Subscriber</th><th>Phone / WhatsApp</th><th>Email</th><th>Country</th><th>Code</th><th>Code Status</th><th>Registered</th><th>Notifications</th></tr></thead><tbody id="resellerSubscriberRows"><tr><td colspan="9" class="muted">Loading subscriber registrations...</td></tr></tbody></table></div>`;
+    tab.appendChild(card);
+    document.getElementById('resellerSubscriberSearchBtn').onclick=()=>loadSubscriberRegistrations(document.getElementById('resellerSubscriberSearch').value);
+    document.getElementById('resellerSubscriberRefreshBtn').onclick=()=>loadSubscriberRegistrations(document.getElementById('resellerSubscriberSearch').value);
+    document.getElementById('resellerSubscriberSearch').addEventListener('keydown',e=>{if(e.key==='Enter')loadSubscriberRegistrations(e.target.value);});
+    loadSubscriberRegistrations();
+  }
+
+  async function loadSubscriberRegistrations(q=''){
+    const rows=document.getElementById('resellerSubscriberRows'),msg=document.getElementById('resellerSubscriberMsg'),count=document.getElementById('resellerSubscriberCount');
+    if(!rows)return;
+    rows.innerHTML='<tr><td colspan="9" class="muted">Loading subscriber registrations...</td></tr>';
+    if(msg)msg.textContent='';
+    try{
+      const data=await api('/api/admin/reseller-subscribers'+(String(q||'').trim()?`?q=${encodeURIComponent(String(q).trim())}`:''));
+      if(count)count.textContent=Array.isArray(data)?data.length:0;
+      rows.innerHTML=(Array.isArray(data)&&data.length)?data.map(s=>`<tr><td><b>${esc(s.reseller_name||'—')}</b><div class="muted">${esc(s.reseller_email||'')}</div></td><td><b>${esc(s.customer_name)}</b></td><td>${esc(s.phone)}</td><td>${esc(s.email)}</td><td>${esc(s.country||'—')}</td><td><b>${esc(s.code)}</b></td><td><span class="pill">${esc(s.code_status||'unknown')}</span></td><td>${s.created_at?new Date(s.created_at).toLocaleString():'—'}</td><td>${Number(s.service_notifications||0)?'Service ✓':'—'}${Number(s.marketing_consent||0)?'<br>Marketing ✓':''}</td></tr>`).join(''):'<tr><td colspan="9" class="muted">No reseller subscriber registrations found.</td></tr>';
+    }catch(e){rows.innerHTML='<tr><td colspan="9" class="muted">Could not load subscriber registrations.</td></tr>';if(msg)msg.textContent=e.message;}
+  }
+  window.wtvLoadResellerSubscribers=loadSubscriberRegistrations;
 
   function ensureOverlay(){
     if(overlay)return overlay;
@@ -24,18 +51,19 @@
   async function openControl(id){
     const o=ensureOverlay(),box=document.getElementById('resellerCodeControlBox');o.style.display='flex';box.innerHTML='<p>Loading reseller code controls...</p>';
     try{
-      const d=await api(`/api/admin/resellers/${id}/code-control`),q=d.quota||{},codes=d.codes||[];
+      const [d,allSubs]=await Promise.all([api(`/api/admin/resellers/${id}/code-control`),api('/api/admin/reseller-subscribers')]),q=d.quota||{},codes=d.codes||[],subs=(Array.isArray(allSubs)?allSubs:[]).filter(s=>Number(s.reseller_id)===Number(id));
       box.innerHTML=`<button onclick="document.getElementById('resellerCodeControlOverlay').style.display='none'" style="position:absolute;right:14px;top:10px;border:0;background:none;font-size:28px;cursor:pointer">×</button>
       <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><img src="/world-tv-logo.png" style="width:90px;height:55px;object-fit:contain"><div><h2 style="margin:0">${esc(d.reseller.name)}</h2><div class="muted">${esc(d.reseller.email)}</div></div></div>
-      <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px"><div class="card"><div class="muted">Allocated</div><div class="stat">${Number(q.allocated_count||0)}</div></div><div class="card"><div class="muted">Generated</div><div class="stat">${Number(q.used_count||0)}</div></div><div class="card"><div class="muted">Unused Credits</div><div class="stat">${Number(q.available_count||0)}</div></div></div>
+      <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px"><div class="card"><div class="muted">Allocated</div><div class="stat">${Number(q.allocated_count||0)}</div></div><div class="card"><div class="muted">Generated</div><div class="stat">${Number(q.used_count||0)}</div></div><div class="card"><div class="muted">Unused Credits</div><div class="stat">${Number(q.available_count||0)}</div></div><div class="card"><div class="muted">Subscribers</div><div class="stat">${subs.length}</div></div></div>
+      <div class="card"><h3>Registered Subscribers</h3><p class="muted">Subscriber details entered by this reseller.</p><div style="overflow:auto"><table><thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Country</th><th>Code</th><th>Status</th><th>Registered</th></tr></thead><tbody>${subs.length?subs.map(s=>`<tr><td><b>${esc(s.customer_name)}</b></td><td>${esc(s.phone)}</td><td>${esc(s.email)}</td><td>${esc(s.country||'—')}</td><td><b>${esc(s.code)}</b></td><td>${esc(s.code_status||'unknown')}</td><td>${s.created_at?new Date(s.created_at).toLocaleString():'—'}</td></tr>`).join(''):'<tr><td colspan="7" class="muted">No subscriber registrations for this reseller yet.</td></tr>'}</tbody></table></div></div>
       <div class="card"><h3>Revoke Unused Code Credits</h3><p class="muted">This reduces credits the reseller has not generated yet.</p><div style="display:flex;gap:10px;align-items:end"><div style="flex:1"><label>Credits to revoke</label><input id="revokeCreditCount" type="number" min="1" max="${Number(q.available_count||0)}" value="1"></div><button class="btn danger" onclick="wtvRevokeCredits(${id})">Revoke Credits</button></div><p id="revokeCreditMsg" class="muted"></p></div>
       <div class="card"><h3>Generated Codes</h3><p class="muted">Unused generated codes can be revoked individually. Used customer codes are protected.</p><div style="overflow:auto"><table><thead><tr><th>Code</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody>${codes.length?codes.map(c=>`<tr><td><b>${esc(c.code)}</b></td><td>${esc(c.status)}</td><td>${c.created_at?new Date(c.created_at).toLocaleString():'—'}</td><td>${String(c.status).toLowerCase()==='used'?'<span class="muted">Used — protected</span>':`<button class="btn danger" onclick="wtvRevokeGeneratedCode(${id},'${esc(c.code)}')">Revoke</button>`}</td></tr>`).join(''):'<tr><td colspan="4" class="muted">No generated codes on this account.</td></tr>'}</tbody></table></div></div>`;
     }catch(e){box.innerHTML=`<button onclick="document.getElementById('resellerCodeControlOverlay').style.display='none'" style="float:right">×</button><p>${esc(e.message)}</p>`;}
   }
 
   window.wtvRevokeCredits=async id=>{const count=Number(document.getElementById('revokeCreditCount')?.value||0),m=document.getElementById('revokeCreditMsg');if(!count||count<1)return;m.textContent='Revoking...';try{await api(`/api/admin/resellers/${id}/revoke-credits`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({count})});m.textContent=`${count} unused credit(s) revoked.`;setTimeout(()=>openControl(id),500);window.loadResellers?.();}catch(e){m.textContent=e.message;}};
-  window.wtvRevokeGeneratedCode=async(id,code)=>{if(!confirm(`Revoke subscription code ${code}? The reseller will no longer be able to use or sell this code.`))return;try{await api(`/api/admin/resellers/${id}/revoke-code`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});await openControl(id);window.loadResellers?.();}catch(e){alert(e.message);}};
-  window.wtvDeleteReseller=async(id,name)=>{if(!confirm(`Delete reseller account "${name}"?\n\nThis disables login immediately and revokes all unused code credits. Historical sales and subscriber records are preserved.`))return;try{await api(`/api/admin/resellers/${id}`,{method:'DELETE'});alert('Reseller account deleted.');window.loadResellers?.();}catch(e){alert(e.message);}};
+  window.wtvRevokeGeneratedCode=async(id,code)=>{if(!confirm(`Revoke subscription code ${code}? The reseller will no longer be able to use or sell this code.`))return;try{await api(`/api/admin/resellers/${id}/revoke-code`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});await openControl(id);window.loadResellers?.();loadSubscriberRegistrations();}catch(e){alert(e.message);}};
+  window.wtvDeleteReseller=async(id,name)=>{if(!confirm(`Delete reseller account "${name}"?\n\nThis disables login immediately and revokes all unused code credits. Historical sales and subscriber records are preserved.`))return;try{await api(`/api/admin/resellers/${id}`,{method:'DELETE'});alert('Reseller account deleted.');window.loadResellers?.();loadSubscriberRegistrations();}catch(e){alert(e.message);}};
   window.wtvOpenResellerCodeControl=openControl;
 
   function enhanceRows(){
@@ -48,6 +76,6 @@
     });
   }
 
-  function init(){brand();enhanceRows();const tbody=document.getElementById('resellersTable');if(tbody)new MutationObserver(enhanceRows).observe(tbody,{childList:true,subtree:true});new MutationObserver(brand).observe(document.body,{childList:true,subtree:true});}
+  function init(){brand();enhanceRows();const tbody=document.getElementById('resellersTable');if(tbody)new MutationObserver(enhanceRows).observe(tbody,{childList:true,subtree:true});new MutationObserver(brand).observe(document.body,{childList:true,subtree:true});setTimeout(loadSubscriberRegistrations,800);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
