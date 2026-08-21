@@ -10,7 +10,7 @@ db.pragma('journal_mode=WAL');
 function injectHtml(filePath,scriptSrc,res){
   fs.readFile(filePath,'utf8',(err,html)=>{
     if(err)return res.status(500).send('Page unavailable');
-    const tag=`<script src="${scriptSrc}?v=20260821-2"></script>`;
+    const tag=`<script src="${scriptSrc}?v=20260821-3"></script>`;
     res.type('html').send(html.includes('</body>')?html.replace('</body>',tag+'\n</body>'):html+tag);
   });
 }
@@ -52,7 +52,11 @@ function revokeGeneratedCode(req,res){
   if(!row)return res.status(404).json({error:'Code not found on this reseller account.'});
   if(String(row.status).toLowerCase()==='used')return res.status(400).json({error:'An already-used customer code cannot be revoked from here.'});
   db.transaction(()=>{
-    db.prepare("UPDATE subscription_codes SET status='revoked', reseller_id=NULL WHERE id=?").run(row.id);
+    // Return the exact uploaded code to the Admin pool so it can be allocated again.
+    db.prepare("UPDATE subscription_codes SET status='unused', reseller_id=NULL, user_id=NULL, expires_at=NULL WHERE id=?").run(row.id);
+    // Remove the current reseller/customer registration for this reusable code.
+    // Otherwise the UNIQUE(code) subscriber record would block a future reseller from registering it.
+    try{db.prepare('DELETE FROM reseller_subscribers WHERE reseller_id=? AND code=?').run(id,code);}catch(e){}
     const q=db.prepare('SELECT * FROM reseller_code_allocation WHERE reseller_id=?').get(id);
     if(q){
       const used=Math.max(0,Number(q.used_count||0)-1);
@@ -60,7 +64,8 @@ function revokeGeneratedCode(req,res){
       db.prepare('UPDATE reseller_code_allocation SET used_count=?,allocated_count=?,updated_at=CURRENT_TIMESTAMP WHERE reseller_id=?').run(used,allocated,id);
     }
   })();
-  res.json({ok:true,code});
+  const adminPool=db.prepare("SELECT COUNT(*) AS n FROM subscription_codes WHERE status='unused' AND user_id IS NULL AND reseller_id IS NULL").get().n;
+  res.json({ok:true,code,returned_to_admin_pool:true,admin_pool_available:adminPool});
 }
 
 function deleteReseller(req,res){
