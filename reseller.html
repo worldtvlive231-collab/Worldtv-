@@ -1,267 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reseller Dashboard - World TV</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; }
-    .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
-    .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-    h1 { color: #333; }
-    .btn { padding: 10px 16px; border: none; border-radius: 5px; font-size: 14px; cursor: pointer; transition: all 0.2s; }
-    .btn.primary { background: #0066cc; color: white; }
-    .btn.primary:hover { background: #0052a3; }
-    .btn.secondary { background: #e0e0e0; color: #333; }
-    .btn.secondary:hover { background: #d0d0d0; }
-    .btn.danger { background: #dc3545; color: white; }
-    .btn.danger:hover { background: #c82333; }
-    .logout { cursor: pointer; }
-    h2 { color: #333; margin-bottom: 15px; }
-    h3 { color: #555; margin-top: 15px; margin-bottom: 10px; font-size: 16px; }
-    .quota-box { background: #f9f9f9; padding: 20px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #0066cc; }
-    .quota-stat { display: inline-block; margin-right: 30px; }
-    .quota-stat .number { font-size: 32px; font-weight: bold; color: #0066cc; }
-    .quota-stat .label { font-size: 12px; color: #999; text-transform: uppercase; }
-    .codes-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-    .codes-table th { background: #f5f5f5; padding: 12px; text-align: left; font-weight: 600; font-size: 13px; border-bottom: 2px solid #ddd; }
-    .codes-table td { padding: 12px; border-bottom: 1px solid #eee; }
-    .codes-table tr:hover { background: #f9f9f9; }
-    .pill { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-    .pill.active { background: #d4edda; color: #155724; }
-    .pill.used { background: #cce5ff; color: #004085; }
-    .pill.expired { background: #f8d7da; color: #721c24; }
-    .form-group { margin-bottom: 15px; }
-    label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 5px; }
-    input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
-    input:focus { outline: none; border-color: #0066cc; box-shadow: 0 0 0 3px rgba(0,102,204,0.1); }
-    .msg { padding: 12px; border-radius: 5px; margin: 10px 0; font-size: 14px; }
-    .msg.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    .msg.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-    .hide { display: none !important; }
-    .login-page { max-width: 400px; margin: 60px auto; }
-    .login-card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    .login-card h1 { text-align: center; margin-bottom: 30px; }
-    .login-card .btn { width: 100%; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>WORLD TV Reseller Portal</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f7f3e8;color:#171717}.hide{display:none!important}.container{max-width:1180px;margin:auto;padding:20px}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:22px}.brand{font-size:26px;font-weight:900}.brand b{color:#d79a00}.muted{color:#746d5e}.card{background:#fff;border:1px solid #eadfbd;border-radius:18px;padding:22px;margin-bottom:18px;box-shadow:0 8px 22px rgba(50,35,0,.05)}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}.stat{background:#fff9e7;border:1px solid #f0dfaa;border-radius:16px;padding:18px}.stat strong{display:block;font-size:34px}.stat span{font-size:12px;text-transform:uppercase;font-weight:800;color:#756d5b}.btn{border:0;border-radius:12px;padding:11px 16px;font-weight:800;cursor:pointer}.primary{background:linear-gradient(135deg,#f4c542,#d99b00);color:#111}.secondary{background:#eee8d8;color:#2c271b}.dark{background:#171717;color:#fff}.small{padding:7px 10px;font-size:12px}input,textarea{width:100%;padding:11px 12px;border:1px solid #d9cfb6;border-radius:10px;font-size:14px;background:#fff}textarea{min-height:72px;resize:vertical}label{display:block;font-size:13px;font-weight:800;margin-bottom:5px}.form-group{margin-bottom:12px}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.msg{padding:11px 13px;border-radius:10px;margin-top:12px}.error{background:#fde7e7;color:#8d2222}.success{background:#e8f7ec;color:#1e6b34}.login{max-width:420px;margin:70px auto;padding:18px}.login .card{padding:32px}.login h1{text-align:center}.generated{display:grid;gap:14px;margin-top:16px}.generated-item{border:1px solid #eadfbd;border-radius:15px;padding:16px;background:#fffdf7}.code{display:inline-block;background:#171717;color:#fff;padding:6px 9px;border-radius:8px;font-family:monospace;font-weight:900}.check{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#5d5648;margin:8px 0}.check input{width:auto;margin-top:2px}.table-wrap{overflow-x:auto}.codes-table{width:100%;border-collapse:collapse;min-width:980px}.codes-table th{padding:11px;text-align:left;background:#faf6e9;font-size:12px;text-transform:uppercase;color:#756d5b}.codes-table td{padding:12px 11px;border-bottom:1px solid #eee5cf;vertical-align:top}.pill{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800}.pill.active{background:#e7f7eb;color:#17682e}.pill.used{background:#e8efff;color:#2c4f99}.pill.unassigned{background:#fff1bf;color:#745400}.search{max-width:420px;margin-bottom:14px}.note{font-size:13px;color:#756d5b;margin-top:-8px;margin-bottom:14px}@media(max-width:760px){.container{padding:13px}.stats,.two{grid-template-columns:1fr}.top{align-items:flex-start}.brand{font-size:22px}.card{padding:17px}}
+</style>
 </head>
 <body>
-<div id="loginPage" class="login-page">
-  <div class="login-card">
-    <h1>Reseller Login</h1>
-    <div class="form-group">
-      <label>Email</label>
-      <input id="loginEmail" type="email" placeholder="your@email.com">
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input id="loginPassword" type="password" placeholder="Password">
-    </div>
-    <button class="btn primary" onclick="loginReseller()" style="width: 100%; margin-bottom: 10px;">Log In</button>
-    <p id="loginMsg" class="msg hide"></p>
+<div id="loginPage" class="login">
+  <div class="card">
+    <div class="brand" style="text-align:center">W<b>O</b>RLD TV</div>
+    <h1>Reseller Portal</h1>
+    <p class="muted" style="text-align:center">Manage codes and register subscribers.</p>
+    <div class="form-group"><label>Email</label><input id="loginEmail" type="email" autocomplete="username"></div>
+    <div class="form-group"><label>Password</label><input id="loginPassword" type="password" autocomplete="current-password"></div>
+    <button class="btn primary" style="width:100%" onclick="loginReseller()">Log In</button>
+    <div id="loginMsg" class="msg hide"></div>
   </div>
 </div>
 
 <div id="dashboardPage" class="hide">
-  <div class="container">
-    <div class="header">
-      <div>
-        <h1 id="resellerName">Reseller Dashboard</h1>
-        <p class="muted" id="resellerEmail" style="color: #999; margin-top: 5px;"></p>
-      </div>
-      <button class="btn secondary" onclick="logoutReseller()">Log Out</button>
-    </div>
-
-    <div class="card">
-      <h2>Code Quota</h2>
-      <div class="quota-box">
-        <div class="quota-stat">
-          <div class="number" id="allocatedCount">0</div>
-          <div class="label">Allocated</div>
-        </div>
-        <div class="quota-stat">
-          <div class="number" id="usedCount">0</div>
-          <div class="label">Used</div>
-        </div>
-        <div class="quota-stat">
-          <div class="number" id="availableCount">0</div>
-          <div class="label">Available</div>
-        </div>
-      </div>
-      <p id="quotaMsg" class="muted" style="margin-top: 10px;"></p>
-    </div>
-
-    <div class="card">
-      <h2>Generate Codes for Customers</h2>
-      <div class="form-group">
-        <label>Number of Codes</label>
-        <input id="generateCount" type="number" min="1" max="100" value="5" placeholder="How many codes to generate">
-      </div>
-      <button class="btn primary" onclick="generateCodes()">Generate Codes</button>
-      <p id="generateMsg" class="msg hide" style="margin-top: 10px;"></p>
-    </div>
-
-    <div class="card">
-      <h2>My Codes</h2>
-      <div style="overflow-x: auto;">
-        <table class="codes-table">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Status</th>
-              <th>Generated</th>
-              <th>Used</th>
-            </tr>
-          </thead>
-          <tbody id="codesTableBody">
-            <tr><td colspan="4" style="text-align: center; color: #999;">Loading codes...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+<div class="container">
+  <div class="top"><div><div class="brand">W<b>O</b>RLD TV Reseller</div><div id="resellerIdentity" class="muted"></div></div><button class="btn secondary" onclick="logoutReseller()">Log Out</button></div>
+  <div class="stats">
+    <div class="stat"><strong id="allocatedCount">0</strong><span>Total Codes</span></div>
+    <div class="stat"><strong id="usedCount">0</strong><span>Used</span></div>
+    <div class="stat"><strong id="availableCount">0</strong><span>Available</span></div>
   </div>
+
+  <div class="card">
+    <h2>Generate Subscription Codes</h2>
+    <p class="note">After generating a code, register the subscriber before sending the code to the customer.</p>
+    <div class="two"><div class="form-group"><label>Number of Codes</label><input id="generateCount" type="number" min="1" max="20" value="1"></div><div style="display:flex;align-items:end;padding-bottom:12px"><button class="btn primary" onclick="generateCodes()">Generate Code(s)</button></div></div>
+    <div id="generateMsg" class="msg hide"></div>
+    <div id="generatedForms" class="generated"></div>
+  </div>
+
+  <div class="card">
+    <h2>My Subscribers & Codes</h2>
+    <p class="note">Subscriber contact details stay linked to the exact code for service notices and renewal reminders.</p>
+    <input class="search" id="searchCodes" placeholder="Search code, name, phone or email" oninput="renderCodes()">
+    <div class="table-wrap"><table class="codes-table"><thead><tr><th>Code</th><th>Subscriber</th><th>Phone</th><th>Email</th><th>Country</th><th>Status</th><th>Registered</th><th>Action</th></tr></thead><tbody id="codesTableBody"><tr><td colspan="8">Loading...</td></tr></tbody></table></div>
+  </div>
+</div>
 </div>
 
 <script>
-const $ = id => document.getElementById(id);
-let resellerToken = localStorage.getItem('wtv_reseller_token') || '';
-let resellerId = localStorage.getItem('wtv_reseller_id') || '';
-
-async function api(url, options = {}) {
-  options.headers = Object.assign({}, options.headers, { 'x-reseller-token': resellerToken });
-  const r = await fetch(url, options);
-  const json = await r.json();
-  if (r.status === 401) { logout(); throw new Error('Unauthorized'); }
-  if (!r.ok) throw new Error(json.error || 'Request failed');
-  return json;
-}
-
-async function loginReseller() {
-  const email = $('loginEmail').value.trim();
-  const password = $('loginPassword').value;
-  const msg = $('loginMsg');
-
-  if (!email || !password) {
-    msg.classList.remove('hide');
-    msg.classList.add('error');
-    msg.textContent = 'Email and password required';
-    return;
-  }
-
-  try {
-    const result = await fetch('/api/reseller/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    }).then(r => r.json());
-
-    if (!result.ok) throw new Error(result.error);
-
-    resellerToken = result.token;
-    resellerId = result.resellerId;
-    localStorage.setItem('wtv_reseller_token', resellerToken);
-    localStorage.setItem('wtv_reseller_id', resellerId);
-
-    msg.classList.add('hide');
-    showDashboard();
-  } catch (e) {
-    msg.classList.remove('hide');
-    msg.classList.add('error');
-    msg.textContent = 'Login failed: ' + e.message;
-  }
-}
-
-function logoutReseller() {
-  resellerToken = '';
-  resellerId = '';
-  localStorage.removeItem('wtv_reseller_token');
-  localStorage.removeItem('wtv_reseller_id');
-  showLogin();
-}
-
-async function showDashboard() {
-  $('loginPage').classList.add('hide');
-  $('dashboardPage').classList.remove('hide');
-  await loadResellerData();
-}
-
-function showLogin() {
-  $('loginPage').classList.remove('hide');
-  $('dashboardPage').classList.add('hide');
-}
-
-async function loadResellerData() {
-  try {
-    const data = await api('/api/reseller/dashboard');
-    $('resellerName').textContent = data.reseller.name;
-    $('resellerEmail').textContent = data.reseller.email;
-    $('allocatedCount').textContent = data.quota.allocated_count || 0;
-    $('usedCount').textContent = data.quota.used_count || 0;
-    $('availableCount').textContent = data.quota.available_count || 0;
-
-    if (data.quota.available_count === 0 && data.quota.allocated_count === 0) {
-      $('quotaMsg').textContent = 'No codes allocated yet. Contact your administrator.';
-    }
-
-    const tbody = $('codesTableBody');
-    if (data.codes.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">No codes generated yet</td></tr>';
-    } else {
-      tbody.innerHTML = data.codes.map(c => `
-        <tr>
-          <td><code style="background: #f5f5f5; padding: 4px 8px; border-radius: 3px;">${c.code}</code></td>
-          <td><span class="pill ${c.status === 'active' ? 'active' : c.status === 'used' ? 'used' : 'expired'}">${c.status}</span></td>
-          <td>${new Date(c.created_at).toLocaleDateString()}</td>
-          <td>${c.used_at ? new Date(c.used_at).toLocaleDateString() : '-'}</td>
-        </tr>
-      `).join('');
-    }
-  } catch (e) {
-    console.error('Error loading dashboard:', e);
-  }
-}
-
-let isGenerating = false;
-async function generateCodes() {
-  const count = parseInt($('generateCount').value, 10);
-  const msg = $('generateMsg');
-
-  if (!count || count < 1) {
-    msg.classList.remove('hide');
-    msg.classList.add('error');
-    msg.textContent = 'Enter a valid number of codes';
-    return;
-  }
-
-  try {
-    if (isGenerating) return;
-    isGenerating = true;
-    const result = await api('/api/reseller/generate-codes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ count })
-    });
-
-    msg.classList.remove('hide');
-    msg.classList.add('success');
-    msg.textContent = `✓ Generated ${count} codes`;
-    $('generateCount').value = '5';
-    setTimeout(() => loadResellerData(), 1000);
-  } catch (e) {
-    msg.classList.remove('hide');
-    msg.classList.add('error');
-    msg.textContent = 'Error: ' + e.message;
-  }
-}
-
-// Check if already logged in
-if (resellerToken && resellerId) {
-  showDashboard();
-} else {
-  showLogin();
-}
+const $=id=>document.getElementById(id);let resellerToken=localStorage.getItem('wtv_reseller_token')||'';let resellerId=localStorage.getItem('wtv_reseller_id')||'';let dashboardData={codes:[]};let generating=false;
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function msg(el,text,type){el.className='msg '+type;el.textContent=text;el.classList.remove('hide')}
+async function api(url,options={}){options.headers=Object.assign({},options.headers,{'x-reseller-token':resellerToken});const r=await fetch(url,options);let j={};try{j=await r.json()}catch(e){}if(r.status===401){logoutReseller();throw new Error('Session expired. Please log in again.')}if(!r.ok)throw new Error(j.error||'Request failed');return j}
+async function loginReseller(){const email=$('loginEmail').value.trim(),password=$('loginPassword').value;if(!email||!password)return msg($('loginMsg'),'Email and password required','error');try{const r=await fetch('/api/reseller/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'Login failed');resellerToken=j.token;resellerId=j.resellerId;localStorage.setItem('wtv_reseller_token',resellerToken);localStorage.setItem('wtv_reseller_id',resellerId);showDashboard()}catch(e){msg($('loginMsg'),e.message,'error')}}
+function logoutReseller(){resellerToken='';resellerId='';localStorage.removeItem('wtv_reseller_token');localStorage.removeItem('wtv_reseller_id');$('dashboardPage').classList.add('hide');$('loginPage').classList.remove('hide')}
+async function showDashboard(){$('loginPage').classList.add('hide');$('dashboardPage').classList.remove('hide');await loadData()}
+async function loadData(){try{dashboardData=await api('/api/reseller/dashboard');$('resellerIdentity').textContent=dashboardData.reseller.name+' · '+dashboardData.reseller.email;$('allocatedCount').textContent=dashboardData.quota.allocated_count||0;$('usedCount').textContent=dashboardData.quota.used_count||0;$('availableCount').textContent=dashboardData.quota.available_count||0;renderCodes()}catch(e){console.error(e)}}
+function renderCodes(){const q=$('searchCodes').value.trim().toLowerCase();const rows=(dashboardData.codes||[]).filter(c=>{const s=c.subscriber||{};return !q||[c.code,s.customer_name,s.phone,s.email,s.country].some(v=>String(v||'').toLowerCase().includes(q))});$('codesTableBody').innerHTML=rows.length?rows.map(c=>{const s=c.subscriber;return `<tr><td><span class="code">${esc(c.code)}</span></td><td>${s?esc(s.customer_name):'<span class="pill unassigned">Not registered</span>'}</td><td>${s?esc(s.phone):'-'}</td><td>${s?esc(s.email):'-'}</td><td>${s?esc(s.country):'-'}</td><td><span class="pill ${c.status==='used'?'used':'active'}">${esc(c.status)}</span></td><td>${s?new Date(s.created_at).toLocaleDateString():'-'}</td><td><button class="btn small secondary" onclick="openRegister('${esc(c.code)}')">${s?'Edit':'Register'}</button> <button class="btn small dark" onclick="copyCode('${esc(c.code)}')">Copy</button></td></tr>`}).join(''):'<tr><td colspan="8" style="text-align:center;color:#837b69;padding:24px">No matching codes</td></tr>'}
+function subscriberForm(code,s={}){return `<div class="generated-item" id="reg-${esc(code)}"><h3>Register subscriber for <span class="code">${esc(code)}</span></h3><div class="two"><div class="form-group"><label>Customer Full Name *</label><input data-f="name" value="${esc(s.customer_name||'')}"></div><div class="form-group"><label>Phone / WhatsApp *</label><input data-f="phone" value="${esc(s.phone||'')}"></div><div class="form-group"><label>Email Address *</label><input data-f="email" type="email" value="${esc(s.email||'')}"></div><div class="form-group"><label>Country *</label><input data-f="country" value="${esc(s.country||'')}"></div></div><div class="form-group"><label>Notes (optional)</label><textarea data-f="notes">${esc(s.notes||'')}</textarea></div><label class="check"><input data-f="marketing" type="checkbox" ${s.marketing_consent?'checked':''}> Customer agrees to receive promotional offers and marketing messages from WORLD TV.</label><p class="note">Essential service updates and renewal reminders may still be sent for the subscription.</p><button class="btn primary" onclick="saveSubscriber('${esc(code)}')">Save Subscriber</button> <button class="btn secondary" onclick="document.getElementById('reg-${esc(code)}').remove()">Close</button><div data-msg class="msg hide"></div></div>`}
+function openRegister(code){const c=(dashboardData.codes||[]).find(x=>x.code===code);if($('reg-'+code))return $('reg-'+code).scrollIntoView({behavior:'smooth'});$('generatedForms').insertAdjacentHTML('afterbegin',subscriberForm(code,c&&c.subscriber||{}));$('generatedForms').firstElementChild.scrollIntoView({behavior:'smooth',block:'center'})}
+async function saveSubscriber(code){const box=$('reg-'+code),out=box.querySelector('[data-msg]');const body={code,customer_name:box.querySelector('[data-f=name]').value.trim(),phone:box.querySelector('[data-f=phone]').value.trim(),email:box.querySelector('[data-f=email]').value.trim(),country:box.querySelector('[data-f=country]').value.trim(),notes:box.querySelector('[data-f=notes]').value.trim(),marketing_consent:box.querySelector('[data-f=marketing]').checked};if(!body.customer_name||!body.phone||!body.email||!body.country)return msg(out,'Name, phone, email and country are required.','error');try{await api('/api/reseller/assign-subscriber',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});msg(out,'Subscriber saved successfully. You can now send this code to the customer.','success');await loadData()}catch(e){msg(out,e.message,'error')}}
+async function generateCodes(){if(generating)return;const count=parseInt($('generateCount').value,10);if(!count||count<1||count>20)return msg($('generateMsg'),'Choose between 1 and 20 codes.','error');generating=true;try{const r=await api('/api/reseller/generate-codes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({count})});msg($('generateMsg'),`Generated ${r.count} code(s). Register each subscriber below.`,'success');$('generatedForms').innerHTML=(r.generated||[]).map(code=>subscriberForm(code,{})).join('');await loadData()}catch(e){msg($('generateMsg'),e.message,'error')}finally{generating=false}}
+async function copyCode(code){try{await navigator.clipboard.writeText(code)}catch(e){prompt('Copy subscription code:',code)}}
+if(resellerToken&&resellerId)showDashboard();else{$('loginPage').classList.remove('hide')}
 </script>
 </body>
 </html>
