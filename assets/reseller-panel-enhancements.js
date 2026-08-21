@@ -7,13 +7,13 @@
   function applyBranding(){
     document.querySelectorAll('.brand').forEach(el=>{
       if(el.querySelector('img[data-wtv-logo]'))return;
-      el.innerHTML='<img data-wtv-logo src="/assets/world-tv-logo.png" alt="WORLD TV" style="height:70px;max-width:180px;object-fit:contain;display:block">';
+      el.innerHTML='<img data-wtv-logo src="/world-tv-logo.png" alt="WORLD TV" style="height:70px;max-width:180px;object-fit:contain;display:block">';
       if(el.closest('.login'))el.style.display='flex',el.style.justifyContent='center';
     });
   }
 
   async function refreshStore(){
-    if(!window.resellerToken && !localStorage.getItem('wtv_reseller_token'))return;
+    if(!localStorage.getItem('wtv_reseller_token'))return;
     try{
       const token=localStorage.getItem('wtv_reseller_token')||'';
       const r=await fetch('/api/reseller/code-store',{headers:{'x-reseller-token':token}});
