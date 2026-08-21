@@ -2,14 +2,14 @@
   'use strict';
   const token=()=>localStorage.getItem('wtv_admin_token')||'';
   const api=async(url,options={})=>{options.headers=Object.assign({},options.headers||{}, {'x-admin-token':token()});const r=await fetch(url,options);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Request failed');return d;};
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   let overlay;
 
   function brand(){
-    document.querySelectorAll('img.logo').forEach(img=>{img.src='/assets/world-tv-logo.png';img.alt='WORLD TV';img.style.objectFit='contain';});
+    document.querySelectorAll('img.logo').forEach(img=>{img.src='/world-tv-logo.png';img.alt='WORLD TV';img.style.objectFit='contain';});
     const tab=document.getElementById('resellersTab');
     if(tab&&!document.getElementById('resellerPricingBanner')){
-      const card=document.createElement('div');card.id='resellerPricingBanner';card.className='card';card.innerHTML=`<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap"><img src="/assets/world-tv-logo.png" alt="WORLD TV" style="width:110px;height:70px;object-fit:contain"><div><h2 style="margin:0 0 6px">WORLD TV Reseller Code Pricing</h2><div style="font-size:30px;font-weight:900;color:#d89a00">$19 USD <span style="font-size:15px;color:#716958">per 1-year code</span></div><p class="muted" style="margin:6px 0 0">Minimum package: <b>10 codes</b> • Minimum checkout: <b>$190 USD</b>. Resellers can generate only paid/allocated code credits.</p></div></div>`;
+      const card=document.createElement('div');card.id='resellerPricingBanner';card.className='card';card.innerHTML=`<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap"><img src="/world-tv-logo.png" alt="WORLD TV" style="width:110px;height:70px;object-fit:contain"><div><h2 style="margin:0 0 6px">WORLD TV Reseller Code Pricing</h2><div style="font-size:30px;font-weight:900;color:#d89a00">$19 USD <span style="font-size:15px;color:#716958">per 1-year code</span></div><p class="muted" style="margin:6px 0 0">Minimum package: <b>10 codes</b> • Minimum checkout: <b>$190 USD</b>. Resellers can generate only paid/allocated code credits.</p></div></div>`;
       tab.insertBefore(card,tab.firstChild);
     }
   }
@@ -26,7 +26,7 @@
     try{
       const d=await api(`/api/admin/resellers/${id}/code-control`),q=d.quota||{},codes=d.codes||[];
       box.innerHTML=`<button onclick="document.getElementById('resellerCodeControlOverlay').style.display='none'" style="position:absolute;right:14px;top:10px;border:0;background:none;font-size:28px;cursor:pointer">×</button>
-      <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><img src="/assets/world-tv-logo.png" style="width:90px;height:55px;object-fit:contain"><div><h2 style="margin:0">${esc(d.reseller.name)}</h2><div class="muted">${esc(d.reseller.email)}</div></div></div>
+      <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><img src="/world-tv-logo.png" style="width:90px;height:55px;object-fit:contain"><div><h2 style="margin:0">${esc(d.reseller.name)}</h2><div class="muted">${esc(d.reseller.email)}</div></div></div>
       <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px"><div class="card"><div class="muted">Allocated</div><div class="stat">${Number(q.allocated_count||0)}</div></div><div class="card"><div class="muted">Generated</div><div class="stat">${Number(q.used_count||0)}</div></div><div class="card"><div class="muted">Unused Credits</div><div class="stat">${Number(q.available_count||0)}</div></div></div>
       <div class="card"><h3>Revoke Unused Code Credits</h3><p class="muted">This reduces credits the reseller has not generated yet.</p><div style="display:flex;gap:10px;align-items:end"><div style="flex:1"><label>Credits to revoke</label><input id="revokeCreditCount" type="number" min="1" max="${Number(q.available_count||0)}" value="1"></div><button class="btn danger" onclick="wtvRevokeCredits(${id})">Revoke Credits</button></div><p id="revokeCreditMsg" class="muted"></p></div>
       <div class="card"><h3>Generated Codes</h3><p class="muted">Unused generated codes can be revoked individually. Used customer codes are protected.</p><div style="overflow:auto"><table><thead><tr><th>Code</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody>${codes.length?codes.map(c=>`<tr><td><b>${esc(c.code)}</b></td><td>${esc(c.status)}</td><td>${c.created_at?new Date(c.created_at).toLocaleString():'—'}</td><td>${String(c.status).toLowerCase()==='used'?'<span class="muted">Used — protected</span>':`<button class="btn danger" onclick="wtvRevokeGeneratedCode(${id},'${esc(c.code)}')">Revoke</button>`}</td></tr>`).join(''):'<tr><td colspan="4" class="muted">No generated codes on this account.</td></tr>'}</tbody></table></div></div>`;
