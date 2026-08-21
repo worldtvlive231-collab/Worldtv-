@@ -1,0 +1,1 @@
+WORLD TV reseller package: US$19 per 1-year code, minimum 10 codes (US$190).
