@@ -10,7 +10,7 @@ db.pragma('journal_mode=WAL');
 function injectHtml(filePath,scriptSrc,res){
   fs.readFile(filePath,'utf8',(err,html)=>{
     if(err)return res.status(500).send('Page unavailable');
-    const tag=`<script src="${scriptSrc}?v=20260821"></script>`;
+    const tag=`<script src="${scriptSrc}?v=20260821-2"></script>`;
     res.type('html').send(html.includes('</body>')?html.replace('</body>',tag+'\n</body>'):html+tag);
   });
 }
