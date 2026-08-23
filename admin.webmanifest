@@ -2,14 +2,15 @@
   "name": "WORLD TV ADMIN",
   "short_name": "WORLD TV ADMIN",
   "description": "WORLD TV administration dashboard.",
-  "start_url": "/admin",
+  "start_url": "/admin-ios.html",
   "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#17130a",
   "theme_color": "#e0a200",
   "icons": [
     {
-      "src": "/assets/world-tv-logo.png",
+      "src": "/world-tv-logo.png?v=admin-ios-v2",
       "sizes": "any",
       "type": "image/png",
       "purpose": "any maskable"
