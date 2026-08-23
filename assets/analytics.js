@@ -12,6 +12,18 @@
     tickerScript.src = "/assets/header-match-ticker.js?v=1";
     tickerScript.defer = true;
     document.head.appendChild(tickerScript);
+
+    const applyHomepagePaymentLogos = () => {
+      document.querySelectorAll('img[src*="/assets/payment-methods.svg"]').forEach(img => {
+        img.src = "/assets/payment-methods-home.svg?v=1";
+        img.alt = "Accepted payment methods including Mobile Money, Visa, Mastercard and PayPal";
+      });
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", applyHomepagePaymentLogos, { once: true });
+    } else {
+      applyHomepagePaymentLogos();
+    }
   }
 
   const HEARTBEAT_MS = 20000;
