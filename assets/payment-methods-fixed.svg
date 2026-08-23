@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="430" viewBox="0 0 900 430" role="img" aria-label="Accepted payment methods">
+  <rect width="900" height="430" rx="28" fill="#ffffff"/>
+  <defs>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000000" flood-opacity="0.18"/></filter>
+  </defs>
+  <g filter="url(#s)">
+    <rect x="95" y="30" width="275" height="120" rx="22" fill="#ffffff" stroke="#dfe5ef"/>
+    <text x="232" y="104" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="60" font-weight="800" fill="#153f7a">VISA</text>
+
+    <rect x="390" y="30" width="300" height="120" rx="22" fill="#ffffff" stroke="#dfe5ef"/>
+    <circle cx="505" cy="90" r="47" fill="#eb001b"/><circle cx="560" cy="90" r="47" fill="#f79e1b"/><text x="535" y="100" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="700" fill="#ffffff">Mastercard</text>
+
+    <rect x="25" y="220" width="250" height="135" rx="24" fill="#ffd400"/>
+    <text x="150" y="270" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="800" fill="#111">MTN</text>
+    <text x="150" y="307" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="25" font-weight="700" fill="#e21b23">Mobile Money</text>
+
+    <rect x="300" y="220" width="250" height="135" rx="24" fill="#ed1c24"/>
+    <text x="425" y="272" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="800" fill="#ffffff">AirtelTigo</text>
+    <text x="425" y="309" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="25" font-weight="700" fill="#ffffff">Money</text>
+
+    <rect x="575" y="220" width="300" height="135" rx="24" fill="#e21c2a"/>
+    <text x="725" y="271" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="800" fill="#ffffff">Telecel</text>
+    <text x="725" y="309" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="25" font-weight="700" fill="#ffffff">Cash</text>
+  </g>
+  <text x="450" y="405" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="700" fill="#555">Mobile Money • Visa • Mastercard</text>
+</svg>
