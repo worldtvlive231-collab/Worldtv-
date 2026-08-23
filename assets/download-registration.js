@@ -28,17 +28,21 @@ function build(){
 async function submit(e){
  e.preventDefault();
  const btn=document.getElementById('dlSubmit'),msg=document.getElementById('dlRegMsg');
- btn.disabled=true;msg.textContent='Registering and preparing your download...';
+ btn.disabled=true;msg.style.color='#716958';msg.textContent='Registering and preparing your download...';
  try{
   const r=await fetch('/api/download/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('dlName').value.trim(),email:document.getElementById('dlEmail').value.trim(),phone:document.getElementById('dlPhone').value.trim(),country:document.getElementById('dlCountry').value.trim(),marketing_consent:document.getElementById('dlMarketing').checked})});
   const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Registration failed.');
   localStorage.setItem('wtv_download_registered_email',document.getElementById('dlEmail').value.trim().toLowerCase());
   msg.style.color='#1e6b34';msg.textContent='Thank you! Your download is starting now.';
   setTimeout(()=>{window.location.href=d.download_url||'/api/app/download'},350);
- }catch(err){msg.style.color='#8d2222';msg.textContent=err.message;btn.disabled=false;}
+ }catch(err){msg.style.color='#8d2222';msg.textContent=err.message||'Registration failed. Please try again.';btn.disabled=false;}
 }
 function intercept(e){
  const t=e.target.closest&&e.target.closest('button,a');if(!t)return;
+ // Never intercept clicks inside the registration modal itself. In particular,
+ // the submit button contains the words "Download App" and was previously being
+ // caught here before the form submit event could run.
+ if(t.closest('#downloadRegistrationModal'))return;
  const text=(t.textContent||'').toLowerCase();const onclick=t.getAttribute('onclick')||'';
  if(!text.includes('download app')&&!onclick.includes('downloadApp'))return;
  e.preventDefault();e.stopImmediatePropagation();build().style.display='flex';
