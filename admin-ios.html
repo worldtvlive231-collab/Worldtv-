@@ -7,10 +7,10 @@
   <meta name="theme-color" content="#17130a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="WORLD TV ADMIN">
-  <link rel="manifest" href="/admin.webmanifest?v=2">
-  <link rel="apple-touch-icon" href="/world-tv-logo.png?v=admin-ios-v2">
-  <link rel="icon" href="/world-tv-logo.png?v=admin-ios-v2">
+  <meta name="apple-mobile-web-app-title" content="WTV Admin">
+  <link rel="manifest" href="/admin.webmanifest?v=3">
+  <link rel="apple-touch-icon" href="/world-tv-logo.png?v=admin-ios-v3">
+  <link rel="icon" href="/world-tv-logo.png?v=admin-ios-v3">
   <meta name="robots" content="noindex,nofollow">
   <style>
     html,body{height:100%;margin:0;background:#17130a;overflow:hidden}
@@ -34,8 +34,14 @@
               html,body{max-width:100%;overflow-x:hidden}
               body{padding-bottom:96px}
               .wrap{width:94% !important}
-              header .nav{height:60px !important}
-              header .logo{height:46px !important;width:84px !important}
+              header{padding-top:calc(env(safe-area-inset-top) + 8px) !important}
+              header .nav{height:68px !important;align-items:center !important}
+              header .logo{height:54px !important;width:98px !important;object-fit:contain !important}
+              #logoutBtn{padding:10px 14px !important;font-size:14px !important}
+              #login{max-width:none !important;margin:18px auto 0 !important;padding:20px !important;border-radius:18px !important}
+              #login h2{font-size:30px !important;line-height:1.1 !important;margin:0 0 18px !important}
+              #login input{height:54px !important;padding:0 14px !important;border-radius:14px !important;margin:8px 0 12px !important;font-size:17px !important}
+              #login .btn{min-height:48px !important;padding:0 18px !important;border-radius:14px !important;font-size:16px !important}
               #dashboard>h1{font-size:30px !important;line-height:1.08 !important;margin:22px 0 14px !important}
               .grid{grid-template-columns:1fr 1fr !important;gap:10px !important}
               .grid .card{margin:0 !important;padding:16px !important;min-height:112px !important;border-radius:16px !important}
