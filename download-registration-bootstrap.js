@@ -75,12 +75,24 @@ function registerLead(req,res){
    db.prepare(`UPDATE download_leads SET name=?,phone=?,country=?,marketing_consent=MAX(marketing_consent,?),download_count=download_count+1,last_download_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?`).run(name,phone,country,marketing,lead.id);
    lead=db.prepare('SELECT * FROM download_leads WHERE id=?').get(lead.id);
   }
-  if(isNew) queueEmail(email,'Welcome to WORLD TV — enjoy your 3-day free trial',welcomeMessage(name,marketing));
-  if(marketing) scheduleFollowups(lead.id);
-  return res.json({ok:true,lead_id:lead.id,registered:true,welcome_queued:isNew,marketing_consent:Boolean(marketing),download_url:'/api/app/download'});
+
+  let welcomeQueued=false;
+  if(isNew){
+   try{
+    queueEmail(email,'Welcome to WORLD TV — enjoy your 3-day free trial',welcomeMessage(name,marketing));
+    welcomeQueued=true;
+   }catch(mailErr){
+    console.error('Download welcome email queue error:',mailErr.message);
+   }
+  }
+  if(marketing){
+   try{scheduleFollowups(lead.id)}catch(followErr){console.error('Download follow-up scheduling error:',followErr.message)}
+  }
+
+  return res.json({ok:true,lead_id:lead.id,registered:true,welcome_queued:welcomeQueued,marketing_consent:Boolean(marketing),download_url:'/api/app/download'});
  }catch(e){
   console.error('Download registration error:',e);
-  return res.status(500).json({error:'Could not complete registration. Please try again.'});
+  return res.status(500).json({error:'Could not save your registration. Please try again.'});
  }
 }
 function processFollowups(){
@@ -102,9 +114,6 @@ function processFollowups(){
  }catch(e){console.error('Download follow-up worker:',e.message)}
 }
 
-// Register this endpoint before server.js can append its catch-all/404 handlers.
-// This bootstrap is preloaded before server.js, so patch the first app.use() call
-// and insert the registration endpoint at the very beginning of the middleware stack.
 const originalUse=express.application.use;
 express.application.use=function patchedDownloadRegistrationUse(...args){
  if(!this.__wtvDownloadRegistrationRoutes){
@@ -113,6 +122,7 @@ express.application.use=function patchedDownloadRegistrationUse(...args){
    if(req.method!=='POST') return next();
    return registerLead(req,res);
   });
+  originalUse.call(this,'/api/download/register/health',(req,res)=>res.json({ok:true,service:'download-registration'}));
  }
  return originalUse.apply(this,args);
 };
