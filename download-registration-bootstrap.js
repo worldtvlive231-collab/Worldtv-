@@ -14,8 +14,10 @@ const BASE=String(process.env.PUBLIC_BASE_URL||process.env.APP_URL||'https://myw
 const RESEND_API_KEY=String(process.env.RESEND_API_KEY||'').trim();
 const EMAIL_FROM=String(process.env.EMAIL_FROM||'').trim();
 const CUSTOMER_SESSION_DAYS=30;
-const WHATSAPP_NUMBER='233244909092';
+const WHATSAPP_NUMBER='15309040310';
 const WHATSAPP_URL=`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hello WORLD TV, I need help with the app, subscription or WORLD TV Box.')}`;
+const TELEGRAM_HANDLE='MYWORLDTVLIVE';
+const TELEGRAM_URL=`https://t.me/${TELEGRAM_HANDLE}`;
 const LOGO_URL=`${BASE}/assets/world-tv-logo.png`;
 
 db.exec(`
@@ -67,14 +69,14 @@ function queueEmail(userId,email,subject,message){
 }
 function welcomeMessage(name,marketing){
  const first=`Hi ${name||'there'},\n\nThank you for downloading WORLD TV! 🎉\n\nInstall and open the app to enjoy your 3-day free trial — no credit card required. Explore live TV, movies, series, kids & anime, and live sports on supported Android devices.`;
- const links=`\n\nNeed help? Visit ${BASE}/download.html\nContact us on WhatsApp: ${WHATSAPP_URL}\nSubscribe when you are ready: ${BASE}/subscribe.html\nWORLD TV Box: ${BASE}/products.html`;
+ const links=`\n\nNeed help? Visit ${BASE}/download.html\nJoin our Telegram community: ${TELEGRAM_URL}\nChat with WORLD TV on WhatsApp: ${WHATSAPP_URL}\nSubscribe when you are ready: ${BASE}/subscribe.html\nWORLD TV Box: ${BASE}/products.html`;
  const promo=marketing?`\n\nBecause you chose to receive WORLD TV offers and updates, we’ll also send helpful trial reminders, subscription offers and WORLD TV Box promotions.`:'';
  return first+links+promo+'\n\nThank you for choosing WORLD TV.';
 }
 function escapeHtml(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
 function textToHtml(text){
  const body=escapeHtml(text).replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
- return `<!doctype html><html><body style="margin:0;background:#fffaf0;font-family:Arial,sans-serif;color:#17130a"><div style="max-width:640px;margin:0 auto;padding:26px 18px"><div style="background:#ffffff;border:1px solid #eadfc8;border-radius:18px;padding:28px;box-shadow:0 8px 28px rgba(79,55,0,.08)"><div style="text-align:center;margin-bottom:22px"><img src="${LOGO_URL}" alt="WORLD TV" width="150" style="display:inline-block;max-width:150px;height:auto;border:0"><div style="font-size:12px;color:#8a6b1d;margin-top:6px">Watch Anywhere. Enjoy More.</div></div><p style="font-size:16px;line-height:1.65">${body}</p><div style="margin:28px 0 8px;text-align:center"><a href="${WHATSAPP_URL}" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:10px">💬 Contact us on WhatsApp</a></div><div style="text-align:center;margin-top:18px"><a href="${BASE}/subscribe.html" style="display:inline-block;background:#d89a00;color:#17130a;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:10px;margin:4px">Subscribe Now</a><a href="${BASE}/products.html" style="display:inline-block;background:#17130a;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:10px;margin:4px">View WORLD TV Box</a></div></div></div></body></html>`;
+ return `<!doctype html><html><body style="margin:0;background:#fffaf0;font-family:Arial,sans-serif;color:#17130a"><div style="max-width:680px;margin:0 auto;padding:26px 18px"><div style="background:#ffffff;border:1px solid #eadfc8;border-radius:18px;padding:28px;box-shadow:0 8px 28px rgba(79,55,0,.08)"><div style="text-align:center;margin-bottom:22px"><img src="${LOGO_URL}" alt="WORLD TV" width="150" style="display:inline-block;max-width:150px;height:auto;border:0"><div style="font-size:12px;color:#8a6b1d;margin-top:6px">Watch Anywhere. Enjoy More.</div></div><p style="font-size:16px;line-height:1.65">${body}</p><div style="margin-top:28px"><div style="font-size:20px;font-weight:800;text-align:center;margin-bottom:14px;color:#17130a">Join the WORLD TV Community</div><div style="display:table;width:100%;table-layout:fixed;border-spacing:8px"><div style="display:table-cell;vertical-align:top;background:#f7fbff;border:1px solid #d7e8f6;border-radius:14px;padding:18px;text-align:center"><div style="font-size:22px;font-weight:800;margin-bottom:6px">Telegram</div><div style="font-size:14px;color:#54606d;margin-bottom:14px">@${TELEGRAM_HANDLE}</div><a href="${TELEGRAM_URL}" style="display:inline-block;background:#229ED9;color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:10px">✈️ Join on Telegram</a></div><div style="display:table-cell;vertical-align:top;background:#f6fff8;border:1px solid #d5efdc;border-radius:14px;padding:18px;text-align:center"><div style="font-size:22px;font-weight:800;margin-bottom:6px">WhatsApp</div><div style="font-size:14px;color:#54606d;margin-bottom:14px">Customer support</div><a href="${WHATSAPP_URL}" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:10px">💬 Chat on WhatsApp</a></div></div></div><div style="text-align:center;margin-top:18px"><a href="${BASE}/subscribe.html" style="display:inline-block;background:#d89a00;color:#17130a;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:10px;margin:4px">Subscribe Now</a><a href="${BASE}/products.html" style="display:inline-block;background:#17130a;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:10px;margin:4px">View WORLD TV Box</a></div></div></div></body></html>`;
 }
 async function sendQueuedEmailNow(queueId,leadId){
  if(!RESEND_API_KEY||!EMAIL_FROM) return false;
@@ -147,10 +149,10 @@ function processFollowups(){
    let subject,message;
    if(r.followup_type==='trial_day_1'){
     subject='Enjoy your WORLD TV free trial';
-    message=`Hi ${r.name},\n\nWe hope you are enjoying WORLD TV. Your 3-day free trial is a great time to explore the app.\n\nContact us on WhatsApp: ${WHATSAPP_URL}\nKeep watching after your trial: ${BASE}/subscribe.html\nWORLD TV Box: ${BASE}/products.html`;
+    message=`Hi ${r.name},\n\nWe hope you are enjoying WORLD TV. Your 3-day free trial is a great time to explore the app.\n\nJoin Telegram: ${TELEGRAM_URL}\nChat on WhatsApp: ${WHATSAPP_URL}\nKeep watching after your trial: ${BASE}/subscribe.html\nWORLD TV Box: ${BASE}/products.html`;
    }else{
     subject='Keep watching WORLD TV after your trial';
-    message=`Hi ${r.name},\n\nThank you for trying WORLD TV. Subscribe to continue watching or choose the WORLD TV Box for a complete TV setup.\n\nContact us on WhatsApp: ${WHATSAPP_URL}\nSubscribe: ${BASE}/subscribe.html\nWORLD TV Box: ${BASE}/products.html`;
+    message=`Hi ${r.name},\n\nThank you for trying WORLD TV. Subscribe to continue watching or choose the WORLD TV Box for a complete TV setup.\n\nJoin Telegram: ${TELEGRAM_URL}\nChat on WhatsApp: ${WHATSAPP_URL}\nSubscribe: ${BASE}/subscribe.html\nWORLD TV Box: ${BASE}/products.html`;
    }
    const qid=queueEmail(r.user_id,r.email,subject,message);mark.run(qid,r.id);
   }
