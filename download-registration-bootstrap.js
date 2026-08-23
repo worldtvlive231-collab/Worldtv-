@@ -75,10 +75,13 @@ function registerLead(req,res){
    db.prepare(`UPDATE download_leads SET name=?,phone=?,country=?,marketing_consent=MAX(marketing_consent,?),download_count=download_count+1,last_download_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?`).run(name,phone,country,marketing,lead.id);
    lead=db.prepare('SELECT * FROM download_leads WHERE id=?').get(lead.id);
   }
-  if(isNew){ queueEmail(email,'Welcome to WORLD TV — enjoy your 3-day free trial',welcomeMessage(name,marketing)); }
+  if(isNew) queueEmail(email,'Welcome to WORLD TV — enjoy your 3-day free trial',welcomeMessage(name,marketing));
   if(marketing) scheduleFollowups(lead.id);
-  res.json({ok:true,lead_id:lead.id,registered:true,welcome_queued:isNew,marketing_consent:Boolean(marketing),download_url:'/api/app/download'});
- }catch(e){console.error('Download registration error:',e);res.status(500).json({error:'Could not complete registration. Please try again.'})}
+  return res.json({ok:true,lead_id:lead.id,registered:true,welcome_queued:isNew,marketing_consent:Boolean(marketing),download_url:'/api/app/download'});
+ }catch(e){
+  console.error('Download registration error:',e);
+  return res.status(500).json({error:'Could not complete registration. Please try again.'});
+ }
 }
 function processFollowups(){
  try{
@@ -99,13 +102,19 @@ function processFollowups(){
  }catch(e){console.error('Download follow-up worker:',e.message)}
 }
 
-const originalListen=express.application.listen;
-express.application.listen=function patchedDownloadRegistrationListen(...args){
+// Register this endpoint before server.js can append its catch-all/404 handlers.
+// This bootstrap is preloaded before server.js, so patch the first app.use() call
+// and insert the registration endpoint at the very beginning of the middleware stack.
+const originalUse=express.application.use;
+express.application.use=function patchedDownloadRegistrationUse(...args){
  if(!this.__wtvDownloadRegistrationRoutes){
-  this.post('/api/download/register',express.json(),registerLead);
   this.__wtvDownloadRegistrationRoutes=true;
+  originalUse.call(this,'/api/download/register',express.json({limit:'64kb'}),(req,res,next)=>{
+   if(req.method!=='POST') return next();
+   return registerLead(req,res);
+  });
  }
- return originalListen.apply(this,args);
+ return originalUse.apply(this,args);
 };
 
 setTimeout(processFollowups,20000).unref();
