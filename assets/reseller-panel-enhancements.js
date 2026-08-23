@@ -12,6 +12,16 @@
     });
   }
 
+  function ensurePaymentArtwork(){
+    const paystack=$('buyCodesBtn');
+    if(!paystack||document.getElementById('resellerPaymentArtwork'))return;
+    const box=document.createElement('div');
+    box.id='resellerPaymentArtwork';
+    box.style.cssText='margin:14px 0;padding:12px;border:1px solid #eadfbd;border-radius:14px;background:#fff;text-align:center;color:#171717';
+    box.innerHTML='<strong style="display:block;margin-bottom:8px">Accepted payment methods</strong><img src="/assets/payment-methods.svg?v=3" alt="Accepted payment methods including Mobile Money, Visa and Mastercard" style="display:block;width:100%;height:auto;max-height:220px;object-fit:contain;border-radius:10px"><small style="display:block;margin-top:8px;color:#746d5e">Mobile Money and card payments are processed securely through Paystack.</small>';
+    paystack.insertAdjacentElement('beforebegin',box);
+  }
+
   function ensurePaypalButton(configured){
     const paystack=$('buyCodesBtn');
     if(!paystack)return;
@@ -40,6 +50,7 @@
       if($('purchaseTotal'))$('purchaseTotal').textContent=usd((Number(count?.value)||MIN_CODES)*(d.unit_price_usd||UNIT_USD));
       if($('storeStatus')){$('storeStatus').className='msg success';$('storeStatus').textContent=`Reseller price is ${usd(d.unit_price_usd||UNIT_USD)} per 1-year code. Minimum purchase: ${MIN_CODES} codes (${usd(MIN_CODES*(d.unit_price_usd||UNIT_USD))}). Choose Paystack or PayPal. Paid code credits are added only after successful payment verification.`;}
       if($('buyCodesBtn'))$('buyCodesBtn').disabled=!d.payment_configured;
+      ensurePaymentArtwork();
       ensurePaypalButton(Boolean(pp&&pp.configured));
       document.querySelector('.store .note')?.replaceChildren(document.createTextNode(`Code packages start at ${MIN_CODES} codes. You can buy ${MIN_CODES} or more, and you can generate only the number of credits you have paid for.`));
       const rows=d.history||[];
