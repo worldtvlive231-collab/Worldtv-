@@ -18,7 +18,7 @@ const WHATSAPP_NUMBER='15309040310';
 const WHATSAPP_URL=`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hello WORLD TV, I need help with the app, subscription or WORLD TV Box.')}`;
 const TELEGRAM_HANDLE='MYWORLDTVLIVE';
 const TELEGRAM_URL=`https://t.me/${TELEGRAM_HANDLE}`;
-const LOGO_URL=`${BASE}/assets/world-tv-logo.png`;
+const LOGO_URL=`${BASE}/world-tv-logo.png`;
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS download_leads(
@@ -69,7 +69,7 @@ function queueEmail(userId,email,subject,message){
 }
 function welcomeMessage(name,marketing){
  const first=`Hi ${name||'there'},\n\nThank you for downloading WORLD TV! 🎉\n\nInstall and open the app to enjoy your 3-day free trial — no credit card required. Explore live TV, movies, series, kids & anime, and live sports on supported Android devices.`;
- const links=`\n\nNeed help? Visit ${BASE}/download.html\nJoin our Telegram community: ${TELEGRAM_URL}\nChat with WORLD TV on WhatsApp: ${WHATSAPP_URL}\nSubscribe when you are ready: ${BASE}/subscribe.html\nWORLD TV Box: ${BASE}/products.html`;
+ const links=`\n\nNeed help? Visit ${BASE}/download.html\nSubscribe when you are ready: ${BASE}/subscribe.html\nWORLD TV Box: ${BASE}/products.html`;
  const promo=marketing?`\n\nBecause you chose to receive WORLD TV offers and updates, we’ll also send helpful trial reminders, subscription offers and WORLD TV Box promotions.`:'';
  return first+links+promo+'\n\nThank you for choosing WORLD TV.';
 }
