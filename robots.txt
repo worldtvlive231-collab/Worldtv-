@@ -8,6 +8,7 @@ Disallow: /forgot-password.html
 Disallow: /reset-password.html
 Disallow: /marketing-dashboard.html
 Disallow: /sales-recovery.html
+Disallow: /reseller.html
 Disallow: /order.html
 Disallow: /track-order.html
 Disallow: /payment-success.html
