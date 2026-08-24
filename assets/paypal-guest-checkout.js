@@ -47,7 +47,7 @@
 
     const note=document.createElement("div");
     note.className="wtv-paypal-guest-note";
-    note.textContent="Securely processed through our PayPal checkout. No PayPal account is required where PayPal Guest Checkout is available.";
+    note.textContent="Securely processed through our WORLD TV PayPal account. No PayPal account is required where PayPal Guest Checkout is available.";
 
     const syncDisabled=()=>{ guest.disabled=Boolean(btn.disabled); };
     syncDisabled();
