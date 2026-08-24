@@ -78,7 +78,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 </section>
 
 <section id="codesTab" class="hide">
-<div class="card"><h2>Upload Subscription Codes</h2><select id="plan"></select><label>Cost Price Per Code (GH₵)</label><input id="codeCostPrice" type="number" min="0" step="0.01" value="0" placeholder="Amount you pay for each code"><input id="xlsx" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"> <button class="btn primary" onclick="uploadXlsx()">Upload XLSX</button><textarea id="codes" placeholder="Paste codes, one per line"></textarea><button class="btn primary" onclick="pasteCodes()">Add Codes</button><p id="codeMsg" class="muted"></p></div>
+<div class="card"><h2>Upload Subscription Codes</h2><select id="plan"></select><label>Cost Price Per Code (USD)</label><input id="codeCostPrice" type="number" min="0" step="0.01" value="4" placeholder="Amount you pay for each code"><input id="xlsx" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"> <button class="btn primary" onclick="uploadXlsx()">Upload XLSX</button><textarea id="codes" placeholder="Paste codes, one per line"></textarea><button class="btn primary" onclick="pasteCodes()">Add Codes</button><p id="codeMsg" class="muted"></p></div>
 <div class="card"><h2>Codes</h2><div style="overflow:auto"><table><thead><tr><th>Code</th><th>Plan</th><th>Cost Price</th><th>Status</th><th>Customer</th><th>Expires</th><th>Actions</th></tr></thead><tbody id="codeRows"></tbody></table></div></div>
 </section>
 <section id="promotionsTab" class="hide">
@@ -232,35 +232,35 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px;">
   <div class="card sales-card">
     <div class="muted">Subscription Income</div>
-    <div id="todaySubscriptionRevenue" class="stat">GH₵0</div>
+    <div id="todaySubscriptionRevenue" class="stat">$0</div>
     <div class="muted" style="font-size:11px">Successful payments today</div>
   </div>
   <div class="card sales-card">
     <div class="muted">Subscription Code Cost</div>
-    <div id="todaySubscriptionCost" class="stat">GH₵0</div>
+    <div id="todaySubscriptionCost" class="stat">$0</div>
     <div class="muted" style="font-size:11px">Cost of codes sold today</div>
   </div>
   <div class="card sales-card">
     <div class="muted">Product Income</div>
-    <div id="todayProductRevenue" class="stat">GH₵0</div>
+    <div id="todayProductRevenue" class="stat">$0</div>
     <div class="muted" style="font-size:11px">Paid product orders today</div>
   </div>
   <div class="card sales-card">
     <div class="muted">Total Income Today</div>
-    <div id="todayRevenue" class="stat">GH₵0</div>
+    <div id="todayRevenue" class="stat">$0</div>
     <div class="muted" style="font-size:11px">Subscriptions + Products</div>
   </div>
   <div class="card">
     <div class="muted">Today's Expenses</div>
-    <div id="todayExpenses" class="stat" style="color:#f2ded8">GH₵0</div>
+    <div id="todayExpenses" class="stat" style="color:#f2ded8">$0</div>
   </div>
   <div class="card">
     <div class="muted">Today's Profit</div>
-    <div id="todayProfit" class="stat" style="color:#28a745">GH₵0</div>
+    <div id="todayProfit" class="stat" style="color:#28a745">$0</div>
   </div>
   <div class="card">
     <div class="muted">Month's Profit</div>
-    <div id="monthProfit" class="stat">GH₵0</div>
+    <div id="monthProfit" class="stat">$0</div>
   </div>
   <div class="card">
     <div class="muted">In Stock</div>
@@ -291,7 +291,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
             <th>Reference</th>
             <th>Customer</th>
             <th>Product</th>
-            <th>Amount (GH₵)</th>
+            <th>Amount (USD)</th>
             <th>Status</th>
             <th>Time</th>
           </tr>
@@ -660,7 +660,7 @@ async function loadCodes(){
     <tr>
       <td>${x.code}</td>
       <td>${x.plan_name}</td>
-      <td>GH₵${Number(x.cost_price_ghs||0).toFixed(2)}</td>
+      <td>$${Number(x.cost_price_usd??4).toFixed(2)}</td>
       <td>${x.status}</td>
       <td>${x.user_email||"—"}</td>
       <td>${x.expires_at||"—"}</td>
@@ -679,7 +679,7 @@ async function loadCodes(){
     "Subscription Code\n\n"+
     "Code: "+code.code+"\n"+
     "Plan: "+code.plan_name+"\n"+
-    "Cost Price: GH₵"+Number(code.cost_price_ghs||0).toFixed(2)+"\n"+
+    "Cost Price: $"+Number(code.cost_price_usd??4).toFixed(2)+"\n"+
     "Status: "+code.status+"\n"+
     "Customer: "+(code.user_email||"—")+"\n"+
     "Expiry: "+(code.expires_at||"—")+"\n"+
@@ -708,7 +708,7 @@ async function editCode(id){
   );
   if(newExpiry===null)return;
 
-  const newCost=prompt("Cost price paid for this code (GH₵):",Number(code.cost_price_ghs||0).toFixed(2));
+  const newCost=prompt("Cost price paid for this code (USD):",Number(code.cost_price_usd??4).toFixed(2));
   if(newCost===null)return;
 
   try{
@@ -720,7 +720,7 @@ async function editCode(id){
         planId:Number(newPlanId),
         status:newStatus,
         expires_at:newExpiry,
-        cost_price_ghs:Number(newCost)
+        cost_price_usd:Number(newCost)
       })
     });
 
@@ -777,7 +777,7 @@ async function uploadXlsx(){
       body:JSON.stringify({
         planId:$("plan").value,
         codes:codes.join("\n"),
-        cost_price_ghs:Number($("codeCostPrice").value||0)
+        cost_price_usd:Number($("codeCostPrice").value||4)
       })
     });
 
@@ -790,7 +790,7 @@ async function uploadXlsx(){
   }
 }
 
-async function pasteCodes(){const d=await api("/api/admin/codes/text",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({planId:$("plan").value,codes:$("codes").value,cost_price_ghs:Number($("codeCostPrice").value||0)})});$("codeMsg").textContent=`Added ${d.added}; skipped ${d.duplicates} duplicates.`;$("codes").value="";await refreshAll()}
+async function pasteCodes(){const d=await api("/api/admin/codes/text",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({planId:$("plan").value,codes:$("codes").value,cost_price_usd:Number($("codeCostPrice").value||4)})});$("codeMsg").textContent=`Added ${d.added}; skipped ${d.duplicates} duplicates.`;$("codes").value="";await refreshAll()}
 
 async function loadPromotions(){
  promotionData=await api("/api/admin/promotions");
@@ -1038,19 +1038,19 @@ async function loadSalesDashboard(){
     // Update summary cards
     const subscriptionRev = Number(summary.today.subscriptions?.total_revenue || 0);
     const subscriptionCost = Number(summary.today.subscriptions?.total_code_cost || 0);
-    const productRev = Number(summary.today.product_orders?.total_sales || 0);
+    const productRev = Number(summary.today.product_orders?.total_sales_usd || 0);
     const todayRev = subscriptionRev + productRev;
-    const todayExp = Number(summary.today.expenses?.total_expenses || 0);
+    const todayExp = Number(summary.today.expenses?.total_expenses_usd || 0);
     const todayProf = Number(profit.today?.profit || 0);
     const monthProf = Number(profit.this_month?.profit || 0);
     
-    $("todaySubscriptionRevenue").textContent = "GH₵" + subscriptionRev.toFixed(2);
-    $("todaySubscriptionCost").textContent = "GH₵" + subscriptionCost.toFixed(2);
-    $("todayProductRevenue").textContent = "GH₵" + productRev.toFixed(2);
-    $("todayRevenue").textContent = "GH₵" + todayRev.toFixed(2);
-    $("todayExpenses").textContent = "GH₵" + todayExp.toFixed(2);
-    $("todayProfit").textContent = "GH₵" + todayProf.toFixed(2);
-    $("monthProfit").textContent = "GH₵" + monthProf.toFixed(2);
+    $("todaySubscriptionRevenue").textContent = "$" + subscriptionRev.toFixed(2);
+    $("todaySubscriptionCost").textContent = "$" + subscriptionCost.toFixed(2);
+    $("todayProductRevenue").textContent = "$" + productRev.toFixed(2);
+    $("todayRevenue").textContent = "$" + todayRev.toFixed(2);
+    $("todayExpenses").textContent = "$" + todayExp.toFixed(2);
+    $("todayProfit").textContent = "$" + todayProf.toFixed(2);
+    $("monthProfit").textContent = "$" + monthProf.toFixed(2);
     $("todayProfit").classList.toggle("negative", todayProf < 0);
     $("monthProfit").classList.toggle("negative", monthProf < 0);
     $("inStockCount").textContent = summary.inventory?.in_stock_count || 0;
@@ -1063,7 +1063,7 @@ async function loadSalesDashboard(){
         <td><b>${s.ref_id}</b></td>
         <td>${s.customer_name}</td>
         <td>${s.product_name || '—'}</td>
-        <td>GH₵${Number(s.amount_ghs || 0).toFixed(2)}</td>
+        <td>$${Number(s.amount_usd || 0).toFixed(2)}</td>
         <td><span class="pill">${s.status}</span></td>
         <td>${new Date(s.timestamp).toLocaleString().split(',')[1] || s.timestamp}</td>
       </tr>
@@ -1080,12 +1080,12 @@ async function loadSalesDashboard(){
       return `
         <tr>
           <td><b>${d.date}</b></td>
-          <td>GH₵${subscriptionRevenue.toFixed(2)}</td>
-          <td>GH₵${subscriptionCost.toFixed(2)}</td>
-          <td>GH₵${productRevenue.toFixed(2)}</td>
-          <td><b>GH₵${totalRev.toFixed(2)}</b></td>
-          <td>GH₵${expenseTotal.toFixed(2)}</td>
-          <td style="color:${profit >= 0 ? '#28a745' : '#dc3545'}"><b>GH₵${profit.toFixed(2)}</b></td>
+          <td>$${subscriptionRevenue.toFixed(2)}</td>
+          <td>$${subscriptionCost.toFixed(2)}</td>
+          <td>$${productRevenue.toFixed(2)}</td>
+          <td><b>$${totalRev.toFixed(2)}</b></td>
+          <td>$${expenseTotal.toFixed(2)}</td>
+          <td style="color:${profit >= 0 ? '#28a745' : '#dc3545'}"><b>$${profit.toFixed(2)}</b></td>
           <td>${d.customers}</td>
         </tr>
       `;
