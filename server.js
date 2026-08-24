@@ -1357,7 +1357,7 @@ app.get("/api/admin/stats",adminOnly,(req,res)=>{
   });
 app.get("/api/admin/codes",adminOnly,(req,res)=>{
   res.json(db.prepare(`
-    SELECT c.id,c.code,c.plan_id,c.status,c.expires_at,c.created_at,c.cost_price_ghs,p.name plan_name,u.email user_email
+    SELECT c.id,c.code,c.plan_id,c.status,c.expires_at,c.created_at,c.cost_price_usd,p.name plan_name,u.email user_email
     FROM subscription_codes c
     JOIN plans p ON p.id=c.plan_id
     LEFT JOIN users u ON u.id=c.user_id
@@ -1374,7 +1374,7 @@ app.get("/api/admin/codes/:id",adminOnly,(req,res)=>{
       c.status,
       c.expires_at,
       c.created_at,
-      c.cost_price_ghs,
+      c.cost_price_usd,
       p.name AS plan_name,
       u.email AS user_email
     FROM subscription_codes c
@@ -1402,7 +1402,7 @@ app.put("/api/admin/codes/:id",adminOnly,(req,res)=>{
   const planId=Number(req.body.planId);
   const status=String(req.body.status||"").trim();
   const expiresAt=String(req.body.expires_at||"").trim()||null;
-  const costPrice=Number(req.body.cost_price_ghs ?? existing.cost_price_ghs ?? 0);
+  const costPrice=Number(req.body.cost_price_usd ?? existing.cost_price_usd ?? 4);
 
   if(!newCode){
     return res.status(400).json({error:"Code is required"});
@@ -1431,7 +1431,7 @@ app.put("/api/admin/codes/:id",adminOnly,(req,res)=>{
 
   db.prepare(`
     UPDATE subscription_codes
-    SET code=?,plan_id=?,status=?,expires_at=?,cost_price_ghs=?
+    SET code=?,plan_id=?,status=?,expires_at=?,cost_price_usd=?
     WHERE id=?
   `).run(
     newCode,
@@ -1483,11 +1483,11 @@ app.delete("/api/admin/codes/:id",adminOnly,(req,res)=>{
   res.json({ok:true});
 });
 
-function addCodes(planId,codes,costPrice=0){
+function addCodes(planId,codes,costPrice=4){
   const exists=db.prepare("SELECT 1 FROM subscription_codes WHERE code=?");
-  const safeCost=Number(costPrice||0);
+  const safeCost=Number(costPrice ?? 4);
   if(!Number.isFinite(safeCost)||safeCost<0) throw new Error("Cost price must be zero or more");
-  const ins=db.prepare("INSERT INTO subscription_codes(code,plan_id,cost_price_ghs) VALUES(?,?,?)");
+  const ins=db.prepare("INSERT INTO subscription_codes(code,plan_id,cost_price_usd) VALUES(?,?,?)");
   return db.transaction(list=>{
     let added=0,duplicates=0;
     for(const raw of list){
@@ -1502,14 +1502,14 @@ function addCodes(planId,codes,costPrice=0){
 app.post("/api/admin/codes/text",adminOnly,(req,res)=>{
   const {planId,codes}=req.body||{};
   if(!planId||!codes) return res.status(400).json({error:"Plan and codes are required"});
-  res.json(addCodes(Number(planId),String(codes).split(/[\r\n,;]+/),req.body.cost_price_ghs));
+  res.json(addCodes(Number(planId),String(codes).split(/[\r\n,;]+/),req.body.cost_price_usd));
 });
 const memUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:2*1024*1024}});
 app.post("/api/admin/codes/csv",adminOnly,memUpload.single("file"),(req,res)=>{
   if(!req.file) return res.status(400).json({error:"CSV file is required"});
   const text=req.file.buffer.toString("utf8").replace(/^\uFEFF/,"");
   const codes=text.split(/\r?\n/).map(line=>line.split(",")[0].trim().replace(/^"|"$/g,"")).filter(x=>x&&!/^code$/i.test(x));
-  res.json({...addCodes(Number(req.body.planId),codes,req.body.cost_price_ghs),received:codes.length});
+  res.json({...addCodes(Number(req.body.planId),codes,req.body.cost_price_usd),received:codes.length});
 });
 
 /* Product manager */
@@ -1638,21 +1638,30 @@ app.post("/api/admin/pricing/bulk-update", adminOnly, (req,res)=>{
 
 /* Live Sales Dashboard APIs */
 
+async function dashboardUsdRate(){
+  const result=await getExchangeRates();
+  const rate=Number(result?.rates?.USD);
+  return Number.isFinite(rate)&&rate>0?rate:0.084;
+}
+
 // Get live sales summary stats
-app.get("/api/admin/dashboard/live-summary", adminOnly, (req,res)=>{
+app.get("/api/admin/dashboard/live-summary", adminOnly, async (req,res)=>{
   const today = new Date().toISOString().split('T')[0];
+  const usdRate=await dashboardUsdRate();
   
   // Today's sales
   const todaySales = db.prepare(`
     SELECT 
       COUNT(*) as transaction_count,
-      SUM(o.amount_pesewas)/100 as total_revenue,
-      COALESCE(SUM(sc.cost_price_ghs),0) as total_code_cost,
+      COALESCE(SUM(CASE WHEN UPPER(o.currency)='USD' THEN o.amount_pesewas/100.0 ELSE 0 END),0) as revenue_usd,
+      COALESCE(SUM(CASE WHEN UPPER(o.currency)<>'USD' THEN o.amount_pesewas/100.0 ELSE 0 END),0) as revenue_ghs,
+      COALESCE(SUM(sc.cost_price_usd),0) as total_code_cost,
       COUNT(DISTINCT o.user_id) as unique_customers
     FROM orders o
     LEFT JOIN subscription_codes sc ON sc.id=o.code_id
     WHERE o.status='paid' AND DATE(o.paid_at)=?
   `).get(today);
+  todaySales.total_revenue=todaySales.revenue_usd+(todaySales.revenue_ghs*usdRate);
   
   // Today's product orders
   const todayProductOrders = db.prepare(`
@@ -1668,6 +1677,7 @@ app.get("/api/admin/dashboard/live-summary", adminOnly, (req,res)=>{
         AND DATE(ppa.updated_at)=?
     )
   `).get(today);
+  todayProductOrders.total_sales_usd=Number(todayProductOrders.total_sales||0)*usdRate;
   
   // Expenses today
   const todayExpenses = db.prepare(`
@@ -1675,6 +1685,7 @@ app.get("/api/admin/dashboard/live-summary", adminOnly, (req,res)=>{
     FROM expenses
     WHERE DATE(expense_date)=?
   `).get(today);
+  todayExpenses.total_expenses_usd=Number(todayExpenses.total_expenses||0)*usdRate;
   
   // Total products in stock
   const stockCount = db.prepare(`
@@ -1697,17 +1708,19 @@ app.get("/api/admin/dashboard/live-summary", adminOnly, (req,res)=>{
 });
 
 // Get recent sales transactions (limit 50)
-app.get("/api/admin/dashboard/recent-sales", adminOnly, (req,res)=>{
+app.get("/api/admin/dashboard/recent-sales", adminOnly, async (req,res)=>{
+  const usdRate=await dashboardUsdRate();
   const sales = db.prepare(`
     SELECT 
       'subscription' as type,
       o.reference as ref_id,
-      o.amount_pesewas/100 as amount_ghs,
+      o.amount_pesewas/100 as amount_original,
+      o.currency,
       o.status,
       o.paid_at as timestamp,
       u.name as customer_name,
       p.name as product_name,
-      COALESCE(sc.cost_price_ghs,0) as cost_ghs
+      COALESCE(sc.cost_price_usd,0) as cost_usd
     FROM orders o
     JOIN users u ON u.id = o.user_id
     JOIN plans p ON p.id = o.plan_id
@@ -1719,12 +1732,13 @@ app.get("/api/admin/dashboard/recent-sales", adminOnly, (req,res)=>{
     SELECT 
       'product' as type,
       po.order_number as ref_id,
-      po.total_ghs as amount_ghs,
+      po.total_ghs as amount_original,
+      'GHS' as currency,
       'paid' as status,
       MAX(ppa.updated_at) as timestamp,
       po.customer_name,
       pr.name as product_name,
-      0 as cost_ghs
+      0 as cost_usd
     FROM product_orders po
     JOIN product_payment_attempts ppa
       ON ppa.order_number=po.order_number AND ppa.status='paid'
@@ -1735,11 +1749,16 @@ app.get("/api/admin/dashboard/recent-sales", adminOnly, (req,res)=>{
     LIMIT 50
   `).all();
   
-  res.json(sales);
+  res.json(sales.map(s=>({
+    ...s,
+    amount_usd:Number(s.amount_original||0)*(String(s.currency).toUpperCase()==='USD'?1:usdRate),
+    profit_usd:Number(s.amount_original||0)*(String(s.currency).toUpperCase()==='USD'?1:usdRate)-Number(s.cost_usd||0)
+  })));
 });
 
 // Get daily summary for last 30 days
-app.get("/api/admin/dashboard/daily-report", adminOnly, (req,res)=>{
+app.get("/api/admin/dashboard/daily-report", adminOnly, async (req,res)=>{
+  const usdRate=await dashboardUsdRate();
   const daily = db.prepare(`
     WITH RECURSIVE dates(date) AS (
       SELECT DATE('now', '-30 days')
@@ -1749,8 +1768,9 @@ app.get("/api/admin/dashboard/daily-report", adminOnly, (req,res)=>{
     )
     , subscription_daily AS (
       SELECT DATE(o.paid_at) date,
-             SUM(o.amount_pesewas)/100.0 revenue,
-             COALESCE(SUM(sc.cost_price_ghs),0) code_cost,
+             COALESCE(SUM(CASE WHEN UPPER(o.currency)='USD' THEN o.amount_pesewas/100.0 ELSE 0 END),0) revenue_usd,
+             COALESCE(SUM(CASE WHEN UPPER(o.currency)<>'USD' THEN o.amount_pesewas/100.0 ELSE 0 END),0) revenue_ghs,
+             COALESCE(SUM(sc.cost_price_usd),0) code_cost,
              COUNT(DISTINCT o.user_id) customers
       FROM orders o
       LEFT JOIN subscription_codes sc ON sc.id=o.code_id
@@ -1771,7 +1791,8 @@ app.get("/api/admin/dashboard/daily-report", adminOnly, (req,res)=>{
     )
     SELECT
       d.date,
-      COALESCE(sd.revenue, 0) as subscription_revenue,
+      COALESCE(sd.revenue_usd, 0) as subscription_revenue_usd,
+      COALESCE(sd.revenue_ghs, 0) as subscription_revenue_ghs,
       COALESCE(sd.code_cost, 0) as subscription_cost,
       COALESCE(pd.revenue, 0) as product_revenue,
       COALESCE(ed.total, 0) as expenses,
@@ -1783,7 +1804,12 @@ app.get("/api/admin/dashboard/daily-report", adminOnly, (req,res)=>{
     ORDER BY d.date DESC
   `).all();
   
-  res.json(daily);
+  res.json(daily.map(d=>({
+    ...d,
+    subscription_revenue:Number(d.subscription_revenue_usd||0)+Number(d.subscription_revenue_ghs||0)*usdRate,
+    product_revenue:Number(d.product_revenue||0)*usdRate,
+    expenses:Number(d.expenses||0)*usdRate
+  })));
 });
 
 // Get product stock status
@@ -1855,20 +1881,22 @@ app.delete("/api/admin/dashboard/expenses/:id", adminOnly, (req,res)=>{
 });
 
 // Get profit calculation (revenue - expenses)
-app.get("/api/admin/dashboard/profit-summary", adminOnly, (req,res)=>{
+app.get("/api/admin/dashboard/profit-summary", adminOnly, async (req,res)=>{
   const today = new Date().toISOString().split('T')[0];
+  const usdRate=await dashboardUsdRate();
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   const monthStart = startOfMonth.toISOString().split('T')[0];
   
   const calculate = (start, end) => {
-    const subscription = db.prepare(`SELECT COALESCE(SUM(amount_pesewas),0)/100.0 total FROM orders WHERE status='paid' AND DATE(paid_at) BETWEEN ? AND ?`).get(start,end).total;
-    const subscriptionCost = db.prepare(`SELECT COALESCE(SUM(sc.cost_price_ghs),0) total FROM orders o LEFT JOIN subscription_codes sc ON sc.id=o.code_id WHERE o.status='paid' AND DATE(o.paid_at) BETWEEN ? AND ?`).get(start,end).total;
+    const subscriptionTotals = db.prepare(`SELECT COALESCE(SUM(CASE WHEN UPPER(currency)='USD' THEN amount_pesewas/100.0 ELSE 0 END),0) usd, COALESCE(SUM(CASE WHEN UPPER(currency)<>'USD' THEN amount_pesewas/100.0 ELSE 0 END),0) ghs FROM orders WHERE status='paid' AND DATE(paid_at) BETWEEN ? AND ?`).get(start,end);
+    const subscription = Number(subscriptionTotals.usd||0)+Number(subscriptionTotals.ghs||0)*usdRate;
+    const subscriptionCost = db.prepare(`SELECT COALESCE(SUM(sc.cost_price_usd),0) total FROM orders o LEFT JOIN subscription_codes sc ON sc.id=o.code_id WHERE o.status='paid' AND DATE(o.paid_at) BETWEEN ? AND ?`).get(start,end).total;
     const products = db.prepare(`
       SELECT COALESCE(SUM(po.total_ghs),0) total FROM product_orders po
       WHERE EXISTS (SELECT 1 FROM product_payment_attempts ppa WHERE ppa.order_number=po.order_number AND ppa.status='paid' AND DATE(ppa.updated_at) BETWEEN ? AND ?)
-    `).get(start,end).total;
-    const expenses = db.prepare(`SELECT COALESCE(SUM(amount_ghs),0) total FROM expenses WHERE DATE(expense_date) BETWEEN ? AND ?`).get(start,end).total;
+    `).get(start,end).total*usdRate;
+    const expenses = db.prepare(`SELECT COALESCE(SUM(amount_ghs),0) total FROM expenses WHERE DATE(expense_date) BETWEEN ? AND ?`).get(start,end).total*usdRate;
     return {subscription_revenue:subscription, subscription_cost:subscriptionCost, subscription_profit:subscription-subscriptionCost, product_revenue:products, revenue:subscription+products, expenses, profit:subscription+products-subscriptionCost-expenses};
   };
   const todayProfit = calculate(today,today);
@@ -2116,6 +2144,7 @@ try{db.prepare("ALTER TABLE promotions ADD COLUMN starts_at TEXT").run();}catch(
 try{db.prepare("ALTER TABLE promotions ADD COLUMN ends_at TEXT").run();}catch(e){}
 try{db.prepare("ALTER TABLE promotions ADD COLUMN updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP").run();}catch(e){}
 try{db.prepare("ALTER TABLE subscription_codes ADD COLUMN cost_price_ghs REAL NOT NULL DEFAULT 0").run();}catch(e){}
+try{db.prepare("ALTER TABLE subscription_codes ADD COLUMN cost_price_usd REAL NOT NULL DEFAULT 4").run();}catch(e){}
 try{db.prepare("ALTER TABLE coupons ADD COLUMN updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP").run();}catch(e){}
 try{db.prepare("ALTER TABLE promotions ADD COLUMN updated_at TEXT").run();}catch(e){}
 try{db.prepare("ALTER TABLE coupons ADD COLUMN updated_at TEXT").run();}catch(e){}
