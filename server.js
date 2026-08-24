@@ -120,6 +120,8 @@ CREATE TABLE IF NOT EXISTS promotions(
  button_text TEXT,
  button_url TEXT,
  active INTEGER NOT NULL DEFAULT 1,
+ starts_at TEXT,
+ ends_at TEXT,
  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -1266,17 +1268,18 @@ app.post("/api/customer/register",async(req,res)=>{
     if(String(password).length<8) return res.status(400).json({error:"Password must be at least 8 characters"});
     const cleanEmail=String(email).trim().toLowerCase();
     if(db.prepare("SELECT id FROM users WHERE email=?").get(cleanEmail)) return res.status(409).json({error:"An account with this email already exists"});
+    const cleanReferral=String(referral_code||"").trim().toUpperCase();
+    const referrer=cleanReferral?db.prepare("SELECT id,name FROM users WHERE referral_code=?").get(cleanReferral):null;
+    if(cleanReferral&&!referrer)return res.status(400).json({error:"Referral code is invalid"});
     const hash=await bcrypt.hash(String(password),12);
     const result=db.prepare("INSERT INTO users(name,email,password_hash) VALUES(?,?,?)")
       .run(String(name).trim(),cleanEmail,hash);
     ensureReferralCode(result.lastInsertRowid);
-   if(referral_code){
-  const ref=db.prepare("SELECT id FROM users WHERE referral_code=?").get(String(referral_code).trim().toUpperCase());
-
-  if(ref && ref.id!==result.lastInsertRowid){
+   if(referrer){
+  if(referrer.id!==result.lastInsertRowid){
     try{
       db.prepare("INSERT INTO referrals(referrer_user_id,referred_user_id,referral_code) VALUES(?,?,?)")
-        .run(ref.id,result.lastInsertRowid,String(referral_code).trim().toUpperCase());
+        .run(referrer.id,result.lastInsertRowid,cleanReferral);
     }catch(e){}
   }
 }
@@ -2065,6 +2068,15 @@ CREATE TABLE IF NOT EXISTS referrals(
 );
 `);
 
+// Safe, additive migrations for installations created before scheduled
+// promotions and editable coupons were introduced.
+try{db.prepare("ALTER TABLE promotions ADD COLUMN starts_at TEXT").run();}catch(e){}
+try{db.prepare("ALTER TABLE promotions ADD COLUMN ends_at TEXT").run();}catch(e){}
+try{db.prepare("ALTER TABLE promotions ADD COLUMN updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP").run();}catch(e){}
+try{db.prepare("ALTER TABLE coupons ADD COLUMN updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP").run();}catch(e){}
+try{db.prepare("ALTER TABLE promotions ADD COLUMN updated_at TEXT").run();}catch(e){}
+try{db.prepare("ALTER TABLE coupons ADD COLUMN updated_at TEXT").run();}catch(e){}
+
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS checkout_requests(
@@ -2149,10 +2161,13 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens(
 
 /* Public promotions and support */
 app.get("/api/promotions",(req,res)=>{
+  res.set("Cache-Control","no-store, max-age=0");
   res.json(db.prepare(`
     SELECT id,title,message,button_text,button_url
     FROM promotions
     WHERE active=1
+      AND (starts_at IS NULL OR starts_at='' OR datetime(starts_at)<=datetime('now'))
+      AND (ends_at IS NULL OR ends_at='' OR datetime(ends_at)>datetime('now'))
     ORDER BY id DESC
     LIMIT 10
   `).all());
@@ -2196,17 +2211,22 @@ app.get("/api/admin/promotions",adminOnly,(req,res)=>{
 });
 
 app.post("/api/admin/promotions",adminOnly,(req,res)=>{
-  const {title,message,button_text,button_url,active}=req.body||{};
+  const {title,message,button_text,button_url,active,starts_at,ends_at}=req.body||{};
   if(!title) return res.status(400).json({error:"Promotion title is required"});
+  const cleanButtonUrl=String(button_url||"").trim();
+  if(cleanButtonUrl&&!cleanButtonUrl.startsWith("/")&&!/^https?:\/\//i.test(cleanButtonUrl))return res.status(400).json({error:"Button URL must begin with /, http:// or https://"});
+  if(starts_at&&ends_at&&new Date(starts_at)>=new Date(ends_at))return res.status(400).json({error:"End date must be after the start date"});
   const info=db.prepare(`
-    INSERT INTO promotions(title,message,button_text,button_url,active)
-    VALUES(?,?,?,?,?)
+    INSERT INTO promotions(title,message,button_text,button_url,active,starts_at,ends_at)
+    VALUES(?,?,?,?,?,?,?)
   `).run(
     String(title).trim(),
     String(message||"").trim(),
     String(button_text||"").trim(),
-    String(button_url||"").trim(),
-    String(active)==="0"?0:1
+    cleanButtonUrl,
+    String(active)==="0"?0:1,
+    starts_at||null,
+    ends_at||null
   );
   res.json(db.prepare("SELECT * FROM promotions WHERE id=?").get(info.lastInsertRowid));
 });
@@ -2214,18 +2234,33 @@ app.post("/api/admin/promotions",adminOnly,(req,res)=>{
 app.put("/api/admin/promotions/:id",adminOnly,(req,res)=>{
   const old=db.prepare("SELECT * FROM promotions WHERE id=?").get(req.params.id);
   if(!old) return res.status(404).json({error:"Promotion not found"});
+  const nextTitle=String(req.body.title??old.title).trim();
+  const nextButtonUrl=String(req.body.button_url??old.button_url??"").trim();
+  const nextStart=req.body.starts_at===undefined?old.starts_at:(req.body.starts_at||null);
+  const nextEnd=req.body.ends_at===undefined?old.ends_at:(req.body.ends_at||null);
+  if(!nextTitle)return res.status(400).json({error:"Promotion title is required"});
+  if(nextButtonUrl&&!nextButtonUrl.startsWith("/")&&!/^https?:\/\//i.test(nextButtonUrl))return res.status(400).json({error:"Button URL must begin with /, http:// or https://"});
+  if(nextStart&&nextEnd&&new Date(nextStart)>=new Date(nextEnd))return res.status(400).json({error:"End date must be after the start date"});
   db.prepare(`
     UPDATE promotions
-    SET title=?,message=?,button_text=?,button_url=?,active=?,updated_at=CURRENT_TIMESTAMP
+    SET title=?,message=?,button_text=?,button_url=?,active=?,starts_at=?,ends_at=?,updated_at=CURRENT_TIMESTAMP
     WHERE id=?
   `).run(
-    String(req.body.title??old.title).trim(),
+    nextTitle,
     String(req.body.message??old.message).trim(),
     String(req.body.button_text??old.button_text??"").trim(),
-    String(req.body.button_url??old.button_url??"").trim(),
+    nextButtonUrl,
     String(req.body.active)==="0"?0:1,
+    nextStart,
+    nextEnd,
     req.params.id
   );
+  res.json(db.prepare("SELECT * FROM promotions WHERE id=?").get(req.params.id));
+});
+
+app.post("/api/admin/promotions/:id/toggle",adminOnly,(req,res)=>{
+  const result=db.prepare("UPDATE promotions SET active=CASE active WHEN 1 THEN 0 ELSE 1 END,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(req.params.id);
+  if(!result.changes)return res.status(404).json({error:"Promotion not found"});
   res.json(db.prepare("SELECT * FROM promotions WHERE id=?").get(req.params.id));
 });
 
@@ -2522,36 +2557,79 @@ app.post("/api/admin/product-orders/:id/status",adminOnly,(req,res)=>{
 
 
 /* Coupons */
-app.post("/api/coupons/validate",(req,res)=>{
+app.post("/api/coupons/validate",async(req,res)=>{
  const code=String(req.body?.code||"").trim().toUpperCase();
  const applies=String(req.body?.applies_to||"subscription");
  const amount=Number(req.body?.amount||0);
+ const currency=String(req.body?.currency||"GHS").trim().toUpperCase();
+ if(!code)return res.status(400).json({error:"Enter a coupon code"});
+ if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:"A valid purchase amount is required"});
  const c=db.prepare("SELECT * FROM coupons WHERE code=? AND active=1").get(code);
  if(!c) return res.status(404).json({error:"Invalid coupon code"});
  if(c.applies_to!==applies && c.applies_to!=="all") return res.status(400).json({error:"Coupon does not apply to this purchase"});
  if(c.expires_at && new Date(c.expires_at)<=new Date()) return res.status(400).json({error:"Coupon has expired"});
  if(c.max_uses!=null && c.used_count>=c.max_uses) return res.status(400).json({error:"Coupon usage limit reached"});
- let discount=c.discount_type==="percent"?amount*(c.discount_value/100):c.discount_value;
+ let fixedValue=Number(c.discount_value);
+ if(c.discount_type==="fixed"&&currency==="USD"){
+   try{
+     const ratesResult=await getExchangeRates();
+     const usdPerGhs=Number(ratesResult?.rates?.USD||ratesResult?.data?.rates?.USD);
+     if(!Number.isFinite(usdPerGhs)||usdPerGhs<=0)throw new Error("rate unavailable");
+     fixedValue*=usdPerGhs;
+   }catch(error){return res.status(503).json({error:"The current exchange rate is unavailable. Please try again."});}
+ }
+ let discount=c.discount_type==="percent"?amount*(c.discount_value/100):fixedValue;
  discount=Math.max(0,Math.min(amount,discount));
- res.json({valid:true,code:c.code,discount_ghs:Number(discount.toFixed(2)),new_total_ghs:Number(Math.max(0,amount-discount).toFixed(2))});
+ const roundedDiscount=Number(discount.toFixed(2)),roundedTotal=Number(Math.max(0,amount-discount).toFixed(2));
+ res.set("Cache-Control","no-store, max-age=0");
+ res.json({valid:true,code:c.code,currency,discount:roundedDiscount,new_total:roundedTotal,discount_ghs:currency==="GHS"?roundedDiscount:null,new_total_ghs:currency==="GHS"?roundedTotal:null,discount_usd:currency==="USD"?roundedDiscount:null,new_total_usd:currency==="USD"?roundedTotal:null});
 });
 app.get("/api/admin/coupons",adminOnly,(req,res)=>res.json(db.prepare("SELECT * FROM coupons ORDER BY id DESC").all()));
 app.post("/api/admin/coupons",adminOnly,(req,res)=>{
  const {code,discount_type,discount_value,applies_to,max_uses,expires_at}=req.body||{};
  const clean=String(code||"").trim().toUpperCase();
- if(!clean||!discount_value)return res.status(400).json({error:"Code and discount value are required"});
+ const value=Number(discount_value);
+ if(!clean||!Number.isFinite(value)||value<=0)return res.status(400).json({error:"Code and a positive discount value are required"});
+ if(discount_type==="percent"&&value>100)return res.status(400).json({error:"Percentage discount cannot exceed 100%"});
  try{
   db.prepare(`INSERT INTO coupons(code,discount_type,discount_value,applies_to,max_uses,expires_at)
   VALUES(?,?,?,?,?,?)`).run(clean,discount_type==="percent"?"percent":"fixed",Number(discount_value),["subscription","product","all"].includes(applies_to)?applies_to:"subscription",max_uses?Number(max_uses):null,expires_at||null);
   res.json({ok:true});
  }catch(e){res.status(409).json({error:"Coupon code already exists"});}
 });
-app.post("/api/admin/coupons/:id/toggle",adminOnly,(req,res)=>{
- db.prepare("UPDATE coupons SET active=CASE active WHEN 1 THEN 0 ELSE 1 END WHERE id=?").run(req.params.id);res.json({ok:true});
+app.put("/api/admin/coupons/:id",adminOnly,(req,res)=>{
+ const old=db.prepare("SELECT * FROM coupons WHERE id=?").get(req.params.id);
+ if(!old)return res.status(404).json({error:"Coupon not found"});
+ const code=String(req.body?.code??old.code).trim().toUpperCase();
+ const type=req.body?.discount_type==="percent"?"percent":"fixed";
+ const value=Number(req.body?.discount_value??old.discount_value);
+ const applies=["subscription","product","all"].includes(req.body?.applies_to)?req.body.applies_to:old.applies_to;
+ const maxUses=req.body?.max_uses===""||req.body?.max_uses==null?null:Number(req.body.max_uses);
+ const expiresAt=req.body?.expires_at===undefined?old.expires_at:(req.body.expires_at||null);
+ const active=req.body?.active===undefined?old.active:(String(req.body.active)==="0"?0:1);
+ if(!code||!Number.isFinite(value)||value<=0)return res.status(400).json({error:"Code and a positive discount value are required"});
+ if(type==="percent"&&value>100)return res.status(400).json({error:"Percentage discount cannot exceed 100%"});
+ if(maxUses!=null&&(!Number.isInteger(maxUses)||maxUses<old.used_count))return res.status(400).json({error:`Maximum uses cannot be less than the ${old.used_count} uses already recorded`});
+ try{
+   db.prepare(`UPDATE coupons SET code=?,discount_type=?,discount_value=?,applies_to=?,max_uses=?,expires_at=?,active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).run(code,type,value,applies,maxUses,expiresAt,active,req.params.id);
+   res.json(db.prepare("SELECT * FROM coupons WHERE id=?").get(req.params.id));
+ }catch(error){res.status(409).json({error:"Coupon code already exists"});}
 });
-app.delete("/api/admin/coupons/:id",adminOnly,(req,res)=>{db.prepare("DELETE FROM coupons WHERE id=?").run(req.params.id);res.json({ok:true})});
+app.post("/api/admin/coupons/:id/toggle",adminOnly,(req,res)=>{
+ const result=db.prepare("UPDATE coupons SET active=CASE active WHEN 1 THEN 0 ELSE 1 END,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(req.params.id);
+ if(!result.changes)return res.status(404).json({error:"Coupon not found"});res.json({ok:true});
+});
+app.delete("/api/admin/coupons/:id",adminOnly,(req,res)=>{const result=db.prepare("DELETE FROM coupons WHERE id=?").run(req.params.id);if(!result.changes)return res.status(404).json({error:"Coupon not found"});res.json({ok:true})});
 
 /* Referrals */
+app.get("/api/referrals/validate",(req,res)=>{
+ const code=String(req.query?.code||"").trim().toUpperCase();
+ if(!code)return res.status(400).json({valid:false,error:"Enter a referral code"});
+ const referrer=db.prepare("SELECT name FROM users WHERE referral_code=?").get(code);
+ if(!referrer)return res.status(404).json({valid:false,error:"Referral code is invalid"});
+ res.set("Cache-Control","no-store, max-age=0");
+ res.json({valid:true,code,referrer_name:referrer.name});
+});
 app.get("/api/customer/referral",customerOnly,(req,res)=>{
  const code=ensureReferralCode(req.customer.userId);
  const count=db.prepare("SELECT COUNT(*) n FROM referrals WHERE referrer_user_id=?").get(req.customer.userId).n;

@@ -18,7 +18,7 @@
       <label>Full name</label><input id="name" required>
       <label>Email</label><input id="email" type="email" required>
       <label>Password</label><input id="password" type="password" minlength="8" required>
-      <label>Referral Code <span class="muted">(optional)</span></label><input id="referral_code" placeholder="WTV...">
+      <label>Referral Code <span class="muted">(optional)</span></label><input id="referral_code" placeholder="WTV..." autocomplete="off"><p id="referralStatus" class="muted" style="margin-top:-8px"></p>
       <button class="btn" type="submit">Create Account</button>
     </form>
     <p id="msg" class="muted"></p>
@@ -27,9 +27,11 @@
 <script>
 const form=document.getElementById("f");
 function showReferralNotice(){const a=window.WorldTVMarketing?.getAttribution?.();const input=document.getElementById('referral_code');if(a?.referral_code&&input){input.value=a.referral_code;document.getElementById('refNote').style.display='block'}}
+async function validateReferral(){const input=document.getElementById('referral_code'),status=document.getElementById('referralStatus'),code=input.value.trim().toUpperCase();input.value=code;if(!code){status.textContent='';return true;}status.textContent='Checking referral code...';try{const response=await fetch(`/api/referrals/validate?code=${encodeURIComponent(code)}`,{cache:'no-store'}),data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Referral code is invalid');status.style.color='#176b3a';status.textContent=`✓ Valid referral from ${data.referrer_name||'a WORLD TV customer'}`;return true}catch(error){status.style.color='#a12626';status.textContent=error.message;return false}}
+document.getElementById('referral_code').addEventListener('blur',validateReferral);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',showReferralNotice);else showReferralNotice();
 form.addEventListener("submit",async(e)=>{
-  e.preventDefault();const msg=document.getElementById("msg");msg.textContent="Creating account...";
+  e.preventDefault();const msg=document.getElementById("msg");if(!await validateReferral()){msg.textContent="Please correct or remove the referral code.";return}msg.textContent="Creating account...";
   try{
     const response=await fetch("/api/customer/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:document.getElementById("name").value,email:document.getElementById("email").value,password:document.getElementById("password").value,referral_code:document.getElementById("referral_code").value})});
     const data=await response.json();if(!response.ok){msg.textContent=data.error||"Could not create account.";return}
