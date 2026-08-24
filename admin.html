@@ -78,8 +78,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 </section>
 
 <section id="codesTab" class="hide">
-<div class="card"><h2>Upload Subscription Codes</h2><select id="plan"></select><input id="xlsx" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"> <button class="btn primary" onclick="uploadXlsx()">Upload XLSX</button><textarea id="codes" placeholder="Paste codes, one per line"></textarea><button class="btn primary" onclick="pasteCodes()">Add Codes</button><p id="codeMsg" class="muted"></p></div>
-<div class="card"><h2>Codes</h2><div style="overflow:auto"><table><thead><tr><th>Code</th><th>Plan</th><th>Status</th><th>Customer</th><th>Expires</th><th>Actions</th></tr></thead><tbody id="codeRows"></tbody></table></div></div>
+<div class="card"><h2>Upload Subscription Codes</h2><select id="plan"></select><label>Cost Price Per Code (GH₵)</label><input id="codeCostPrice" type="number" min="0" step="0.01" value="0" placeholder="Amount you pay for each code"><input id="xlsx" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"> <button class="btn primary" onclick="uploadXlsx()">Upload XLSX</button><textarea id="codes" placeholder="Paste codes, one per line"></textarea><button class="btn primary" onclick="pasteCodes()">Add Codes</button><p id="codeMsg" class="muted"></p></div>
+<div class="card"><h2>Codes</h2><div style="overflow:auto"><table><thead><tr><th>Code</th><th>Plan</th><th>Cost Price</th><th>Status</th><th>Customer</th><th>Expires</th><th>Actions</th></tr></thead><tbody id="codeRows"></tbody></table></div></div>
 </section>
 <section id="promotionsTab" class="hide">
 <div class="card"><h2 id="promoFormTitle">Add Promotion</h2><input id="promoId" type="hidden">
@@ -236,6 +236,11 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
     <div class="muted" style="font-size:11px">Successful payments today</div>
   </div>
   <div class="card sales-card">
+    <div class="muted">Subscription Code Cost</div>
+    <div id="todaySubscriptionCost" class="stat">GH₵0</div>
+    <div class="muted" style="font-size:11px">Cost of codes sold today</div>
+  </div>
+  <div class="card sales-card">
     <div class="muted">Product Income</div>
     <div id="todayProductRevenue" class="stat">GH₵0</div>
     <div class="muted" style="font-size:11px">Paid product orders today</div>
@@ -307,6 +312,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
           <tr>
             <th>Date</th>
             <th>Subscription Revenue</th>
+            <th>Code Cost</th>
             <th>Product Revenue</th>
             <th>Total Revenue</th>
             <th>Expenses</th>
@@ -654,6 +660,7 @@ async function loadCodes(){
     <tr>
       <td>${x.code}</td>
       <td>${x.plan_name}</td>
+      <td>GH₵${Number(x.cost_price_ghs||0).toFixed(2)}</td>
       <td>${x.status}</td>
       <td>${x.user_email||"—"}</td>
       <td>${x.expires_at||"—"}</td>
@@ -672,6 +679,7 @@ async function loadCodes(){
     "Subscription Code\n\n"+
     "Code: "+code.code+"\n"+
     "Plan: "+code.plan_name+"\n"+
+    "Cost Price: GH₵"+Number(code.cost_price_ghs||0).toFixed(2)+"\n"+
     "Status: "+code.status+"\n"+
     "Customer: "+(code.user_email||"—")+"\n"+
     "Expiry: "+(code.expires_at||"—")+"\n"+
@@ -700,6 +708,9 @@ async function editCode(id){
   );
   if(newExpiry===null)return;
 
+  const newCost=prompt("Cost price paid for this code (GH₵):",Number(code.cost_price_ghs||0).toFixed(2));
+  if(newCost===null)return;
+
   try{
     await api(`/api/admin/codes/${id}`,{
       method:"PUT",
@@ -708,7 +719,8 @@ async function editCode(id){
         code:newCode,
         planId:Number(newPlanId),
         status:newStatus,
-        expires_at:newExpiry
+        expires_at:newExpiry,
+        cost_price_ghs:Number(newCost)
       })
     });
 
@@ -764,7 +776,8 @@ async function uploadXlsx(){
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
         planId:$("plan").value,
-        codes:codes.join("\n")
+        codes:codes.join("\n"),
+        cost_price_ghs:Number($("codeCostPrice").value||0)
       })
     });
 
@@ -777,7 +790,7 @@ async function uploadXlsx(){
   }
 }
 
-async function pasteCodes(){const d=await api("/api/admin/codes/text",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({planId:$("plan").value,codes:$("codes").value})});$("codeMsg").textContent=`Added ${d.added}; skipped ${d.duplicates} duplicates.`;$("codes").value="";await refreshAll()}
+async function pasteCodes(){const d=await api("/api/admin/codes/text",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({planId:$("plan").value,codes:$("codes").value,cost_price_ghs:Number($("codeCostPrice").value||0)})});$("codeMsg").textContent=`Added ${d.added}; skipped ${d.duplicates} duplicates.`;$("codes").value="";await refreshAll()}
 
 async function loadPromotions(){
  promotionData=await api("/api/admin/promotions");
@@ -1024,6 +1037,7 @@ async function loadSalesDashboard(){
     
     // Update summary cards
     const subscriptionRev = Number(summary.today.subscriptions?.total_revenue || 0);
+    const subscriptionCost = Number(summary.today.subscriptions?.total_code_cost || 0);
     const productRev = Number(summary.today.product_orders?.total_sales || 0);
     const todayRev = subscriptionRev + productRev;
     const todayExp = Number(summary.today.expenses?.total_expenses || 0);
@@ -1031,6 +1045,7 @@ async function loadSalesDashboard(){
     const monthProf = Number(profit.this_month?.profit || 0);
     
     $("todaySubscriptionRevenue").textContent = "GH₵" + subscriptionRev.toFixed(2);
+    $("todaySubscriptionCost").textContent = "GH₵" + subscriptionCost.toFixed(2);
     $("todayProductRevenue").textContent = "GH₵" + productRev.toFixed(2);
     $("todayRevenue").textContent = "GH₵" + todayRev.toFixed(2);
     $("todayExpenses").textContent = "GH₵" + todayExp.toFixed(2);
@@ -1057,14 +1072,16 @@ async function loadSalesDashboard(){
     // Daily report table
     $("dailyReportRows").innerHTML = daily.map(d => {
       const subscriptionRevenue = Number(d.subscription_revenue || 0);
+      const subscriptionCost = Number(d.subscription_cost || 0);
       const productRevenue = Number(d.product_revenue || 0);
       const expenseTotal = Number(d.expenses || 0);
       const totalRev = subscriptionRevenue + productRevenue;
-      const profit = totalRev - expenseTotal;
+      const profit = totalRev - subscriptionCost - expenseTotal;
       return `
         <tr>
           <td><b>${d.date}</b></td>
           <td>GH₵${subscriptionRevenue.toFixed(2)}</td>
+          <td>GH₵${subscriptionCost.toFixed(2)}</td>
           <td>GH₵${productRevenue.toFixed(2)}</td>
           <td><b>GH₵${totalRev.toFixed(2)}</b></td>
           <td>GH₵${expenseTotal.toFixed(2)}</td>
