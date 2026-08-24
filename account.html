@@ -21,4 +21,5 @@ document.getElementById("history").innerHTML=d.orders.map(o=>`<tr><td>${o.refere
 async function markRead(id){await api("/api/customer/notifications/"+id+"/read",{method:"POST"});load()}
 async function logout(){try{await api("/api/customer/logout",{method:"POST"})}catch(e){}localStorage.removeItem("wtv_customer_token");location.href="/login.html"}if(!token)location.href="/login.html";else load();
 (async()=>{try{const plans=await fetch("/api/plans").then(r=>r.json());if(plans.length>0){const plan=plans[0],durationDays=plan.duration_days,duration=durationDays===365?"1 Year":durationDays===30?"1 Month":`${durationDays} days`;document.getElementById("planDisplay").innerHTML=`<b>${duration} — <span data-price-usd="${Number(plan.price_usd||23)}"></span></b>`;if(window.CurrencyConverter){CurrencyConverter.updateAllPrices(CurrencyConverter.activeCurrency)}}}catch(e){console.error("Failed to load plan:",e)}})();
-</script><script src="/assets/pwa.js"></script></body></html>
+</script><script src="/assets/pwa.js"></script><script src="/assets/language-selector.js?v=1"></script>
+</body></html>

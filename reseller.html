@@ -95,5 +95,6 @@ async function generateCodes(){if(generating)return;const count=parseInt($('gene
 async function copyCode(code){try{await navigator.clipboard.writeText(code)}catch(e){prompt('Copy subscription code:',code)}}
 if(resellerToken&&resellerId)showDashboard();else{$('loginPage').classList.remove('hide')}
 </script>
+<script src="/assets/language-selector.js?v=1"></script>
 </body>
 </html>
