@@ -1650,8 +1650,13 @@ app.get("/api/admin/dashboard/live-summary", adminOnly, (req,res)=>{
       COUNT(*) as order_count,
       SUM(total_ghs) as total_sales,
       SUM(quantity) as items_sold
-    FROM product_orders 
-    WHERE status NOT IN ('cancelled') AND DATE(created_at)=?
+    FROM product_orders po
+    WHERE EXISTS (
+      SELECT 1 FROM product_payment_attempts ppa
+      WHERE ppa.order_number=po.order_number
+        AND ppa.status='paid'
+        AND DATE(ppa.updated_at)=?
+    )
   `).get(today);
   
   // Expenses today
@@ -1703,13 +1708,15 @@ app.get("/api/admin/dashboard/recent-sales", adminOnly, (req,res)=>{
       'product' as type,
       po.order_number as ref_id,
       po.total_ghs as amount_ghs,
-      po.status,
-      po.created_at as timestamp,
+      'paid' as status,
+      MAX(ppa.updated_at) as timestamp,
       po.customer_name,
       pr.name as product_name
     FROM product_orders po
+    JOIN product_payment_attempts ppa
+      ON ppa.order_number=po.order_number AND ppa.status='paid'
     LEFT JOIN products pr ON pr.id = po.product_id
-    WHERE po.status NOT IN ('cancelled')
+    GROUP BY po.id
     
     ORDER BY timestamp DESC
     LIMIT 50
@@ -1727,17 +1734,36 @@ app.get("/api/admin/dashboard/daily-report", adminOnly, (req,res)=>{
       SELECT DATE(date, '+1 day') FROM dates 
       WHERE date < DATE('now')
     )
-    SELECT 
+    , subscription_daily AS (
+      SELECT DATE(paid_at) date,
+             SUM(amount_pesewas)/100.0 revenue,
+             COUNT(DISTINCT user_id) customers
+      FROM orders
+      WHERE status='paid' AND paid_at IS NOT NULL
+      GROUP BY DATE(paid_at)
+    ), paid_product_orders AS (
+      SELECT po.id, po.total_ghs, MAX(ppa.updated_at) paid_at
+      FROM product_orders po
+      JOIN product_payment_attempts ppa
+        ON ppa.order_number=po.order_number AND ppa.status='paid'
+      GROUP BY po.id
+    ), product_daily AS (
+      SELECT DATE(paid_at) date, SUM(total_ghs) revenue
+      FROM paid_product_orders GROUP BY DATE(paid_at)
+    ), expense_daily AS (
+      SELECT DATE(expense_date) date, SUM(amount_ghs) total
+      FROM expenses GROUP BY DATE(expense_date)
+    )
+    SELECT
       d.date,
-      COALESCE(SUM(CASE WHEN o.status='paid' THEN o.amount_pesewas/100 ELSE 0 END), 0) as subscription_revenue,
-      COALESCE(SUM(CASE WHEN po.status NOT IN ('cancelled') THEN po.total_ghs ELSE 0 END), 0) as product_revenue,
-      COALESCE(SUM(e.amount_ghs), 0) as expenses,
-      COALESCE(COUNT(DISTINCT CASE WHEN o.status='paid' THEN o.user_id END), 0) as customers
+      COALESCE(sd.revenue, 0) as subscription_revenue,
+      COALESCE(pd.revenue, 0) as product_revenue,
+      COALESCE(ed.total, 0) as expenses,
+      COALESCE(sd.customers, 0) as customers
     FROM dates d
-    LEFT JOIN orders o ON DATE(o.paid_at) = d.date
-    LEFT JOIN product_orders po ON DATE(po.created_at) = d.date
-    LEFT JOIN expenses e ON DATE(e.expense_date) = d.date
-    GROUP BY d.date
+    LEFT JOIN subscription_daily sd ON sd.date=d.date
+    LEFT JOIN product_daily pd ON pd.date=d.date
+    LEFT JOIN expense_daily ed ON ed.date=d.date
     ORDER BY d.date DESC
   `).all();
   
@@ -1764,16 +1790,19 @@ app.get("/api/admin/dashboard/stock-status", adminOnly, (req,res)=>{
 
 // Add expense record
 app.post("/api/admin/dashboard/expenses", adminOnly, (req,res)=>{
-  const {category, amount_ghs, description} = req.body || {};
+  const {category, amount_ghs, description, expense_date} = req.body || {};
   
   if(!category || !amount_ghs || amount_ghs <= 0) {
     return res.status(400).json({error: "Category and valid amount are required"});
   }
   
+  const chosenDate = /^\d{4}-\d{2}-\d{2}$/.test(String(expense_date || ''))
+    ? `${expense_date} 12:00:00`
+    : new Date().toISOString();
   const result = db.prepare(`
-    INSERT INTO expenses(category, amount_ghs, description)
-    VALUES(?, ?, ?)
-  `).run(String(category).trim(), Number(amount_ghs), String(description || '').trim());
+    INSERT INTO expenses(category, amount_ghs, description, expense_date)
+    VALUES(?, ?, ?, ?)
+  `).run(String(category).trim(), Number(amount_ghs), String(description || '').trim(), chosenDate);
   
   audit("expense_recorded", "expense", result.lastInsertRowid, `${category}: GH₵${amount_ghs}`);
   
@@ -1801,6 +1830,14 @@ app.get("/api/admin/dashboard/expenses", adminOnly, (req,res)=>{
   res.json(expenses);
 });
 
+app.delete("/api/admin/dashboard/expenses/:id", adminOnly, (req,res)=>{
+  const expense = db.prepare("SELECT * FROM expenses WHERE id=?").get(req.params.id);
+  if(!expense) return res.status(404).json({error:"Expense not found"});
+  db.prepare("DELETE FROM expenses WHERE id=?").run(req.params.id);
+  audit("expense_deleted", "expense", expense.id, `${expense.category}: GH₵${expense.amount_ghs}`);
+  res.json({ok:true});
+});
+
 // Get profit calculation (revenue - expenses)
 app.get("/api/admin/dashboard/profit-summary", adminOnly, (req,res)=>{
   const today = new Date().toISOString().split('T')[0];
@@ -1808,29 +1845,17 @@ app.get("/api/admin/dashboard/profit-summary", adminOnly, (req,res)=>{
   startOfMonth.setDate(1);
   const monthStart = startOfMonth.toISOString().split('T')[0];
   
-  // Today
-  const todayProfit = db.prepare(`
-    SELECT 
-      COALESCE(SUM(CASE WHEN o.status='paid' THEN o.amount_pesewas/100 ELSE 0 END), 0) +
-      COALESCE(SUM(CASE WHEN po.status NOT IN ('cancelled') THEN po.total_ghs ELSE 0 END), 0) -
-      COALESCE(SUM(e.amount_ghs), 0) as profit
-    FROM (SELECT 1) dummy
-    LEFT JOIN orders o ON DATE(o.paid_at)=?
-    LEFT JOIN product_orders po ON DATE(po.created_at)=?
-    LEFT JOIN expenses e ON DATE(e.expense_date)=?
-  `).get(today, today, today);
-  
-  // This month
-  const monthProfit = db.prepare(`
-    SELECT 
-      COALESCE(SUM(CASE WHEN o.status='paid' THEN o.amount_pesewas/100 ELSE 0 END), 0) +
-      COALESCE(SUM(CASE WHEN po.status NOT IN ('cancelled') THEN po.total_ghs ELSE 0 END), 0) -
-      COALESCE(SUM(e.amount_ghs), 0) as profit
-    FROM (SELECT 1) dummy
-    LEFT JOIN orders o ON DATE(o.paid_at) >= ?
-    LEFT JOIN product_orders po ON DATE(po.created_at) >= ?
-    LEFT JOIN expenses e ON DATE(e.expense_date) >= ?
-  `).get(monthStart, monthStart, monthStart);
+  const calculate = (start, end) => {
+    const subscription = db.prepare(`SELECT COALESCE(SUM(amount_pesewas),0)/100.0 total FROM orders WHERE status='paid' AND DATE(paid_at) BETWEEN ? AND ?`).get(start,end).total;
+    const products = db.prepare(`
+      SELECT COALESCE(SUM(po.total_ghs),0) total FROM product_orders po
+      WHERE EXISTS (SELECT 1 FROM product_payment_attempts ppa WHERE ppa.order_number=po.order_number AND ppa.status='paid' AND DATE(ppa.updated_at) BETWEEN ? AND ?)
+    `).get(start,end).total;
+    const expenses = db.prepare(`SELECT COALESCE(SUM(amount_ghs),0) total FROM expenses WHERE DATE(expense_date) BETWEEN ? AND ?`).get(start,end).total;
+    return {subscription_revenue:subscription, product_revenue:products, revenue:subscription+products, expenses, profit:subscription+products-expenses};
+  };
+  const todayProfit = calculate(today,today);
+  const monthProfit = calculate(monthStart,today);
   
   res.json({
     today: todayProfit,
