@@ -13,6 +13,7 @@ input,textarea,select{width:100%;padding:12px;border:1px solid #d8ccb2;border-ra
 table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px;border-bottom:1px solid #eee6d6;vertical-align:top}.thumb{width:70px;height:55px;object-fit:cover;border-radius:8px;background:#eee}
 .formgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.pill{display:inline-block;padding:4px 8px;border-radius:99px;background:#f4edda}
 .modal{display:none;position:fixed;inset:0;background:#0008;z-index:50;align-items:center;justify-content:center;padding:20px}.modal.open{display:flex}.modalbox{background:#fff;width:min(760px,100%);max-height:90vh;overflow:auto;border-radius:20px;padding:24px;position:relative}.close{position:absolute;right:16px;top:12px;border:0;background:none;font-size:26px;cursor:pointer}
+.sales-card{position:relative;overflow:hidden}.sales-card:after{content:"";position:absolute;right:-25px;bottom:-35px;width:90px;height:90px;border-radius:50%;background:#e0a20018}.live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#21a453;box-shadow:0 0 0 5px #21a4531c;margin-right:7px}.negative{color:#dc3545!important}
 @media(max-width:850px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}table{display:block;overflow:auto;white-space:nowrap}}
 </style><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#e0a200"><link rel="apple-touch-icon" href="/assets/world-tv-logo.png"><link rel="icon" href="/assets/world-tv-logo.png"><meta property="og:site_name" content="World TV"><meta property="og:type" content="website"><meta property="og:image" content="https://myworldtvlive.com/assets/world-tv-logo.png"><script src="/assets/site-meta.js"></script><meta name="robots" content="noindex,nofollow"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head>
 <header><div class="wrap nav">
@@ -224,9 +225,23 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 
 
 <section id="salesDashboardTab" class="hide">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px">
+  <div><h2 style="margin:0">Smart Sales & Profit Center</h2><div class="muted" style="margin-top:6px"><span class="live-dot"></span>Live — successful payments only · refreshes every 15 seconds</div></div>
+  <button class="btn secondary" onclick="loadSalesDashboard()">Refresh Now</button>
+</div>
 <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px;">
-  <div class="card">
-    <div class="muted">Today's Revenue</div>
+  <div class="card sales-card">
+    <div class="muted">Subscription Income</div>
+    <div id="todaySubscriptionRevenue" class="stat">GH₵0</div>
+    <div class="muted" style="font-size:11px">Successful payments today</div>
+  </div>
+  <div class="card sales-card">
+    <div class="muted">Product Income</div>
+    <div id="todayProductRevenue" class="stat">GH₵0</div>
+    <div class="muted" style="font-size:11px">Paid product orders today</div>
+  </div>
+  <div class="card sales-card">
+    <div class="muted">Total Income Today</div>
     <div id="todayRevenue" class="stat">GH₵0</div>
     <div class="muted" style="font-size:11px">Subscriptions + Products</div>
   </div>
@@ -339,6 +354,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
         <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="0.00">
       </div>
     </div>
+    <label>Expense Date</label>
+    <input id="expenseDate" type="date">
     <label>Description (optional)</label>
     <textarea id="expenseDescription" placeholder="Details about this expense" style="margin-bottom:12px"></textarea>
     <button class="btn primary" onclick="addExpense()">Record Expense</button>
@@ -354,7 +371,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
             <th>Date</th>
             <th>Category</th>
             <th>Amount (GH₵)</th>
-            <th>Description</th>
+            <th>Description</th><th>Action</th>
           </tr>
         </thead>
         <tbody id="expenseHistoryRows"></tbody>
@@ -607,6 +624,8 @@ function showTab(id,btn){
 
   if(id==="analyticsTab") startAnalyticsV2();
   else stopAnalyticsV2();
+  if(id==="salesDashboardTab") startSalesDashboardLive();
+  else stopSalesDashboardLive();
 }
 async function showDashboard(){$("login").classList.add("hide");$("dashboard").classList.remove("hide");$("logoutBtn").classList.remove("hide");const plans=await fetch("/api/plans").then(r=>r.json());$("plan").innerHTML=plans.map(p=>`<option value="${p.id}">${p.name} — $${Number(p.price_usd).toFixed(2)} USD</option>`).join("");await refreshAll()}
 async function refreshAll(){const s=await api("/api/admin/stats");$("total").textContent=s.total;$("unused").textContent=s.unused;$("used").textContent=s.used;$("customersCount").textContent=s.customers;$("productsCount").textContent=s.products;await loadCustomers();await loadProducts();await loadCodes();await loadPromotions();await loadServices();await loadSupport();await loadSettings();await loadReports();await loadContent();await loadProductOrders();await loadCoupons();await loadReferrals();await loadSubscriptionRequests();await loadAlerts();await loadAudit();await loadEmailQueue();await loadPricingData();await loadSalesDashboard();await loadResellers()}
@@ -997,23 +1016,28 @@ function showSalesTab(id,btn){
 
 async function loadSalesDashboard(){
   try {
-    const summary = await api("/api/admin/dashboard/live-summary");
-    const profit = await api("/api/admin/dashboard/profit-summary");
-    const recent = await api("/api/admin/dashboard/recent-sales");
-    const daily = await api("/api/admin/dashboard/daily-report");
-    const stock = await api("/api/admin/dashboard/stock-status");
-    const expenses = await api("/api/admin/dashboard/expenses");
+    const [summary, profit, recent, daily, stock, expenses] = await Promise.all([
+      api("/api/admin/dashboard/live-summary"), api("/api/admin/dashboard/profit-summary"),
+      api("/api/admin/dashboard/recent-sales"), api("/api/admin/dashboard/daily-report"),
+      api("/api/admin/dashboard/stock-status"), api("/api/admin/dashboard/expenses")
+    ]);
     
     // Update summary cards
-    const todayRev = (summary.today.subscriptions?.total_revenue || 0) + (summary.today.product_orders?.total_sales || 0);
-    const todayExp = summary.today.expenses?.total_expenses || 0;
-    const todayProf = profit.today?.profit || 0;
-    const monthProf = profit.this_month?.profit || 0;
+    const subscriptionRev = Number(summary.today.subscriptions?.total_revenue || 0);
+    const productRev = Number(summary.today.product_orders?.total_sales || 0);
+    const todayRev = subscriptionRev + productRev;
+    const todayExp = Number(summary.today.expenses?.total_expenses || 0);
+    const todayProf = Number(profit.today?.profit || 0);
+    const monthProf = Number(profit.this_month?.profit || 0);
     
+    $("todaySubscriptionRevenue").textContent = "GH₵" + subscriptionRev.toFixed(2);
+    $("todayProductRevenue").textContent = "GH₵" + productRev.toFixed(2);
     $("todayRevenue").textContent = "GH₵" + todayRev.toFixed(2);
     $("todayExpenses").textContent = "GH₵" + todayExp.toFixed(2);
     $("todayProfit").textContent = "GH₵" + todayProf.toFixed(2);
     $("monthProfit").textContent = "GH₵" + monthProf.toFixed(2);
+    $("todayProfit").classList.toggle("negative", todayProf < 0);
+    $("monthProfit").classList.toggle("negative", monthProf < 0);
     $("inStockCount").textContent = summary.inventory?.in_stock_count || 0;
     $("outOfStockCount").textContent = summary.inventory?.out_of_stock_count || 0;
     
@@ -1024,7 +1048,7 @@ async function loadSalesDashboard(){
         <td><b>${s.ref_id}</b></td>
         <td>${s.customer_name}</td>
         <td>${s.product_name || '—'}</td>
-        <td>GH₵${s.amount_ghs.toFixed(2)}</td>
+        <td>GH₵${Number(s.amount_ghs || 0).toFixed(2)}</td>
         <td><span class="pill">${s.status}</span></td>
         <td>${new Date(s.timestamp).toLocaleString().split(',')[1] || s.timestamp}</td>
       </tr>
@@ -1032,15 +1056,18 @@ async function loadSalesDashboard(){
     
     // Daily report table
     $("dailyReportRows").innerHTML = daily.map(d => {
-      const totalRev = d.subscription_revenue + d.product_revenue;
-      const profit = totalRev - d.expenses;
+      const subscriptionRevenue = Number(d.subscription_revenue || 0);
+      const productRevenue = Number(d.product_revenue || 0);
+      const expenseTotal = Number(d.expenses || 0);
+      const totalRev = subscriptionRevenue + productRevenue;
+      const profit = totalRev - expenseTotal;
       return `
         <tr>
           <td><b>${d.date}</b></td>
-          <td>GH₵${d.subscription_revenue.toFixed(2)}</td>
-          <td>GH₵${d.product_revenue.toFixed(2)}</td>
+          <td>GH₵${subscriptionRevenue.toFixed(2)}</td>
+          <td>GH₵${productRevenue.toFixed(2)}</td>
           <td><b>GH₵${totalRev.toFixed(2)}</b></td>
-          <td>GH₵${d.expenses.toFixed(2)}</td>
+          <td>GH₵${expenseTotal.toFixed(2)}</td>
           <td style="color:${profit >= 0 ? '#28a745' : '#dc3545'}"><b>GH₵${profit.toFixed(2)}</b></td>
           <td>${d.customers}</td>
         </tr>
@@ -1063,8 +1090,9 @@ async function loadSalesDashboard(){
       <tr>
         <td>${e.date}</td>
         <td><b>${e.category}</b></td>
-        <td>GH₵${e.amount_ghs.toFixed(2)}</td>
+        <td>GH₵${Number(e.amount_ghs || 0).toFixed(2)}</td>
         <td>${e.description || '—'}</td>
+        <td><button class="btn danger" onclick="deleteExpense(${e.id})">Delete</button></td>
       </tr>
     `).join("");
   } catch(e) {
@@ -1072,10 +1100,22 @@ async function loadSalesDashboard(){
   }
 }
 
+let salesDashboardTimer = null;
+function startSalesDashboardLive(){
+  stopSalesDashboardLive();
+  loadSalesDashboard();
+  salesDashboardTimer = setInterval(loadSalesDashboard, 15000);
+}
+function stopSalesDashboardLive(){
+  if(salesDashboardTimer) clearInterval(salesDashboardTimer);
+  salesDashboardTimer = null;
+}
+
 async function addExpense(){
   const category = $("expenseCategory").value.trim();
   const amount = parseFloat($("expenseAmount").value);
   const description = $("expenseDescription").value.trim();
+  const expenseDate = $("expenseDate").value;
   
   if(!category || !amount || amount <= 0) {
     $("expenseMsg").textContent = "Category and valid amount required";
@@ -1086,7 +1126,7 @@ async function addExpense(){
     await api("/api/admin/dashboard/expenses", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({category, amount_ghs: amount, description})
+      body: JSON.stringify({category, amount_ghs: amount, description, expense_date: expenseDate})
     });
     $("expenseMsg").textContent = "✓ Expense recorded";
     $("expenseCategory").value = "";
@@ -1097,6 +1137,12 @@ async function addExpense(){
   } catch(e) {
     $("expenseMsg").textContent = "Error: " + e.message;
   }
+}
+
+async function deleteExpense(id){
+  if(!confirm("Delete this expense? Profit totals will be recalculated.")) return;
+  try { await api(`/api/admin/dashboard/expenses/${id}`, {method:"DELETE"}); await loadSalesDashboard(); }
+  catch(e) { alert("Error: " + e.message); }
 }
 
 (async()=>{
