@@ -28,5 +28,6 @@ async function runRecovery(){$('runBtn').disabled=true;$('msg').textContent='Run
 async function processEmail(){$('emailBtn').disabled=true;$('msg').textContent='Processing email queue…';try{const d=await api('/api/admin/sales-recovery/process-email',{method:'POST'});$('msg').textContent=d.configured===false?'Email provider is not configured yet. Add RESEND_API_KEY and EMAIL_FROM in Railway.':`Processed ${d.processed||0}; sent ${d.sent||0}; failed ${d.failed||0}.`;await loadAll()}catch(e){$('msg').textContent=e.message}finally{$('emailBtn').disabled=false}}
 loadAll();setInterval(loadAll,30000);
 </script>
+<script src="/assets/language-selector.js?v=1"></script>
 </body>
 </html>

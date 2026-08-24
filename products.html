@@ -40,4 +40,5 @@ async function loadProducts(){
   const grid=document.getElementById("grid");
   try{const r=await fetch(`/api/products?_=${Date.now()}`,{cache:"no-store",headers:{Accept:"application/json"}});if(!r.ok)throw new Error(`HTTP ${r.status}`);const products=await r.json();if(!Array.isArray(products))throw new Error("Invalid products response");grid.innerHTML="";if(!products.length){grid.innerHTML='<div class="status muted">No products added yet.</div>';return}products.forEach(p=>grid.appendChild(makeProductCard(p)));if(window.CurrencyConverter)window.CurrencyConverter.updateAllPrices(window.CurrencyConverter.activeCurrency||"USD");if(window.WorldTvProductPricing)await window.WorldTvProductPricing.applyProductCards(grid);}catch(err){console.error("Product loading failed",err);grid.innerHTML='<div class="status"><b>Unable to load products right now.</b><br><span class="muted">Please refresh the page.</span></div>';}}
 loadProducts();
-</script><script src="/assets/pwa.js"></script><script src="/assets/currency-converter.js"></script><script src="/assets/product-pricing.js?v=2"></script></body></html>
+</script><script src="/assets/pwa.js"></script><script src="/assets/currency-converter.js"></script><script src="/assets/product-pricing.js?v=2"></script><script src="/assets/language-selector.js?v=1"></script>
+</body></html>

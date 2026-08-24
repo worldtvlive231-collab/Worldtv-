@@ -54,4 +54,5 @@ loadFootball('/api/football/live','liveScoresBox',true);loadFootball('/api/footb
 (async()=>{const services=await fetch('/api/services').then(r=>r.json()).catch(()=>[]);if(!services.length)return;document.getElementById('serviceCards').innerHTML=services.slice(0,4).map(s=>`<div class="feature"><h3>${s.icon?s.icon+' ':''}${s.title}</h3><p>${s.description||''}</p></div>`).join('')})();
 (async()=>{const promos=await fetch('/api/promotions').then(r=>r.json()).catch(()=>[]);const box=document.getElementById('promoCards');const worldwideOffer={title:'🔥 Worldwide Price Drop — 1 Year for US$23',message:'Get the same promotional US$23 base subscription price in every country for a limited time.',button_text:'Claim US$23 Offer',button_url:'/subscribe.html'};box.innerHTML=[worldwideOffer,...promos].slice(0,3).map(p=>`<div class="card"><h3>${p.title}</h3><p>${p.message||''}</p>${p.button_text&&p.button_url?`<a class="btn primary" href="${p.button_url}">${p.button_text}</a>`:''}</div>`).join('')})();
 </script><script src="/assets/pwa.js"></script><script src="/assets/currency-converter.js"></script>
+<script src="/assets/language-selector.js?v=1"></script>
 </body></html>
