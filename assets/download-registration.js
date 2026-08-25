@@ -39,7 +39,7 @@ async function submit(e){
   localStorage.setItem('wtv_download_registered_email',account.email.toLowerCase());
   try{await window.WorldTVMarketing?.bindCustomer?.(d.token)}catch(_){}
   fetch('/api/download/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:account.name,email:account.email})}).catch(()=>{});
-  msg.style.color='#1e6b34';msg.textContent='Official account created! Use this email and password in the app. Your download is starting.';
+  msg.style.color='#1e6b34';msg.textContent='Account created! Check your welcome email for your 3-day trial, the $23 yearly plan, payment methods and subscription link. Your download is starting.';
   setTimeout(()=>{window.location.href='/api/app/download'},700);
  }catch(err){msg.style.color='#8d2222';msg.textContent=err.message||'Registration failed. Please try again.';btn.disabled=false;}
 }
