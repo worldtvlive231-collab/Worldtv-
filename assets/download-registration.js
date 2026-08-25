@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 let modal=null;
 function build(){
  if(modal)return modal;
@@ -9,7 +9,7 @@ function build(){
  modal.style.cssText='display:none;position:fixed;inset:0;background:#0009;z-index:99999;align-items:center;justify-content:center;padding:10px';
  modal.innerHTML=`<div style="background:#fff;width:min(440px,100%);max-height:88vh;overflow:auto;border-radius:18px;padding:16px;box-shadow:0 25px 70px #0004;position:relative">
  <button id="dlRegClose" aria-label="Close" style="position:absolute;right:10px;top:6px;border:0;background:none;font-size:24px;cursor:pointer;z-index:2">×</button>
- <div style="text-align:center"><img src="/world-tv-logo.png" alt="WORLD TV" style="height:48px;max-width:130px;object-fit:contain"><h2 style="font-size:21px;line-height:1.15;margin:4px 25px 5px">Create Your Official WORLD TV Account</h2><p style="font-size:13px;margin:0 4px 8px;color:#716958;line-height:1.35">Register once, then use the same email and password in the app. No second account is needed.</p></div>
+ <div style="text-align:center"><img src="/world-tv-logo.png" alt="WORLD TV" style="height:48px;max-width:130px;object-fit:contain"><h2 style="font-size:21px;line-height:1.15;margin:4px 25px 10px">Create Your Official WORLD TV Account</h2></div>
  <form id="dlRegForm">
   <label style="display:block;font-size:13px;font-weight:800;margin:6px 0 3px">Full Name *</label><input id="dlName" required autocomplete="name" style="width:100%;padding:10px;border:1px solid #d8ccb2;border-radius:9px;font-size:14px">
   <label style="display:block;font-size:13px;font-weight:800;margin:6px 0 3px">Email Address *</label><input id="dlEmail" required type="email" autocomplete="email" style="width:100%;padding:10px;border:1px solid #d8ccb2;border-radius:9px;font-size:14px">
@@ -46,9 +46,6 @@ async function submit(e){
 }
 function intercept(e){
  const t=e.target.closest&&e.target.closest('button,a');if(!t)return;
- // Never intercept clicks inside the registration modal itself. In particular,
- // the submit button contains the words "Download App" and was previously being
- // caught here before the form submit event could run.
  if(t.closest('#downloadRegistrationModal'))return;
  const text=(t.textContent||'').toLowerCase();const onclick=t.getAttribute('onclick')||'';
  if(!text.includes('download app')&&!onclick.includes('downloadApp'))return;
