@@ -6,21 +6,22 @@ function build(){
  if(modal)return modal;
  modal=document.createElement('div');
  modal.id='downloadRegistrationModal';
- modal.style.cssText='display:none;position:fixed;inset:0;background:#0009;z-index:99999;align-items:center;justify-content:center;padding:16px';
- modal.innerHTML=`<div style="background:#fff;width:min(560px,100%);max-height:92vh;overflow:auto;border-radius:22px;padding:24px;box-shadow:0 25px 70px #0004;position:relative">
- <button id="dlRegClose" aria-label="Close" style="position:absolute;right:15px;top:10px;border:0;background:none;font-size:28px;cursor:pointer">×</button>
- <div style="text-align:center"><img src="/world-tv-logo.png" alt="WORLD TV" style="height:70px;max-width:180px;object-fit:contain"><h2 style="margin:8px 0">Create Your Official WORLD TV Account</h2><p style="color:#716958;line-height:1.5">Register once, download the app, then use the same email and password to log in and subscribe. No second account is needed.</p></div>
+ modal.style.cssText='display:none;position:fixed;inset:0;background:#0009;z-index:99999;align-items:center;justify-content:center;padding:10px';
+ modal.innerHTML=`<div style="background:#fff;width:min(440px,100%);max-height:88vh;overflow:auto;border-radius:18px;padding:16px;box-shadow:0 25px 70px #0004;position:relative">
+ <button id="dlRegClose" aria-label="Close" style="position:absolute;right:10px;top:6px;border:0;background:none;font-size:24px;cursor:pointer;z-index:2">×</button>
+ <div style="text-align:center"><img src="/world-tv-logo.png" alt="WORLD TV" style="height:48px;max-width:130px;object-fit:contain"><h2 style="font-size:21px;line-height:1.15;margin:4px 25px 5px">Create Your Official WORLD TV Account</h2><p style="font-size:13px;margin:0 4px 8px;color:#716958;line-height:1.35">Register once, then use the same email and password in the app. No second account is needed.</p></div>
  <form id="dlRegForm">
-  <label style="display:block;font-weight:800;margin:10px 0 5px">Full Name *</label><input id="dlName" required autocomplete="name" style="width:100%;padding:12px;border:1px solid #d8ccb2;border-radius:10px">
-  <label style="display:block;font-weight:800;margin:10px 0 5px">Email Address *</label><input id="dlEmail" required type="email" autocomplete="email" style="width:100%;padding:12px;border:1px solid #d8ccb2;border-radius:10px">
-  <label style="display:block;font-weight:800;margin:10px 0 5px">Password *</label><input id="dlPassword" required type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters" style="width:100%;padding:12px;border:1px solid #d8ccb2;border-radius:10px">
-  <label style="display:block;font-weight:800;margin:10px 0 5px">Referral Code <span style="color:#716958;font-weight:500">(optional)</span></label><input id="dlReferral" autocomplete="off" placeholder="WTV..." style="width:100%;padding:12px;border:1px solid #d8ccb2;border-radius:10px;text-transform:uppercase">
-  <button id="dlSubmit" type="submit" style="width:100%;border:0;border-radius:13px;padding:15px;font-weight:900;font-size:16px;background:linear-gradient(135deg,#f4c542,#d89a00);cursor:pointer">Create Account & Download App</button>
-  <div id="dlRegMsg" style="margin-top:12px;font-size:13px;color:#716958;text-align:center"></div>
-  <p style="text-align:center;color:#716958;font-size:13px;margin:14px 0 0">Already registered? <a href="/login.html?next=/download.html" style="color:#8a6100;font-weight:800">Log in to your official account</a></p>
+  <label style="display:block;font-size:13px;font-weight:800;margin:6px 0 3px">Full Name *</label><input id="dlName" required autocomplete="name" style="width:100%;padding:10px;border:1px solid #d8ccb2;border-radius:9px;font-size:14px">
+  <label style="display:block;font-size:13px;font-weight:800;margin:6px 0 3px">Email Address *</label><input id="dlEmail" required type="email" autocomplete="email" style="width:100%;padding:10px;border:1px solid #d8ccb2;border-radius:9px;font-size:14px">
+  <label style="display:block;font-size:13px;font-weight:800;margin:6px 0 3px">Password *</label><input id="dlPassword" required type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters" style="width:100%;padding:10px;border:1px solid #d8ccb2;border-radius:9px;font-size:14px">
+  <label style="display:block;font-size:13px;font-weight:800;margin:6px 0 3px">Referral Code <span style="color:#716958;font-weight:500">(optional)</span></label><input id="dlReferral" autocomplete="off" placeholder="WTV..." style="width:100%;padding:10px;border:1px solid #d8ccb2;border-radius:9px;text-transform:uppercase;font-size:14px">
+  <button id="dlSubmit" type="submit" style="width:100%;border:0;border-radius:11px;padding:12px;font-weight:900;font-size:14px;background:linear-gradient(135deg,#f4c542,#d89a00);cursor:pointer">Create Account & Download App</button>
+  <div id="dlRegMsg" style="margin-top:8px;font-size:12px;line-height:1.35;color:#716958;text-align:center"></div>
+  <p style="text-align:center;color:#716958;font-size:12px;margin:9px 0 0">Already registered? <a id="dlLoginLink" href="/login.html?next=%2Faccount.html" style="color:#8a6100;font-weight:800">Log in to your official account</a></p>
  </form></div>`;
  document.body.appendChild(modal);
  modal.querySelector('#dlRegClose').onclick=()=>modal.style.display='none';
+ modal.querySelector('#dlLoginLink').onclick=e=>{e.preventDefault();e.stopPropagation();window.location.assign('/login.html?next=%2Faccount.html')};
  modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none'});
  modal.querySelector('#dlRegForm').addEventListener('submit',submit);
  const attribution=window.WorldTVMarketing?.getAttribution?.();
