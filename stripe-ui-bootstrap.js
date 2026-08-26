@@ -1,7 +1,7 @@
 "use strict";
 
 const express=require("express");
-const STRIPE_SCRIPT='<script src="/assets/stripe-checkout.js?v=20260826-2"></script>';
+const STRIPE_SCRIPT='<script src="/assets/stripe-checkout.js?v=20260826-5"></script>';
 const previousStatic=express.static;
 
 express.static=function worldTvStripeUiStatic(root,...args){
@@ -13,8 +13,10 @@ express.static=function worldTvStripeUiStatic(root,...args){
       res.send=originalSend;
       let output=body;
       try{
-        if(typeof output==="string"&&!output.includes("/assets/stripe-checkout.js")){
-          output=output.includes("</body>")?output.replace("</body>",`${STRIPE_SCRIPT}\n</body>`):output+STRIPE_SCRIPT;
+        if(typeof output==="string"){
+          const stripeTag=/<script\s+src=["']\/assets\/stripe-checkout\.js(?:\?[^"']*)?["']><\/script>/i;
+          if(stripeTag.test(output)) output=output.replace(stripeTag,STRIPE_SCRIPT);
+          else output=output.includes("</body>")?output.replace("</body>",`${STRIPE_SCRIPT}\n</body>`):output+STRIPE_SCRIPT;
         }
         res.setHeader("Cache-Control","no-cache, no-store, must-revalidate");
       }catch(_){ }
