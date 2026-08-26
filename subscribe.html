@@ -72,6 +72,7 @@ async function verifyPaystack(reference,{showFailure=true}={}){let lastError=nul
 window.addEventListener("pageshow",async()=>{const params=new URLSearchParams(location.search);if(params.get("paypal"))return;const returned=params.get("reference")||params.get("trxref")||"";const pending=returned||getFreshPendingPaystack();if(!pending||paymentBusy)return;setBusy(true);try{await verifyPaystack(pending,{showFailure:Boolean(returned)});}finally{setBusy(false)}});
 </script>
 <script src="/assets/paypal-guest-checkout.js?v=20260824-4"></script>
+<script src="/assets/stripe-checkout.js?v=20260826-3"></script>
 <script src="/assets/pwa.js"></script>
 <script src="/assets/currency-converter.js"></script>
 <script src="/assets/language-selector.js?v=1"></script>
