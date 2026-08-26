@@ -1,6 +1,7 @@
 (()=>{
 'use strict';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const APK_URL='https://23s.tv/IPTV/worldtv8.2.8-20260822.apk';
 let modal=null;
 function build(){
  if(modal)return modal;
@@ -40,8 +41,8 @@ async function submit(e){
   localStorage.setItem('wtv_download_registered_email',account.email.toLowerCase());
   try{await window.WorldTVMarketing?.bindCustomer?.(d.token)}catch(_){}
   fetch('/api/download/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:account.name,email:account.email})}).catch(()=>{});
-  msg.style.color='#1e6b34';msg.textContent='Account created! Check your welcome email for your 3-day trial, the $23 yearly plan, payment methods and subscription link. Your download is starting.';
-  setTimeout(()=>{window.location.href='/api/app/download'},700);
+  msg.style.color='#1e6b34';msg.textContent='Account created! Check your welcome email for your 3-day trial, the $23 yearly plan, payment methods and subscription link. WORLD TV v8.2.8 is downloading now.';
+  setTimeout(()=>{window.location.href=APK_URL},700);
  }catch(err){msg.style.color='#8d2222';msg.textContent=err.message||'Registration failed. Please try again.';btn.disabled=false;}
 }
 function intercept(e){
