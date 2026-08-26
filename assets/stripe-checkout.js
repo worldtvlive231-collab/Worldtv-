@@ -3,7 +3,7 @@
   const STYLE_ID="wtv-stripe-style";
   const WRAP_ID="wtvStripeCheckoutWrap";
   const OR_ID="wtvStripePaymentOr";
-  let configured=false;
+  let configured=true;
   let working=false;
 
   function addStyles(){
@@ -59,7 +59,9 @@
   }
 
   async function startStripe(){
-    if(working||!configured)return;working=true;
+    if(working)return;
+    if(!configured){showMessage('<div class="error">Stripe checkout is temporarily unavailable. Please try again shortly.</div>');return;}
+    working=true;
     const btn=document.querySelector(".wtv-stripe-btn");if(btn)btn.disabled=true;
     try{
       showMessage('<div class="payment-note">Preparing secure Stripe checkout...</div>');
@@ -78,7 +80,7 @@
     const paystackBtn=document.getElementById("paystackBtn");if(!paystackBtn)return;
     addStyles();setPageWording();
     let or=document.getElementById(OR_ID);if(!or){or=document.createElement("div");or.id=OR_ID;or.className="wtv-stripe-or";or.textContent="OR";paystackBtn.insertAdjacentElement("afterend",or);}
-    const wrap=document.createElement("div");wrap.id=WRAP_ID;wrap.className="wtv-stripe-wrap";wrap.style.display="none";
+    const wrap=document.createElement("div");wrap.id=WRAP_ID;wrap.className="wtv-stripe-wrap";wrap.style.display="block";
     wrap.innerHTML=`<button type="button" class="wtv-stripe-btn"><span class="wtv-stripe-mark" aria-hidden="true">S</span><span class="wtv-stripe-copy"><strong>Pay securely with Stripe</strong><small>Debit / Credit Card • Worldwide</small></span></button><div class="wtv-stripe-note">Secure Stripe checkout. Create or use your WORLD TV account so your payment and subscription code are linked to your email.</div><form class="wtv-stripe-signup" novalidate><h3>Create your WORLD TV account</h3><p>Your subscription code and payment confirmation will be sent to this email address.</p><label>Full Name</label><input name="name" autocomplete="name" required><label>Email Address</label><input name="email" type="email" autocomplete="email" required><label>Create Password</label><input name="password" type="password" minlength="8" autocomplete="new-password" required><button type="submit">Create Account & Continue to Stripe</button><div class="wtv-stripe-signup-msg"></div></form>`;
     or.insertAdjacentElement("afterend",wrap);
     const button=wrap.querySelector(".wtv-stripe-btn"),form=wrap.querySelector(".wtv-stripe-signup");
@@ -87,7 +89,15 @@
   }
 
   async function loadConfig(){
-    try{const response=await fetch("/api/payment/stripe/config",{cache:"no-store"});const data=await response.json().catch(()=>({}));configured=Boolean(response.ok&&data.configured);const wrap=document.getElementById(WRAP_ID),or=document.getElementById(OR_ID);if(wrap)wrap.style.display=configured?"block":"none";if(or)or.style.display=configured?"flex":"none";}catch(_){configured=false;}
+    const wrap=document.getElementById(WRAP_ID),or=document.getElementById(OR_ID),button=document.querySelector(".wtv-stripe-btn"),note=document.querySelector(".wtv-stripe-note");
+    if(wrap)wrap.style.display="block";if(or)or.style.display="flex";
+    try{
+      const response=await fetch("/api/payment/stripe/config",{cache:"no-store"});
+      const data=await response.json().catch(()=>({}));
+      if(response.ok){configured=Boolean(data.configured);}else{configured=true;}
+      if(button)button.disabled=!configured;
+      if(!configured&&note)note.textContent="Stripe is temporarily unavailable on the website. Please use Paystack while we reconnect Stripe checkout.";
+    }catch(_){configured=true;if(button)button.disabled=false;}
   }
 
   async function handleReturn(){
