@@ -79,7 +79,8 @@
       showMessage('<div class="payment-note">Preparing secure Stripe checkout...</div>');
       if(typeof window.createCheckoutRequest!=="function")throw new Error("Subscription checkout is not ready. Refresh the page and try again.");
       const requestData=await window.createCheckoutRequest();
-      const response=await fetch("/api/payment/stripe/create-session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reference:requestData.reference})});
+      const customerToken=localStorage.getItem("wtv_customer_token")||"";
+      const response=await fetch("/api/payment/stripe/create-session",{method:"POST",headers:{"Content-Type":"application/json","x-customer-token":customerToken},body:JSON.stringify({reference:requestData.reference})});
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw new Error(data.error||"Could not start Stripe payment");
       if(data.paid){renderSuccess(data);return;}
@@ -126,7 +127,8 @@
     if(!reference||!sessionId){showMessage('<div class="error">Stripe returned without the payment reference. Please contact support if you were charged.</div>');return;}
     showMessage('<div class="payment-note">Confirming your Stripe payment and issuing your subscription code...</div>');
     try{
-      const response=await fetch("/api/payment/stripe/confirm",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({reference,session_id:sessionId})});
+      const customerToken=localStorage.getItem("wtv_customer_token")||"";
+      const response=await fetch("/api/payment/stripe/confirm",{method:"POST",headers:{"Content-Type":"application/json","x-customer-token":customerToken},cache:"no-store",body:JSON.stringify({reference,session_id:sessionId})});
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw new Error(data.error||"Could not confirm Stripe payment");
       renderSuccess(data);history.replaceState({},"",location.pathname);
