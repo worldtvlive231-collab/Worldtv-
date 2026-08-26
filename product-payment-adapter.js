@@ -29,10 +29,6 @@ CREATE INDEX IF NOT EXISTS idx_product_payment_order
   ON product_payment_attempts(order_number);
 `);
 
-const paypalMode = String(process.env.PAYPAL_MODE || "sandbox").toLowerCase() === "live" ? "live" : "sandbox";
-const paypalBase = paypalMode === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
-let paypalToken = { value:"", expiresAt:0 };
-
 function productOrder(orderNumber){
   return db.prepare(`
     SELECT po.*,p.name AS product_name
@@ -71,11 +67,11 @@ async function paymentAmounts(order){
   const qty = orderQuantity(order);
   if(!isTvBoxOrder(order)){
     const ghs = Number(order.total_ghs);
-    return {ghs,usd:await usdFromGhs(ghs),market:"standard"};
+    return {ghs,market:"standard"};
   }
   if(isGhanaOrder(order)){
     const ghs = GHANA_TV_BOX_PRICE_GHS * qty;
-    return {ghs,usd:await usdFromGhs(ghs),market:"ghana"};
+    return {ghs,market:"ghana"};
   }
   const rates = await getExchangeRates();
   const usdRate = Number(rates?.rates?.USD);
@@ -102,42 +98,10 @@ function publicBase(){
   return base.startsWith("https://") ? base : "https://myworldtvlive.com";
 }
 
-async function paypalAccessToken(){
-  if(!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_CLIENT_SECRET) throw new Error("PayPal is not configured");
-  if(paypalToken.value && Date.now() < paypalToken.expiresAt - 60000) return paypalToken.value;
-  const auth = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString("base64");
-  const r = await fetch(`${paypalBase}/v1/oauth2/token`,{
-    method:"POST",
-    headers:{Authorization:`Basic ${auth}`,"Content-Type":"application/x-www-form-urlencoded",Accept:"application/json"},
-    body:"grant_type=client_credentials"
-  });
-  const d = await r.json().catch(()=>({}));
-  if(!r.ok || !d.access_token) throw new Error(d.error_description || "Could not connect to PayPal");
-  paypalToken = {value:d.access_token,expiresAt:Date.now()+Number(d.expires_in||300)*1000};
-  return paypalToken.value;
-}
-
-async function paypalRequest(endpoint,options={}){
-  const token = await paypalAccessToken();
-  const r = await fetch(`${paypalBase}${endpoint}`,{
-    ...options,
-    headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json",Accept:"application/json",...(options.headers||{})}
-  });
-  const d = await r.json().catch(()=>({}));
-  return {r,d};
-}
-
-async function usdFromGhs(ghs){
-  const result = await getExchangeRates();
-  const rate = Number(result?.rates?.USD);
-  if(!Number.isFinite(rate) || rate<=0) throw new Error("USD exchange rate is unavailable");
-  return Number((Number(ghs)*rate).toFixed(2));
-}
-
 function registerRoutes(app){
   app.get("/api/product-payments/config",(req,res)=>{
     res.setHeader("Cache-Control","no-store");
-    res.json({ok:true,paystack_configured:Boolean(process.env.PAYSTACK_SECRET_KEY),paypal_configured:Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),paypal_mode:paypalMode});
+    res.json({ok:true,paystack_configured:Boolean(process.env.PAYSTACK_SECRET_KEY),paypal_configured:false});
   });
 
   app.post("/api/product-payments/paystack/initialize",async(req,res)=>{
@@ -185,41 +149,6 @@ function registerRoutes(app){
       const providerLabel=d.data.channel==="mobile_money"?"Mobile Money":d.data.channel==="card"?"Card":"Paystack";
       res.json({ok:true,paid:true,order_number:orderNumber,total_ghs:Number(attempt.amount_ghs),provider:providerLabel});
     }catch(e){res.status(e.status||500).json({error:e.message||"Could not verify Paystack payment"});}
-  });
-
-  app.post("/api/product-payments/paypal/create-order",async(req,res)=>{
-    try{
-      if(!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_CLIENT_SECRET) return res.status(503).json({error:"PayPal is not configured"});
-      const orderNumber=String(req.body?.order_number||"").trim();
-      const order=requirePayableOrder(orderNumber);
-      const priced=await paymentAmounts(order);
-      const usd=Number(priced.usd);
-      const returnUrl=`${publicBase()}/order.html?payment=paypal&order=${encodeURIComponent(orderNumber)}`;
-      const cancelUrl=`${publicBase()}/order.html?payment=cancelled&order=${encodeURIComponent(orderNumber)}`;
-      const {r,d}=await paypalRequest("/v2/checkout/orders",{method:"POST",headers:{"PayPal-Request-Id":`product-${orderNumber}-${Date.now()}`},body:JSON.stringify({intent:"CAPTURE",purchase_units:[{reference_id:orderNumber,custom_id:orderNumber,description:`World TV product order ${orderNumber}`,amount:{currency_code:"USD",value:usd.toFixed(2)}}],payment_source:{paypal:{experience_context:{brand_name:"World TV",shipping_preference:"GET_FROM_FILE",user_action:"PAY_NOW",return_url:returnUrl,cancel_url:cancelUrl}}}})});
-      if(!r.ok || !d.id) return res.status(502).json({error:d.message||"Could not start PayPal payment"});
-      const approval=(d.links||[]).find(x=>x.rel==="payer-action"||x.rel==="approve");
-      if(!approval?.href) return res.status(502).json({error:"PayPal approval link was not received"});
-      db.prepare(`INSERT INTO product_payment_attempts(order_number,provider,provider_reference,amount_ghs,amount_provider,provider_currency,status) VALUES(?,?,?,?,?,?,?)`).run(orderNumber,"paypal",d.id,Number(priced.ghs),usd,"USD","pending");
-      res.json({ok:true,approval_url:approval.href,paypal_order_id:d.id,amount_usd:usd.toFixed(2),pricing_market:priced.market,mode:paypalMode});
-    }catch(e){res.status(e.status||500).json({error:e.message||"Could not start PayPal payment"});}
-  });
-
-  app.post("/api/product-payments/paypal/capture",async(req,res)=>{
-    try{
-      const orderNumber=String(req.body?.order_number||"").trim();
-      const paypalOrderId=String(req.body?.paypal_order_id||req.body?.token||"").trim();
-      requirePayableOrder(orderNumber);
-      const attempt=db.prepare(`SELECT * FROM product_payment_attempts WHERE order_number=? AND provider='paypal' AND provider_reference=?`).get(orderNumber,paypalOrderId);
-      if(!attempt) return res.status(400).json({error:"PayPal order does not match this product order"});
-      let {r,d}=await paypalRequest(`/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}/capture`,{method:"POST",body:"{}"});
-      if(!r.ok){const shown=await paypalRequest(`/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}`,{method:"GET"});if(!shown.r.ok || shown.d?.status!=="COMPLETED") return res.status(502).json({error:d.message||"Could not capture PayPal payment"});d=shown.d;}
-      if(d.status!=="COMPLETED") return res.status(400).json({error:"PayPal payment has not been completed"});
-      const unit=d.purchase_units?.[0]||{};const capture=unit.payments?.captures?.[0]||{};const amt=capture.amount||unit.amount||{};
-      if((unit.custom_id||unit.reference_id)!==orderNumber || amt.currency_code!=="USD" || Math.abs(Number(amt.value)-Number(attempt.amount_provider))>0.001) return res.status(400).json({error:"PayPal payment details do not match this order"});
-      markPaid(orderNumber,"paypal",paypalOrderId);
-      res.json({ok:true,paid:true,order_number:orderNumber,total_ghs:Number(attempt.amount_ghs),total_usd:Number(attempt.amount_provider),provider:"PayPal"});
-    }catch(e){res.status(e.status||500).json({error:e.message||"Could not verify PayPal payment"});}
   });
 }
 
