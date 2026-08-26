@@ -1,7 +1,7 @@
 "use strict";
 
 const express=require("express");
-const STRIPE_SCRIPT='<script src="/assets/stripe-checkout.js?v=20260826-1"></script>';
+const STRIPE_SCRIPT='<script src="/assets/stripe-checkout.js?v=20260826-2"></script>';
 const previousStatic=express.static;
 
 express.static=function worldTvStripeUiStatic(root,...args){

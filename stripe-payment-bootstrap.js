@@ -5,6 +5,7 @@ const crypto=require("crypto");
 const path=require("path");
 const express=require("express");
 const Database=require("better-sqlite3");
+const Stripe=require("stripe");
 
 // Preserve the exact request bytes so Stripe webhook signatures can be verified.
 const previousJson=express.json;
@@ -42,20 +43,20 @@ CREATE INDEX IF NOT EXISTS idx_stripe_payments_session ON stripe_payments(stripe
 
 function stripeSecret(){return String(process.env.STRIPE_SECRET_KEY||"").trim();}
 function stripeWebhookSecret(){return String(process.env.STRIPE_WEBHOOK_SECRET||"").trim();}
-function stripeConfigured(){return /^sk_(test|live)_/.test(stripeSecret());}
-function stripeMode(){return stripeSecret().startsWith("sk_live_")?"live":"test";}
+function stripeConfigured(){return /^(sk|rk)_(test|live)_/.test(stripeSecret());}
+function stripeMode(){return /^(sk|rk)_live_/.test(stripeSecret())?"live":"test";}
 function baseUrl(){return String(process.env.PUBLIC_BASE_URL||"https://myworldtvlive.com").replace(/\/$/,"");}
 
-async function stripeRequest(endpoint,{method="GET",form=null}={}){
+let stripeClient;
+let stripeClientKey="";
+function getStripeClient(){
   const secret=stripeSecret();
   if(!secret) throw new Error("Stripe is not configured");
-  const headers={Authorization:`Basic ${Buffer.from(secret+":").toString("base64")}`,Accept:"application/json"};
-  let body;
-  if(form){headers["Content-Type"]="application/x-www-form-urlencoded";body=form instanceof URLSearchParams?form.toString():new URLSearchParams(form).toString();}
-  const response=await fetch(`https://api.stripe.com${endpoint}`,{method,headers,body});
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok) throw new Error(data?.error?.message||data?.message||"Stripe request failed");
-  return data;
+  if(!stripeClient||stripeClientKey!==secret){
+    stripeClient=new Stripe(secret,{apiVersion:"2026-07-29.dahlia"});
+    stripeClientKey=secret;
+  }
+  return stripeClient;
 }
 
 function checkoutByReference(reference){
@@ -107,7 +108,7 @@ async function sendActivationEmail(reference){
 }
 
 async function retrieveStripeSession(sessionId){
-  return stripeRequest(`/v1/checkout/sessions/${encodeURIComponent(sessionId)}`);
+  return getStripeClient().checkout.sessions.retrieve(sessionId);
 }
 
 async function fulfillStripeCheckout(reference,session){
@@ -168,20 +169,21 @@ async function fulfillStripeCheckout(reference,session){
   return {ok:true,paid:true,fulfilled:true,message:"Stripe payment verified and subscription activated",code:code.code,expires_at:expiresAt};
 }
 
-function safeEqualHex(a,b){
-  try{const left=Buffer.from(String(a||""),"hex"),right=Buffer.from(String(b||""),"hex");return left.length>0&&left.length===right.length&&crypto.timingSafeEqual(left,right);}catch(_){return false;}
+function stripeCustomer(req){
+  const token=String(req.headers["x-customer-token"]||"").trim();
+  if(!token)return null;
+  const tokenHash=crypto.createHash("sha256").update(token).digest("hex");
+  return db.prepare(`
+    SELECT s.user_id AS userId
+    FROM customer_sessions s
+    WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP
+  `).get(tokenHash)||null;
 }
 function verifyStripeSignature(req){
   const secret=stripeWebhookSecret();
   const header=String(req.headers["stripe-signature"]||"");
-  if(!secret||!header||!req.rawBody)return false;
-  const parts=header.split(",").map(x=>x.trim());
-  const timestamp=parts.find(x=>x.startsWith("t="))?.slice(2)||"";
-  const signatures=parts.filter(x=>x.startsWith("v1=")).map(x=>x.slice(3));
-  if(!timestamp||!signatures.length)return false;
-  const ts=Number(timestamp);if(!Number.isFinite(ts)||Math.abs(Math.floor(Date.now()/1000)-ts)>300)return false;
-  const expected=crypto.createHmac("sha256",secret).update(`${timestamp}.${req.rawBody.toString("utf8")}`).digest("hex");
-  return signatures.some(sig=>safeEqualHex(sig,expected));
+  if(!secret||!header||!req.rawBody)return null;
+  try{return getStripeClient().webhooks.constructEvent(req.rawBody,header,secret);}catch(_){return null;}
 }
 
 async function createStripeSession(req,res){
@@ -189,30 +191,37 @@ async function createStripeSession(req,res){
     if(!stripeConfigured())return res.status(503).json({error:"Stripe is not configured"});
     const reference=String(req.body?.reference||"").trim();
     if(!reference)return res.status(400).json({error:"Payment reference required"});
-    const existing=fulfilledByReference(reference);
-    if(existing)return res.json({ok:true,paid:true,fulfilled:true,already_processed:true,code:existing.code||null,expires_at:existing.expires_at||null});
+    const customer=stripeCustomer(req);
+    if(!customer)return res.status(401).json({error:"Please sign in again to continue payment"});
     const checkout=checkoutByReference(reference);
     if(!checkout)return res.status(404).json({error:"Checkout not found"});
+    if(Number(checkout.user_id)!==Number(customer.userId))return res.status(403).json({error:"This checkout belongs to another account"});
+    const existing=fulfilledByReference(reference);
+    if(existing)return res.json({ok:true,paid:true,fulfilled:true,already_processed:true,code:existing.code||null,expires_at:existing.expires_at||null});
     if(checkout.status==="cancelled")return res.status(409).json({error:"This checkout request was cancelled"});
     const amountUsd=Number(checkout.final_amount_usd);
     if(!Number.isFinite(amountUsd)||amountUsd<=0)return res.status(500).json({error:"Subscription USD amount is not configured"});
     const amountCents=Math.round(amountUsd*100);
     const successUrl=`${baseUrl()}/subscribe.html?stripe=success&session_id={CHECKOUT_SESSION_ID}&reference=${encodeURIComponent(reference)}`;
     const cancelUrl=`${baseUrl()}/subscribe.html?stripe=cancelled&reference=${encodeURIComponent(reference)}`;
-    const form=new URLSearchParams();
-    form.set("mode","payment");
-    form.set("success_url",successUrl);
-    form.set("cancel_url",cancelUrl);
-    form.set("client_reference_id",reference);
-    form.set("customer_email",String(checkout.email||""));
-    form.set("line_items[0][price_data][currency]","usd");
-    form.set("line_items[0][price_data][unit_amount]",String(amountCents));
-    form.set("line_items[0][price_data][product_data][name]",`WORLD TV ${checkout.plan_name} Subscription`);
-    form.set("line_items[0][price_data][product_data][description]","WORLD TV subscription access");
-    form.set("line_items[0][quantity]","1");
-    form.set("metadata[reference]",reference);
-    form.set("payment_intent_data[metadata][reference]",reference);
-    const session=await stripeRequest("/v1/checkout/sessions",{method:"POST",form});
+    const session=await getStripeClient().checkout.sessions.create({
+      mode:"payment",
+      success_url:successUrl,
+      cancel_url:cancelUrl,
+      client_reference_id:reference,
+      customer_email:String(checkout.email||""),
+      line_items:[{
+        price_data:{
+          currency:"usd",
+          unit_amount:amountCents,
+          product_data:{name:`WORLD TV ${checkout.plan_name} Subscription`,description:"WORLD TV subscription access"}
+        },
+        quantity:1
+      }],
+      metadata:{reference},
+      payment_intent_data:{metadata:{reference}},
+      integration_identifier:"worldtv_checkout_qmzptbka"
+    });
     if(!session?.id||!session?.url)return res.status(502).json({error:"Stripe checkout URL was not received"});
     db.prepare(`INSERT INTO stripe_payments(reference,stripe_session_id,amount_usd,currency,payment_intent_id,status,updated_at) VALUES(?,?,?,'USD',NULL,'created',CURRENT_TIMESTAMP) ON CONFLICT(reference) DO UPDATE SET stripe_session_id=excluded.stripe_session_id,amount_usd=excluded.amount_usd,currency='USD',payment_intent_id=NULL,status='created',updated_at=CURRENT_TIMESTAMP`).run(reference,session.id,amountUsd);
     return res.json({ok:true,reference,session_id:session.id,checkout_url:session.url,amount_usd:amountUsd.toFixed(2),mode:stripeMode()});
@@ -225,6 +234,11 @@ async function confirmStripePayment(req,res){
     const reference=String(req.body?.reference||"").trim();
     const sessionId=String(req.body?.session_id||req.body?.sessionId||"").trim();
     if(!reference||!sessionId)return res.status(400).json({error:"Stripe session ID and reference are required"});
+    const customer=stripeCustomer(req);
+    if(!customer)return res.status(401).json({error:"Please sign in again to confirm payment"});
+    const checkout=checkoutByReference(reference);
+    if(!checkout)return res.status(404).json({error:"Checkout not found"});
+    if(Number(checkout.user_id)!==Number(customer.userId))return res.status(403).json({error:"This checkout belongs to another account"});
     const session=await retrieveStripeSession(sessionId);
     const result=await fulfillStripeCheckout(reference,session);
     return res.json(result);
@@ -232,8 +246,8 @@ async function confirmStripePayment(req,res){
 }
 
 async function stripeWebhook(req,res){
-  if(!verifyStripeSignature(req))return res.status(401).send("Invalid signature");
-  const event=req.body||{};
+  const event=verifyStripeSignature(req);
+  if(!event)return res.status(401).send("Invalid signature");
   if(!["checkout.session.completed","checkout.session.async_payment_succeeded"].includes(String(event.type||"")))return res.sendStatus(200);
   const sessionId=String(event.data?.object?.id||"").trim();
   if(!sessionId)return res.sendStatus(200);
