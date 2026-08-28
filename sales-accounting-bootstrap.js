@@ -29,29 +29,58 @@ async function dashboardUsdRate(){
   return 0.084;
 }
 
-function pendingPaymentsForDate(date){
+function pendingPaymentsBetween(startDate,endDate){
   if(!tableExists("checkout_requests")){
     return { transaction_count:0, revenue_usd:0, unique_customers:0 };
   }
+  const stripeJoin = tableExists("stripe_payments")
+    ? "LEFT JOIN stripe_payments sp ON sp.reference=c.reference"
+    : "";
+  const amountSql = tableExists("stripe_payments")
+    ? "CASE WHEN sp.reference IS NOT NULL THEN sp.amount_usd ELSE c.final_amount_usd END"
+    : "c.final_amount_usd";
   return db.prepare(`
     SELECT
       COUNT(*) AS transaction_count,
-      COALESCE(SUM(
-        CASE
-          WHEN sp.reference IS NOT NULL THEN sp.amount_usd
-          ELSE c.final_amount_usd
-        END
-      ),0) AS revenue_usd,
+      COALESCE(SUM(${amountSql}),0) AS revenue_usd,
       COUNT(DISTINCT c.user_id) AS unique_customers
     FROM checkout_requests c
-    LEFT JOIN stripe_payments sp ON sp.reference=c.reference
+    ${stripeJoin}
     WHERE c.status='payment_confirmed'
-      AND DATE(c.updated_at)=?
+      AND DATE(c.updated_at) BETWEEN ? AND ?
       AND NOT EXISTS(
         SELECT 1 FROM orders o
         WHERE o.reference=c.reference AND o.status='paid'
       )
-  `).get(date);
+  `).get(startDate,endDate);
+}
+
+function pendingPaymentsForDate(date){
+  return pendingPaymentsBetween(date,date);
+}
+
+function subscriptionCustomersForDate(date){
+  if(!tableExists("checkout_requests")){
+    return Number(db.prepare(`
+      SELECT COUNT(DISTINCT user_id) n
+      FROM orders
+      WHERE status='paid' AND DATE(paid_at)=?
+    `).get(date).n||0);
+  }
+  return Number(db.prepare(`
+    SELECT COUNT(DISTINCT user_id) n FROM (
+      SELECT user_id FROM orders
+      WHERE status='paid' AND DATE(paid_at)=?
+      UNION ALL
+      SELECT c.user_id FROM checkout_requests c
+      WHERE c.status='payment_confirmed'
+        AND DATE(c.updated_at)=?
+        AND NOT EXISTS(
+          SELECT 1 FROM orders o
+          WHERE o.reference=c.reference AND o.status='paid'
+        )
+    )
+  `).get(date,date).n||0);
 }
 
 async function enhancedLiveSummary(req,res){
@@ -75,6 +104,7 @@ async function enhancedLiveSummary(req,res){
     todaySales.transaction_count = Number(todaySales.transaction_count||0) + Number(pending.transaction_count||0);
     todaySales.revenue_usd = Number(todaySales.revenue_usd||0) + Number(pending.revenue_usd||0);
     todaySales.total_code_cost = Number(todaySales.total_code_cost||0) + Number(pending.transaction_count||0) * DEFAULT_CODE_COST_USD;
+    todaySales.unique_customers = subscriptionCustomersForDate(today);
     todaySales.pending_activation_count = Number(pending.transaction_count||0);
     todaySales.pending_activation_revenue_usd = Number(pending.revenue_usd||0);
     todaySales.total_revenue = Number(todaySales.revenue_usd||0) + Number(todaySales.revenue_ghs||0) * usdRate;
@@ -141,9 +171,9 @@ async function enhancedRecentSales(req,res){
       SELECT
         'subscription' AS type,
         c.reference AS ref_id,
-        CASE WHEN sp.reference IS NOT NULL THEN sp.amount_usd ELSE c.final_amount_usd END AS amount_original,
+        ${tableExists("stripe_payments") ? "CASE WHEN sp.reference IS NOT NULL THEN sp.amount_usd ELSE c.final_amount_usd END" : "c.final_amount_usd"} AS amount_original,
         'USD' AS currency,
-        'paid_pending_activation' AS status,
+        'Paid — Activation Pending' AS status,
         c.updated_at AS timestamp,
         u.name AS customer_name,
         p.name AS product_name,
@@ -151,7 +181,7 @@ async function enhancedRecentSales(req,res){
       FROM checkout_requests c
       JOIN users u ON u.id=c.user_id
       JOIN plans p ON p.id=c.plan_id
-      LEFT JOIN stripe_payments sp ON sp.reference=c.reference
+      ${tableExists("stripe_payments") ? "LEFT JOIN stripe_payments sp ON sp.reference=c.reference" : ""}
       WHERE c.status='payment_confirmed'
         AND NOT EXISTS(
           SELECT 1 FROM orders o
@@ -191,15 +221,126 @@ async function enhancedRecentSales(req,res){
   }
 }
 
+async function enhancedProfitSummary(req,res){
+  try{
+    const today = new Date().toISOString().split("T")[0];
+    const usdRate = await dashboardUsdRate();
+    const monthStartDate = new Date();
+    monthStartDate.setUTCDate(1);
+    const monthStart = monthStartDate.toISOString().split("T")[0];
+
+    const calculate = (start,end) => {
+      const fulfilled = db.prepare(`
+        SELECT
+          COALESCE(SUM(CASE WHEN UPPER(o.currency)='USD' THEN o.amount_pesewas/100.0 ELSE 0 END),0) usd,
+          COALESCE(SUM(CASE WHEN UPPER(o.currency)<>'USD' THEN o.amount_pesewas/100.0 ELSE 0 END),0) ghs,
+          COALESCE(SUM(sc.cost_price_usd),0) code_cost
+        FROM orders o
+        LEFT JOIN subscription_codes sc ON sc.id=o.code_id
+        WHERE o.status='paid' AND DATE(o.paid_at) BETWEEN ? AND ?
+      `).get(start,end);
+      const pending = pendingPaymentsBetween(start,end);
+      const subscriptionRevenue = Number(fulfilled.usd||0) + Number(fulfilled.ghs||0)*usdRate + Number(pending.revenue_usd||0);
+      const subscriptionCost = Number(fulfilled.code_cost||0) + Number(pending.transaction_count||0)*DEFAULT_CODE_COST_USD;
+      const productRevenue = Number(db.prepare(`
+        SELECT COALESCE(SUM(po.total_ghs),0) total FROM product_orders po
+        WHERE EXISTS (
+          SELECT 1 FROM product_payment_attempts ppa
+          WHERE ppa.order_number=po.order_number
+            AND ppa.status='paid'
+            AND DATE(ppa.updated_at) BETWEEN ? AND ?
+        )
+      `).get(start,end).total||0)*usdRate;
+      const expenses = Number(db.prepare(`
+        SELECT COALESCE(SUM(amount_ghs),0) total
+        FROM expenses WHERE DATE(expense_date) BETWEEN ? AND ?
+      `).get(start,end).total||0)*usdRate;
+      const revenue = subscriptionRevenue + productRevenue;
+      return {
+        subscription_revenue:subscriptionRevenue,
+        subscription_cost:subscriptionCost,
+        subscription_profit:subscriptionRevenue-subscriptionCost,
+        product_revenue:productRevenue,
+        revenue,
+        expenses,
+        profit:revenue-subscriptionCost-expenses,
+        pending_activation_count:Number(pending.transaction_count||0),
+        pending_activation_revenue_usd:Number(pending.revenue_usd||0)
+      };
+    };
+
+    res.setHeader("Cache-Control","no-store");
+    res.json({today:calculate(today,today),this_month:calculate(monthStart,today)});
+  }catch(error){
+    console.error("Enhanced profit summary failed:",error);
+    res.status(500).json({error:error.message});
+  }
+}
+
+async function enhancedDailyReport(req,res){
+  try{
+    const usdRate = await dashboardUsdRate();
+    const rows=[];
+    const now=new Date();
+    for(let i=0;i<=30;i++){
+      const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()-i));
+      const date=d.toISOString().split("T")[0];
+      const fulfilled=db.prepare(`
+        SELECT
+          COALESCE(SUM(CASE WHEN UPPER(o.currency)='USD' THEN o.amount_pesewas/100.0 ELSE 0 END),0) revenue_usd,
+          COALESCE(SUM(CASE WHEN UPPER(o.currency)<>'USD' THEN o.amount_pesewas/100.0 ELSE 0 END),0) revenue_ghs,
+          COALESCE(SUM(sc.cost_price_usd),0) code_cost
+        FROM orders o
+        LEFT JOIN subscription_codes sc ON sc.id=o.code_id
+        WHERE o.status='paid' AND DATE(o.paid_at)=?
+      `).get(date);
+      const pending=pendingPaymentsForDate(date);
+      const subscriptionRevenue=Number(fulfilled.revenue_usd||0)+Number(fulfilled.revenue_ghs||0)*usdRate+Number(pending.revenue_usd||0);
+      const subscriptionCost=Number(fulfilled.code_cost||0)+Number(pending.transaction_count||0)*DEFAULT_CODE_COST_USD;
+      const productRevenue=Number(db.prepare(`
+        SELECT COALESCE(SUM(po.total_ghs),0) total FROM product_orders po
+        WHERE EXISTS (
+          SELECT 1 FROM product_payment_attempts ppa
+          WHERE ppa.order_number=po.order_number
+            AND ppa.status='paid'
+            AND DATE(ppa.updated_at)=?
+        )
+      `).get(date).total||0)*usdRate;
+      const expenses=Number(db.prepare(`
+        SELECT COALESCE(SUM(amount_ghs),0) total FROM expenses WHERE DATE(expense_date)=?
+      `).get(date).total||0)*usdRate;
+      rows.push({
+        date,
+        subscription_revenue:subscriptionRevenue,
+        subscription_cost:subscriptionCost,
+        product_revenue:productRevenue,
+        expenses,
+        customers:subscriptionCustomersForDate(date),
+        pending_activation_count:Number(pending.transaction_count||0),
+        pending_activation_revenue_usd:Number(pending.revenue_usd||0)
+      });
+    }
+    res.setHeader("Cache-Control","no-store");
+    res.json(rows);
+  }catch(error){
+    console.error("Enhanced daily report failed:",error);
+    res.status(500).json({error:error.message});
+  }
+}
+
 // Preserve the server's existing admin authentication middleware while replacing
-// only the final data handler for the two Live Sales endpoints. This keeps the
-// dashboard contract intact and makes payment-confirmed/no-code transactions visible.
+// only final dashboard data handlers. All dashboard views then follow the same
+// accounting rules for fulfilled and payment-confirmed/pending-activation sales.
 const originalGet = express.application.get;
 express.application.get = function worldTvSalesAccountingGet(route, ...handlers){
   if(route === "/api/admin/dashboard/live-summary" && handlers.length){
     handlers[handlers.length-1] = enhancedLiveSummary;
   }else if(route === "/api/admin/dashboard/recent-sales" && handlers.length){
     handlers[handlers.length-1] = enhancedRecentSales;
+  }else if(route === "/api/admin/dashboard/profit-summary" && handlers.length){
+    handlers[handlers.length-1] = enhancedProfitSummary;
+  }else if(route === "/api/admin/dashboard/daily-report" && handlers.length){
+    handlers[handlers.length-1] = enhancedDailyReport;
   }
   return originalGet.call(this, route, ...handlers);
 };
@@ -207,17 +348,11 @@ express.application.get = function worldTvSalesAccountingGet(route, ...handlers)
 function installSalesAccounting(){
   if(!tableExists("subscription_codes") || !tableExists("orders")) return false;
 
-  // Every subscription code has a real inventory cost. Keep old codes usable and
-  // default historical/missing costs to the business default of US$4 per code.
   if(!columnExists("subscription_codes", "cost_price_usd")){
     db.prepare("ALTER TABLE subscription_codes ADD COLUMN cost_price_usd REAL NOT NULL DEFAULT 4").run();
   }
   db.prepare("UPDATE subscription_codes SET cost_price_usd=4 WHERE cost_price_usd IS NULL OR cost_price_usd<0").run();
 
-  // Stripe charges subscriptions in USD. Older fulfillment code stored a converted
-  // GHS value in orders, which made Live Sales reconvert it using a later FX rate.
-  // Normalize both existing and future Stripe orders to the exact USD amount Stripe
-  // recorded so revenue and profit remain stable and auditable.
   if(tableExists("stripe_payments")){
     db.prepare(`
       UPDATE orders
@@ -280,7 +415,4 @@ function runMigration(){
   }
 }
 
-// Preload modules execute before server.js. setImmediate lets server.js finish its
-// table creation on a fresh database, while still installing accounting rules before
-// normal HTTP traffic is processed.
 setImmediate(runMigration);
