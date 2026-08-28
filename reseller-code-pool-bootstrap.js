@@ -8,7 +8,30 @@ const db = new Database(path.join(process.cwd(), 'data', 'worldtv.sqlite'));
 db.pragma('journal_mode=WAL');
 
 try { db.prepare('ALTER TABLE subscription_codes ADD COLUMN reseller_id INTEGER').run(); } catch (e) {}
+try { db.prepare('ALTER TABLE subscription_codes ADD COLUMN used_at TEXT').run(); } catch (e) {}
 try { db.prepare('CREATE INDEX IF NOT EXISTS idx_subscription_codes_reseller ON subscription_codes(reseller_id)').run(); } catch (e) {}
+
+try {
+  db.exec(`
+    DROP TRIGGER IF EXISTS trg_worldtv_subscription_code_used_at_update;
+    CREATE TRIGGER trg_worldtv_subscription_code_used_at_update
+    AFTER UPDATE OF status ON subscription_codes
+    WHEN NEW.status='used' AND COALESCE(OLD.status,'')<>'used' AND NEW.used_at IS NULL
+    BEGIN
+      UPDATE subscription_codes SET used_at=CURRENT_TIMESTAMP WHERE id=NEW.id;
+    END;
+
+    DROP TRIGGER IF EXISTS trg_worldtv_subscription_code_used_at_insert;
+    CREATE TRIGGER trg_worldtv_subscription_code_used_at_insert
+    AFTER INSERT ON subscription_codes
+    WHEN NEW.status='used' AND NEW.used_at IS NULL
+    BEGIN
+      UPDATE subscription_codes SET used_at=CURRENT_TIMESTAMP WHERE id=NEW.id;
+    END;
+  `);
+} catch (e) {
+  console.error('Reseller code usage timestamp migration failed:', e.message);
+}
 
 function allocateUploadedCodes(req, res) {
   const genCount = Number(req.body && req.body.count);
