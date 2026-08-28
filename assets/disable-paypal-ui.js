@@ -1,6 +1,25 @@
 (()=>{
   'use strict';
   const currentPath=String(location.pathname||'/').toLowerCase();
+  const params=new URLSearchParams(location.search);
+  let changed=false;
+
+  if(currentPath==='/subscribe.html'&&params.has('paypal')){
+    params.delete('paypal');
+    params.delete('token');
+    params.delete('reference');
+    changed=true;
+  }
+  if(currentPath==='/order.html'&&String(params.get('payment')||'').toLowerCase()==='paypal'){
+    params.delete('payment');
+    params.delete('token');
+    changed=true;
+  }
+  if(changed){
+    const query=params.toString();
+    history.replaceState({},'',location.pathname+(query?`?${query}`:'')+location.hash);
+  }
+
   const customerPaymentPage=currentPath==='/'||currentPath==='/index.html'||currentPath==='/subscribe.html'||currentPath==='/order.html'||currentPath==='/reseller'||currentPath==='/reseller.html';
   if(!customerPaymentPage)return;
 
