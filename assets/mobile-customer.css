@@ -1,0 +1,50 @@
+@media (max-width:650px){
+html,body{max-width:100%;overflow-x:hidden}
+body{font-size:16px}
+.wrap{width:94%!important}
+.btn,button,input,select{min-height:48px}
+.btn{font-size:16px!important}
+.hero{padding-top:46px!important;padding-bottom:34px!important}
+.hero h1{font-size:clamp(38px,12vw,46px)!important;line-height:1.02!important;letter-spacing:-.04em!important}
+.lead{font-size:16px!important;line-height:1.6!important}
+section{padding-top:48px!important;padding-bottom:48px!important}
+.hero-actions{gap:10px!important}
+.hero-actions .btn{width:100%!important}
+.showcase{margin-top:6px!important}
+.section-head{gap:14px!important;margin-bottom:24px!important}
+.section-head h2{font-size:32px!important}
+.cards,.steps,.promo-grid,.benefits,.trust-grid{grid-template-columns:1fr!important}
+.feature,.step,.promo-card{min-height:auto!important;padding:18px!important}
+.offer-card,.device-main,.device-side,.payment,.final-cta{padding:20px!important;border-radius:20px!important}
+.offer-price{align-items:center!important;text-align:center!important}
+.offer-price .btn{width:100%!important}
+.final-cta{gap:18px!important}
+.footer-grid{grid-template-columns:1fr!important;gap:20px!important}
+.nav-actions{gap:6px!important}
+.nav-actions .btn{padding:10px 11px!important}
+.brand img{width:70px!important}
+.box{width:94%!important;margin:18px auto 30px!important;padding:18px!important;border-radius:20px!important}
+.box h1{font-size:32px!important}
+.price{font-size:42px!important}
+.benefits{gap:8px!important}
+.payment-acceptance{padding:10px!important}
+.payment-acceptance img{max-height:150px!important}
+input{font-size:16px!important;padding:13px!important}
+.coupon-row{grid-template-columns:1fr!important}
+.coupon-apply{width:100%!important}
+.logo{max-width:120px!important;height:auto!important}
+.card{padding:16px!important;margin:12px 0!important;border-radius:16px!important}
+.code{font-size:20px!important;letter-spacing:1px!important;padding:14px!important}
+.actions .btn{flex:1 1 140px!important}
+.nav{gap:8px!important}
+.nav .btn{padding:10px 12px!important}
+.account-mobile-history table{min-width:0!important}
+.account-mobile-history thead{display:none!important}
+.account-mobile-history table,.account-mobile-history tbody,.account-mobile-history tr,.account-mobile-history td{display:block!important;width:100%!important}
+.account-mobile-history tr{padding:12px 0;border-bottom:1px solid #2a2418}
+.account-mobile-history td{border:0!important;padding:4px 0!important;font-size:13px!important;overflow-wrap:anywhere}
+.account-mobile-history td:before{content:attr(data-label);display:block;color:#d8caa5;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+}
+@media (max-width:380px){
+.hero h1{font-size:38px!important}.promo-inner{font-size:12px!important}.nav-actions .btn{font-size:13px!important;padding:9px 10px!important}.menu{width:40px!important;height:40px!important}
+}
