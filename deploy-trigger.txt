@@ -1,3 +1,3 @@
-Trigger Railway deployment for WORLD TV after completing the remaining open WORLD TV tasks and merging the Admin Android APK.
-Timestamp: 2026-08-28T22:31:00Z
-Main includes PR #137 through PR #146 and merged Admin Android APK PR #123. Obsolete PR #73 is closed.
+Trigger Railway deployment for WORLD TV after the phone-first customer mobile UX upgrade.
+Timestamp: 2026-08-28T22:37:00Z
+Main includes PR #147 mobile customer experience improvements across homepage, subscribe, download, login, register, account and products.
