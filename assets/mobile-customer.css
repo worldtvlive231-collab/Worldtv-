@@ -43,7 +43,12 @@ input{font-size:16px!important;padding:13px!important}
 .account-mobile-history table,.account-mobile-history tbody,.account-mobile-history tr,.account-mobile-history td{display:block!important;width:100%!important}
 .account-mobile-history tr{padding:12px 0;border-bottom:1px solid #2a2418}
 .account-mobile-history td{border:0!important;padding:4px 0!important;font-size:13px!important;overflow-wrap:anywhere}
-.account-mobile-history td:before{content:attr(data-label);display:block;color:#d8caa5;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+.account-mobile-history td:before{display:block;color:#d8caa5;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+.account-mobile-history td:nth-child(1):before{content:'Reference'}
+.account-mobile-history td:nth-child(2):before{content:'Plan'}
+.account-mobile-history td:nth-child(3):before{content:'Amount'}
+.account-mobile-history td:nth-child(4):before{content:'Status'}
+.account-mobile-history td:nth-child(5):before{content:'Date'}
 }
 @media (max-width:380px){
 .hero h1{font-size:38px!important}.promo-inner{font-size:12px!important}.nav-actions .btn{font-size:13px!important;padding:9px 10px!important}.menu{width:40px!important;height:40px!important}
