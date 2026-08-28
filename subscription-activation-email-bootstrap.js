@@ -26,7 +26,7 @@ async function sendActivationEmail(reference){
 
 const originalPost=express.application.post;
 express.application.post=function worldTvActivationEmailPost(route,...handlers){
-  if((route==="/api/payment/paypal/capture"||route==="/api/payment/paystack/verify")&&handlers.length){
+  if(route==="/api/payment/paystack/verify"&&handlers.length){
     const finalHandler=handlers[handlers.length-1];
     if(typeof finalHandler==="function"){
       const wrapped=async function(req,res,next){
