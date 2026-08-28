@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#17130A" />
+        </shape>
+    </item>
+    <item android:gravity="center" android:width="172dp" android:height="172dp">
+        <bitmap android:gravity="center" android:src="@drawable/ic_worldtv_admin" />
+    </item>
+</layer-list>
