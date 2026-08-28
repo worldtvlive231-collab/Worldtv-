@@ -1,2 +1,3 @@
-Trigger Railway deployment for Stripe payment mode integration.
-Timestamp: 2026-08-26T22:18:00Z
+Trigger Railway deployment for merged WORLD TV website, checkout, sales accounting, and customer-flow updates.
+Timestamp: 2026-08-28T20:15:00Z
+Main includes PR #137 and PR #138.
