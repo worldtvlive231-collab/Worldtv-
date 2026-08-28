@@ -1,7 +1,7 @@
 "use strict";
 
 const express=require("express");
-const SCRIPT='<script src="/assets/disable-paypal-ui.js?v=20260826-1"></script>';
+const SCRIPT='<script src="/assets/disable-paypal-ui.js?v=20260828-2"></script>';
 const previousStatic=express.static;
 
 express.static=function worldTvDisablePaypalStatic(root,...args){
@@ -16,7 +16,7 @@ express.static=function worldTvDisablePaypalStatic(root,...args){
       let output=body;
       try{
         if(typeof output==='string'&&!output.includes('/assets/disable-paypal-ui.js')){
-          output=output.includes('</body>')?output.replace('</body>',`${SCRIPT}\n</body>`):output+SCRIPT;
+          output=output.includes('</head>')?output.replace('</head>',`${SCRIPT}\n</head>`):output+SCRIPT;
         }
         res.setHeader('Cache-Control','no-cache, no-store, must-revalidate');
       }catch(_){ }
