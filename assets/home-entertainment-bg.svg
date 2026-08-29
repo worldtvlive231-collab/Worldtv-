@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2c84b" stop-opacity=".85"/>
+      <stop offset="1" stop-color="#d79b19" stop-opacity=".45"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#64b5ff" stop-opacity=".42"/>
+      <stop offset="1" stop-color="#7c5cff" stop-opacity=".18"/>
+    </linearGradient>
+    <filter id="blur"><feGaussianBlur stdDeviation="2"/></filter>
+  </defs>
+  <g opacity=".5">
+    <!-- Football / stadium -->
+    <g transform="translate(70 110)">
+      <ellipse cx="280" cy="220" rx="250" ry="110" fill="none" stroke="#ffffff" stroke-opacity=".18" stroke-width="4"/>
+      <path d="M55 220 Q280 70 505 220" fill="none" stroke="url(#gold)" stroke-width="8"/>
+      <path d="M120 245 H440" stroke="#ffffff" stroke-opacity=".16" stroke-width="4"/>
+      <circle cx="280" cy="250" r="68" fill="none" stroke="#ffffff" stroke-opacity=".24" stroke-width="5"/>
+      <path d="M280 185v130M215 250h130" stroke="#ffffff" stroke-opacity=".15" stroke-width="3"/>
+      <circle cx="398" cy="205" r="34" fill="none" stroke="#f2c84b" stroke-opacity=".55" stroke-width="6"/>
+      <path d="M386 178l24 10 10 24-18 22-27-4-10-25z" fill="#f2c84b" fill-opacity=".18"/>
+      <path d="M330 150c38 18 52 52 44 92-8 35-35 64-76 76" fill="none" stroke="#ffffff" stroke-opacity=".22" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <!-- Movies / cinema -->
+    <g transform="translate(580 95)">
+      <rect x="80" y="105" width="360" height="220" rx="28" fill="url(#blue)" stroke="#ffffff" stroke-opacity=".18" stroke-width="3"/>
+      <path d="M80 150h360" stroke="#ffffff" stroke-opacity=".2" stroke-width="3"/>
+      <path d="M120 105l50 45m25-45l50 45m25-45l50 45m25-45l50 45" stroke="#f2c84b" stroke-opacity=".45" stroke-width="12"/>
+      <circle cx="180" cy="245" r="40" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="5"/>
+      <circle cx="290" cy="245" r="40" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="5"/>
+      <path d="M365 210l55 35-55 35z" fill="#f2c84b" fill-opacity=".38"/>
+    </g>
+    <!-- Kids / family -->
+    <g transform="translate(1090 115)">
+      <circle cx="180" cy="160" r="84" fill="#f2c84b" fill-opacity=".12" stroke="#f2c84b" stroke-opacity=".32" stroke-width="4"/>
+      <circle cx="150" cy="145" r="10" fill="#ffffff" fill-opacity=".35"/>
+      <circle cx="210" cy="145" r="10" fill="#ffffff" fill-opacity=".35"/>
+      <path d="M140 190q40 35 80 0" fill="none" stroke="#ffffff" stroke-opacity=".35" stroke-width="6" stroke-linecap="round"/>
+      <path d="M110 260q70-55 140 0v90H110z" fill="url(#blue)" stroke="#ffffff" stroke-opacity=".18" stroke-width="3"/>
+      <circle cx="75" cy="305" r="36" fill="#64b5ff" fill-opacity=".18"/>
+      <circle cx="285" cy="305" r="36" fill="#7c5cff" fill-opacity=".18"/>
+      <path d="M60 295l18-22 18 22-18 22zM270 295l18-22 18 22-18 22z" fill="#f2c84b" fill-opacity=".3"/>
+    </g>
+    <!-- Decorative stars and sparkles -->
+    <g fill="#ffffff" fill-opacity=".16">
+      <circle cx="155" cy="70" r="5"/><circle cx="520" cy="55" r="4"/><circle cx="980" cy="80" r="5"/><circle cx="1460" cy="90" r="4"/>
+      <circle cx="80" cy="650" r="4"/><circle cx="520" cy="720" r="6"/><circle cx="1040" cy="690" r="4"/><circle cx="1510" cy="640" r="5"/>
+    </g>
+  </g>
+</svg>
