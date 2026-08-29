@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs>
+ <linearGradient id="stadium" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0b65ff"/><stop offset="1" stop-color="#56d8ff"/></linearGradient>
+ <linearGradient id="film" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7c63e"/><stop offset="1" stop-color="#ff7b25"/></linearGradient>
+ <linearGradient id="kids" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff5ba8"/><stop offset=".5" stop-color="#8f62ff"/><stop offset="1" stop-color="#43c8ff"/></linearGradient>
+ <radialGradient id="glow"><stop stop-color="#fff" stop-opacity=".8"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+ <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000" flood-opacity=".45"/></filter>
+</defs>
+<!-- transparent canvas: no background rectangle -->
+<g filter="url(#shadow)">
+ <!-- LIVE FOOTBALL -->
+ <g transform="translate(5 115)">
+  <path d="M40 310 Q260 70 535 220 Q430 480 88 525Z" fill="url(#stadium)" opacity=".34"/>
+  <g opacity=".95"><circle cx="110" cy="125" r="13" fill="#fff"/><circle cx="145" cy="112" r="13" fill="#fff"/><circle cx="180" cy="105" r="13" fill="#fff"/><circle cx="215" cy="108" r="13" fill="#fff"/><circle cx="250" cy="122" r="13" fill="#fff"/></g>
+  <path d="M100 430 C215 355 330 355 470 440" fill="none" stroke="#74e3ff" stroke-width="12" opacity=".78"/>
+  <path d="M270 205c28-17 61-10 78 18l22 37 65 34-20 40-78-29-37-48-37 80-48-12 42-111z" fill="#ff305d"/>
+  <circle cx="300" cy="175" r="30" fill="#e7ab7d"/>
+  <path d="M270 330l-74 98" stroke="#e8edf7" stroke-width="35" stroke-linecap="round"/><path d="M338 326l92 66" stroke="#e8edf7" stroke-width="35" stroke-linecap="round"/>
+  <path d="M196 427l-36 28M430 392l44 8" stroke="#24262d" stroke-width="18" stroke-linecap="round"/>
+  <g transform="translate(82 430)"><circle r="72" fill="#fff"/><path d="M0-25l24 17-9 28h-30l-9-28z" fill="#101114"/><path d="M-50-31l29 10M50-31l-29 10M-47 39l30-15M47 39l-30-15" stroke="#101114" stroke-width="10"/></g>
+  <text x="120" y="570" fill="#fff" font-family="system-ui,sans-serif" font-size="34" font-weight="900" opacity=".9">LIVE FOOTBALL</text>
+ </g>
+ <!-- MOVIES / CINEMA -->
+ <g transform="translate(500 105)">
+  <rect x="70" y="130" width="515" height="320" rx="34" fill="#11151f" stroke="#ffd767" stroke-width="8"/>
+  <rect x="94" y="154" width="467" height="272" rx="20" fill="url(#kids)" opacity=".5"/>
+  <circle cx="330" cy="288" r="72" fill="#090b12" opacity=".48"/><path d="M315 245l82 45-82 45z" fill="#fff" opacity=".95"/>
+  <g transform="translate(55 55) rotate(-8 150 80)"><rect x="0" y="20" width="290" height="150" rx="20" fill="#18191d" stroke="#fff" stroke-width="5"/><path d="M0 72h290" stroke="#fff" stroke-width="5"/><path d="M18 20l45 52M82 20l45 52M146 20l45 52M210 20l45 52" stroke="#fff" stroke-width="20"/></g>
+  <g transform="translate(515 85)"><circle r="98" fill="#b7bcc6"/><circle r="75" fill="#303540"/><circle cx="0" cy="-48" r="20" fill="#b7bcc6"/><circle cx="45" cy="-14" r="20" fill="#b7bcc6"/><circle cx="28" cy="39" r="20" fill="#b7bcc6"/><circle cx="-28" cy="39" r="20" fill="#b7bcc6"/><circle cx="-45" cy="-14" r="20" fill="#b7bcc6"/></g>
+  <g transform="translate(212 432)"><path d="M0 120h166l-16-152H16z" fill="#f43b45"/><path d="M16-32h28l16 152H31zM73-32h28l16 152H88zM130-32h20l16 152h-21z" fill="#fff" opacity=".95"/><g fill="#ffe59a"><circle cx="22" cy="-42" r="20"/><circle cx="55" cy="-48" r="23"/><circle cx="89" cy="-45" r="21"/><circle cx="122" cy="-51" r="24"/><circle cx="148" cy="-38" r="19"/></g></g>
+  <path d="M42 505c120 70 390 64 560-18" fill="none" stroke="url(#film)" stroke-width="14" stroke-linecap="round" opacity=".85"/>
+  <text x="205" y="610" fill="#fff" font-family="system-ui,sans-serif" font-size="34" font-weight="900" opacity=".92">MOVIES &amp; SERIES</text>
+ </g>
+ <!-- KIDS / FAMILY -->
+ <g transform="translate(1080 125)">
+  <path d="M35 320Q135 70 420 135Q500 350 380 525H60Q-10 430 35 320Z" fill="url(#kids)" opacity=".42"/>
+  <g transform="translate(128 250)"><circle cx="0" cy="0" r="90" fill="#ffca3a"/><circle cx="-32" cy="-13" r="10" fill="#222"/><circle cx="32" cy="-13" r="10" fill="#222"/><path d="M-35 30q35 38 70 0" fill="none" stroke="#bf5c38" stroke-width="10" stroke-linecap="round"/><circle cx="-85" cy="-55" r="38" fill="#ffca3a"/><circle cx="85" cy="-55" r="38" fill="#ffca3a"/></g>
+  <g transform="translate(305 325)"><circle cx="0" cy="0" r="73" fill="#7cd6ff"/><circle cx="-23" cy="-10" r="8" fill="#222"/><circle cx="23" cy="-10" r="8" fill="#222"/><path d="M-25 23q25 30 50 0" fill="none" stroke="#26537d" stroke-width="8" stroke-linecap="round"/><path d="M-68 60l-54 85h244l-54-85z" fill="#48a8ff"/></g>
+  <g transform="translate(46 445)"><rect x="0" y="0" width="85" height="72" rx="12" fill="#ff5f5f"/><rect x="94" y="-18" width="85" height="90" rx="12" fill="#55c67d"/><rect x="188" y="10" width="85" height="62" rx="12" fill="#5f88ff"/><text x="29" y="49" fill="#fff" font-size="40" font-weight="900">A</text><text x="120" y="45" fill="#fff" font-size="40" font-weight="900">B</text><text x="214" y="51" fill="#fff" font-size="40" font-weight="900">C</text></g>
+  <g fill="#ffd43b"><path d="M410 85l16 34 38 5-28 26 8 38-34-18-34 18 8-38-28-26 38-5z"/><path d="M28 100l11 23 26 4-19 17 5 26-23-12-23 12 5-26-19-17 26-4z"/></g>
+  <g><circle cx="330" cy="70" r="42" fill="#ff4d8d"/><path d="M330 112v80" stroke="#ff4d8d" stroke-width="7"/><circle cx="390" cy="90" r="36" fill="#5bc8ff"/><path d="M390 126v70" stroke="#5bc8ff" stroke-width="7"/></g>
+  <text x="80" y="610" fill="#fff" font-family="system-ui,sans-serif" font-size="34" font-weight="900" opacity=".92">KIDS &amp; FAMILY</text>
+ </g>
+</g>
+<!-- floating sparkles -->
+<g fill="url(#glow)" opacity=".8"><circle cx="505" cy="95" r="28"/><circle cx="1010" cy="180" r="22"/><circle cx="1475" cy="360" r="24"/><circle cx="780" cy="715" r="30"/></g>
+</svg>
