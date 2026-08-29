@@ -1,3 +1,3 @@
-Trigger Railway deployment for WORLD TV after adding the dynamic transparent homepage entertainment hero.
-Timestamp: 2026-08-29T12:41:00Z
-Main includes PR #148 with live football, movies and kids-program hero artwork, mobile opacity tuning, layered glow effects and reduced-motion support.
+Trigger Railway deployment for WORLD TV after directly replacing the homepage entertainment background asset.
+Timestamp: 2026-08-29T12:45:00Z
+Main now loads the vivid football, movies and kids artwork from assets/home-entertainment-bg.svg without relying on HTML response injection.
