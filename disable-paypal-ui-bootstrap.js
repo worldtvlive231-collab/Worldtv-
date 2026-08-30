@@ -1,17 +1,17 @@
 "use strict";
 
 const express=require("express");
-const SCRIPT='<script src="/assets/disable-paypal-ui.js?v=20260830-whatsapp-payments-paused"></script>';
+const SCRIPT='<script src="/assets/disable-paypal-ui.js?v=20260830-whatsapp-lightweight-v3"></script>';
 const previousStatic=express.static;
 
-express.static=function worldTvDisablePaypalStatic(root,...args){
+express.static=function worldTvPaymentPauseStatic(root,...args){
   const middleware=previousStatic(root,...args);
   return function(req,res,next){
     const p=String(req.path||"").toLowerCase();
-    const target=p==='/'||p.endsWith('.html')||p==='/reseller'||p==='/admin';
+    const target=p==='/'||p==='/index.html'||p==='/subscribe.html'||p==='/order.html'||p==='/checkout.html'||p==='/payment.html'||p==='/reseller'||p==='/reseller.html';
     if(!target)return middleware(req,res,next);
     const originalSend=res.send;
-    res.send=function worldTvDisablePaypalInjectedSend(body){
+    res.send=function worldTvPaymentPauseInjectedSend(body){
       res.send=originalSend;
       let output=body;
       try{
@@ -19,6 +19,8 @@ express.static=function worldTvDisablePaypalStatic(root,...args){
           output=output.includes('</head>')?output.replace('</head>',`${SCRIPT}\n</head>`):output+SCRIPT;
         }
         res.setHeader('Cache-Control','no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma','no-cache');
+        res.setHeader('Expires','0');
       }catch(_){ }
       return originalSend.call(res,output);
     };
@@ -26,4 +28,4 @@ express.static=function worldTvDisablePaypalStatic(root,...args){
   };
 };
 
-console.log('WORLD TV online payment UI paused; customers routed to WhatsApp');
+console.log('WORLD TV payment pause lightweight script enabled for customer pages only');
