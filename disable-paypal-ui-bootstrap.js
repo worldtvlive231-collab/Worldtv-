@@ -1,7 +1,7 @@
 "use strict";
 
 const express=require("express");
-const SCRIPT='<script src="/assets/disable-paypal-ui.js?v=20260828-2"></script>';
+const SCRIPT='<script src="/assets/disable-paypal-ui.js?v=20260830-whatsapp-payments-paused"></script>';
 const previousStatic=express.static;
 
 express.static=function worldTvDisablePaypalStatic(root,...args){
@@ -26,4 +26,4 @@ express.static=function worldTvDisablePaypalStatic(root,...args){
   };
 };
 
-console.log('WORLD TV PayPal payment UI disabled');
+console.log('WORLD TV online payment UI paused; customers routed to WhatsApp');
