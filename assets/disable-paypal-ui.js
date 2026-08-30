@@ -1,8 +1,8 @@
 (()=>{
   'use strict';
 
-  const WHATSAPP_NUMBER='+233 54 237 5305';
-  const WHATSAPP_URL='https://wa.me/233542375305?text='+encodeURIComponent('Hello WORLD TV, I want to subscribe and make payment. Please assist me.');
+  const WHATSAPP_NUMBER='+233 24 490 9092';
+  const WHATSAPP_URL='https://wa.me/233244909092?text='+encodeURIComponent('Hello WORLD TV, I want to subscribe and make payment. Please assist me.');
   const currentPath=String(location.pathname||'/').toLowerCase();
   const customerPage=currentPath==='/'||currentPath==='/index.html'||currentPath.endsWith('.html')||currentPath==='/reseller'||currentPath==='/reseller.html';
   if(!customerPage)return;
