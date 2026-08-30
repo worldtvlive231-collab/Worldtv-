@@ -17,7 +17,6 @@
     style.textContent=`
       #wtv-whatsapp-payment-notice{position:relative;z-index:9998;background:#0f2417;color:#fff;border-bottom:1px solid rgba(255,255,255,.14);padding:12px 16px;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
       #wtv-whatsapp-payment-notice .wtv-wa-inner{width:min(1160px,94%);margin:auto;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;text-align:center}
-      #wtv-whatsapp-payment-notice strong{font-weight:900}
       #wtv-whatsapp-payment-notice a,.wtv-whatsapp-pay-button{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;background:#25D366!important;color:#07150c!important;border:0!important;border-radius:12px!important;padding:10px 16px!important;font-weight:900!important;text-decoration:none!important;cursor:pointer!important;min-height:42px!important;box-shadow:none!important}
       .wtv-payment-paused-box{margin:18px 0;padding:18px;border:1px solid rgba(37,211,102,.35);border-radius:16px;background:rgba(37,211,102,.08);text-align:center}
       .wtv-payment-paused-box b{display:block;margin-bottom:6px;font-size:18px}
@@ -27,7 +26,7 @@
   }
 
   function addNotice(){
-    if(document.getElementById('wtv-whatsapp-payment-notice'))return;
+    if(document.getElementById('wtv-whatsapp-payment-notice')||!document.body)return;
     const notice=document.createElement('div');
     notice.id='wtv-whatsapp-payment-notice';
     notice.innerHTML=`<div class="wtv-wa-inner"><span><strong>Online payment is temporarily paused.</strong> To subscribe or make payment, contact WORLD TV on WhatsApp: <strong>${WHATSAPP_NUMBER}</strong></span><a href="${WHATSAPP_URL}" target="_blank" rel="noopener">💬 Subscribe & Pay on WhatsApp</a></div>`;
@@ -35,7 +34,7 @@
   }
 
   function isPaymentControl(el){
-    if(!el||!(el.matches?.('a,button,input[type="button"],input[type="submit"]')))return false;
+    if(!el||!el.matches?.('a,button,input[type="button"],input[type="submit"]'))return false;
     const text=String(el.textContent||el.value||el.getAttribute('aria-label')||'').trim();
     const href=String(el.getAttribute?.('href')||'');
     const idClass=`${el.id||''} ${el.className||''}`;
@@ -43,8 +42,7 @@
   }
 
   function convertControl(el){
-    if(!isPaymentControl(el))return;
-    if(el.dataset?.wtvWhatsappPayment==='1')return;
+    if(!isPaymentControl(el)||el.dataset?.wtvWhatsappPayment==='1')return;
     if(el.tagName==='A'){
       el.href=WHATSAPP_URL;
       el.target='_blank';
@@ -64,6 +62,7 @@
     if(!['/subscribe.html','/order.html','/checkout.html','/payment.html','/reseller','/reseller.html'].includes(currentPath))return;
     if(document.getElementById('wtv-payment-paused-box'))return;
     const main=document.querySelector('main,.container,.wrap,.card')||document.body;
+    if(!main)return;
     const box=document.createElement('div');
     box.id='wtv-payment-paused-box';
     box.className='wtv-payment-paused-box';
@@ -71,24 +70,14 @@
     main.prepend(box);
   }
 
-  function scrub(){
+  function applyOnce(){
     addStyles();
     addNotice();
     addPaymentPageBox();
-
     document.querySelectorAll('a,button,input[type="button"],input[type="submit"]').forEach(convertControl);
-
     document.querySelectorAll('#paypalBtn,#paystackBtn,#stripeBtn,.paypal-button,.paystack-button,.stripe-button,.wtv-paypal-guest-wrap').forEach(el=>{
       if(el.matches?.('a,button,input'))convertControl(el);
       else el.style.display='none';
-    });
-
-    document.querySelectorAll('p,span,div,small').forEach(el=>{
-      if(el.children.length>0)return;
-      const text=String(el.textContent||'').trim();
-      if(/choose\s+(paystack|stripe|paypal)|pay\s+securely\s+with|mobile money.*card|card.*paypal/i.test(text)){
-        el.textContent=`Online payment is temporarily paused. Subscribe and make payment through WhatsApp: ${WHATSAPP_NUMBER}.`;
-      }
     });
   }
 
@@ -97,7 +86,7 @@
     if(!isPaymentControl(control))return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    window.open(WHATSAPP_URL,'_blank','noopener');
+    location.href=WHATSAPP_URL;
   },true);
 
   document.addEventListener('submit',event=>{
@@ -107,13 +96,17 @@
     if(paymentHref.test(action)||paymentWords.test(text)){
       event.preventDefault();
       event.stopImmediatePropagation();
-      window.open(WHATSAPP_URL,'_blank','noopener');
+      location.href=WHATSAPP_URL;
     }
   },true);
 
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scrub,{once:true});
-  else scrub();
-
-  const observer=new MutationObserver(()=>scrub());
-  observer.observe(document.documentElement,{childList:true,subtree:true});
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',()=>{
+      applyOnce();
+      setTimeout(applyOnce,1200);
+    },{once:true});
+  }else{
+    applyOnce();
+    setTimeout(applyOnce,1200);
+  }
 })();
