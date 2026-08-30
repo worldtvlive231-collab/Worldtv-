@@ -1,14 +1,14 @@
 "use strict";
 
 const express=require("express");
-const SCRIPT='<script src="/assets/disable-paypal-ui.js?v=20260830-whatsapp-lightweight-v3"></script>';
+const SCRIPT='<script src="/assets/disable-paypal-ui.js?v=20260830-whatsapp-lightweight-v4"></script>';
 const previousStatic=express.static;
 
 express.static=function worldTvPaymentPauseStatic(root,...args){
   const middleware=previousStatic(root,...args);
   return function(req,res,next){
     const p=String(req.path||"").toLowerCase();
-    const target=p==='/'||p==='/index.html'||p==='/subscribe.html'||p==='/order.html'||p==='/checkout.html'||p==='/payment.html'||p==='/reseller'||p==='/reseller.html';
+    const target=p==='/'||p==='/index.html'||p==='/order.html'||p==='/checkout.html'||p==='/payment.html'||p==='/reseller'||p==='/reseller.html';
     if(!target)return middleware(req,res,next);
     const originalSend=res.send;
     res.send=function worldTvPaymentPauseInjectedSend(body){
@@ -28,4 +28,4 @@ express.static=function worldTvPaymentPauseStatic(root,...args){
   };
 };
 
-console.log('WORLD TV payment pause lightweight script enabled for customer pages only');
+console.log('WORLD TV payment pause helper enabled only on remaining customer payment entry pages');
