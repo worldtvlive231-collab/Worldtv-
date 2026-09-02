@@ -1927,7 +1927,14 @@ app.get("/api/admin/customers", adminOnly, (req,res)=>{
     sql+=" WHERE u.name LIKE @q OR u.email LIKE @q";
     params.q=`%${q}%`;
   }
-  sql+=" GROUP BY u.id ORDER BY u.id DESC";
+  sql+=` GROUP BY u.id
+          ORDER BY
+            CASE
+              WHEN SUM(CASE WHEN o.status='paid' THEN 1 ELSE 0 END) > 0 THEN 0
+              ELSE 1
+            END,
+            MAX(CASE WHEN o.status='paid' THEN COALESCE(o.paid_at,o.created_at) END) DESC,
+            u.id DESC`;
   res.json(db.prepare(sql).all(params));
 });
 
