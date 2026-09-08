@@ -59,7 +59,7 @@ async function register(req,res){
    lead=db.prepare('SELECT * FROM download_email_leads WHERE id=?').get(lead.id);
   }
   if(!lead.thank_sent_at){try{await sendThankYou(lead)}catch(e){console.error('Download thank-you email:',e.message)}}
-  return res.json({ok:true,email,download_url:APK_URL});
+  return res.json({ok:true,email,download_url:'/api/app/download'});
  }catch(e){console.error('Email-only download registration:',e);return res.status(500).json({error:'Could not save your email. Please try again.'})}
 }
 
