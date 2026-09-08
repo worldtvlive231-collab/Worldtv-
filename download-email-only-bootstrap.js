@@ -1,6 +1,7 @@
 'use strict';
 require('dotenv').config();
 const path=require('path');
+const fs=require('fs');
 const express=require('express');
 const Database=require('better-sqlite3');
 const db=new Database(path.join(__dirname,'data','worldtv.sqlite'));
@@ -10,6 +11,23 @@ db.pragma('busy_timeout=5000');
 const BASE=String(process.env.PUBLIC_BASE_URL||process.env.APP_URL||'https://myworldtvlive.com').replace(/\/+$/,'');
 const RESEND_API_KEY=String(process.env.RESEND_API_KEY||'').trim();
 const EMAIL_FROM=String(process.env.EMAIL_FROM||'').trim();
+const SUPPORT_WHATSAPP='+1 (530) 904-0310';
+const GUIDE_SOURCE_PATH=path.join(__dirname,'assets','download-guide-data.js');
+
+function loadGuideImages(){
+ try{
+  const source=fs.readFileSync(GUIDE_SOURCE_PATH,'utf8');
+  const read=name=>{
+   const m=source.match(new RegExp(name+":'data:image\\/jpeg;base64,([^']+)'"));
+   return m ? Buffer.from(m[1],'base64') : null;
+  };
+  return {install:read('install'),devices:read('devices'),troubleshooting:read('troubleshooting')};
+ }catch(e){
+  console.error('WORLD TV guide image load:',e.message);
+  return {install:null,devices:null,troubleshooting:null};
+ }
+}
+const GUIDE_IMAGES=loadGuideImages();
 
 db.exec(`CREATE TABLE IF NOT EXISTS download_email_leads(
  id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,7 +44,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS download_email_leads(
 function clean(v,max=200){return String(v==null?'':v).trim().slice(0,max)}
 function validEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)}
 function htmlShell(title,body,buttonText,buttonUrl){
- return `<!doctype html><html><body style="margin:0;background:#fffaf0;font-family:Arial,sans-serif;color:#17130a"><div style="max-width:680px;margin:0 auto;padding:24px 16px"><div style="background:#fff;border:1px solid #eadfc8;border-radius:18px;padding:26px"><div style="text-align:center;margin-bottom:18px"><img src="${BASE}/world-tv-logo.png" alt="WORLD TV" width="145" style="max-width:145px;height:auto"><h2 style="margin:12px 0 0">${title}</h2></div><div style="font-size:16px;line-height:1.65;color:#3b3428">${body}</div><div style="text-align:center;margin-top:24px"><a href="${buttonUrl}" style="display:inline-block;background:#e0a200;color:#17130a;text-decoration:none;font-weight:800;padding:14px 24px;border-radius:10px">${buttonText}</a></div></div></div></body></html>`;
+ return `<!doctype html><html><body style="margin:0;background:#fffaf0;font-family:Arial,sans-serif;color:#17130a"><div style="max-width:720px;margin:0 auto;padding:24px 16px"><div style="background:#fff;border:1px solid #eadfc8;border-radius:18px;padding:26px"><div style="text-align:center;margin-bottom:18px"><img src="${BASE}/world-tv-logo.png" alt="WORLD TV" width="145" style="max-width:145px;height:auto"><h2 style="margin:12px 0 0">${title}</h2></div><div style="font-size:16px;line-height:1.65;color:#3b3428">${body}</div><div style="text-align:center;margin-top:24px"><a href="${buttonUrl}" style="display:inline-block;background:#e0a200;color:#17130a;text-decoration:none;font-weight:800;padding:14px 24px;border-radius:10px">${buttonText}</a></div></div></div></body></html>`;
 }
 async function sendEmail(to,subject,text,html,key){
  if(!RESEND_API_KEY||!EMAIL_FROM) throw new Error('Email service is not configured');
@@ -34,8 +52,22 @@ async function sendEmail(to,subject,text,html,key){
  if(!r.ok) throw new Error(`Resend ${r.status}: ${(await r.text().catch(()=>'' )).slice(0,250)}`);
 }
 async function sendThankYou(lead){
- const text=`Thank you for downloading WORLD TV!\n\nYour WORLD TV v8.2.8 download has started.\n\nANDROID PHONE / TABLET\n1. Open your Downloads or Files app.\n2. Tap the WORLD TV APK file.\n3. Follow the normal Android installation prompts.\n4. Open WORLD TV and select Get Free Trial.\n\nANDROID TV / GOOGLE TV\n1. Open the Downloader app.\n2. Enter Downloader code: 4193413.\n3. Download the WORLD TV APK and follow the normal installation prompts.\n4. Open WORLD TV and select Get Free Trial.\n\nIf Android or Play Protect blocks the app, do not override the security warning. Contact WORLD TV support for a verified build or use the official app-store version when available.\n\n1-year subscription: US$23\nSubscribe: ${BASE}/subscribe.html\nInstallation page: ${BASE}/download.html\n\nThank you for choosing WORLD TV.`;
- const body=`<p>Thank you for downloading <strong>WORLD TV v8.2.8</strong>! 🎉 Your download has started.</p><h3 style="margin-bottom:6px">Android phone / tablet</h3><ol style="padding-left:22px"><li>Open your <strong>Downloads</strong> or <strong>Files</strong> app.</li><li>Tap the WORLD TV APK file.</li><li>Follow the normal Android installation prompts.</li><li>Open WORLD TV and select <strong>Get Free Trial</strong>.</li></ol><h3 style="margin-bottom:6px">Android TV / Google TV</h3><ol style="padding-left:22px"><li>Open the <strong>Downloader</strong> app.</li><li>Enter Downloader code <strong>4193413</strong>.</li><li>Download the WORLD TV APK and follow the normal installation prompts.</li><li>Open WORLD TV and select <strong>Get Free Trial</strong>.</li></ol><p style="background:#fff3cd;border:1px solid #f1d58a;border-radius:10px;padding:12px"><strong>Security note:</strong> If Android or Play Protect blocks the app, do not override the warning. Contact WORLD TV support for a verified build or use the official app-store version when available.</p><p><strong>1-year subscription: US$23</strong><br><a href="${BASE}/subscribe.html">${BASE}/subscribe.html</a></p><p>Full installation page: <a href="${BASE}/download.html">${BASE}/download.html</a></p>`;
+ const text=`Thank you for downloading WORLD TV!\n\nYour WORLD TV v8.2.8 download has started.\n\nANDROID PHONE / TABLET — IF YOU SEE “UNSAFE APP BLOCKED”\n1. Tap More details.\n2. Scroll down.\n3. Tap Install anyway.\n4. Continue the installation.\n5. Open WORLD TV and tap Get Free Trial.\n\nOnly choose Install anyway for the WORLD TV APK you downloaded from our official download page: ${BASE}/download.html\n\nANDROID TV / GOOGLE TV\n1. Open the Downloader app.\n2. Enter Downloader code: 4193413.\n3. Download the WORLD TV APK.\n4. If your Android device asks for permission, allow installation from the Downloader app, then install WORLD TV.\n5. Open WORLD TV and tap Get Free Trial.\n\nIF INSTALLATION IS NOT WORKING\n- Send us a screenshot of the message on your device.\n- Make sure you are using an Android device.\n- Go to Settings > Security or Privacy > Install unknown apps and allow the browser, Files app, or Downloader app you used for this WORLD TV APK.\n- Try the installation again.\n\nWhatsApp support: ${SUPPORT_WHATSAPP}\n\n1-year subscription: US$23\nSubscribe: ${BASE}/subscribe.html\nVisual installation guide: ${BASE}/download.html#installation-guides\n\nThank you for choosing WORLD TV.`;
+ const imgStyle='display:block;width:100%;max-width:640px;height:auto;margin:14px auto;border-radius:12px;border:1px solid #e5e5e5';
+ const body=`<p>Thank you for downloading <strong>WORLD TV v8.2.8</strong>! 🎉 Your APK download has started.</p>
+ <h3 style="margin-bottom:6px">Android phone / tablet — “Unsafe app blocked”</h3>
+ <ol style="padding-left:22px"><li>Tap <strong>More details</strong>.</li><li>Scroll down.</li><li>Tap <strong>Install anyway</strong>.</li><li>Continue the installation.</li><li>Open WORLD TV and tap <strong>Get Free Trial</strong>.</li></ol>
+ <p style="background:#fff3cd;border:1px solid #f1d58a;border-radius:10px;padding:12px"><strong>Important:</strong> Use “Install anyway” only for the WORLD TV APK you downloaded from our official page: <a href="${BASE}/download.html">${BASE}/download.html</a>.</p>
+ <img src="${BASE}/assets/guides/install.jpg" alt="WORLD TV Install Anyway guide in English and French" style="${imgStyle}">
+ <h3 style="margin-bottom:6px">Supported devices & subscription</h3>
+ <img src="${BASE}/assets/guides/devices.jpg" alt="WORLD TV supported Android devices and US$23 one-year subscription" style="${imgStyle}">
+ <h3 style="margin-bottom:6px">If installation is not working</h3>
+ <p>Send a screenshot, confirm you are using Android, then go to <strong>Settings → Security/Privacy → Install unknown apps</strong> and allow the browser, Files app, or Downloader app you used for this WORLD TV APK. Try the installation again.</p>
+ <img src="${BASE}/assets/guides/troubleshooting.jpg" alt="WORLD TV installation troubleshooting guide" style="${imgStyle}">
+ <p><strong>Android TV / Google TV Downloader code: 4193413</strong></p>
+ <p><strong>WhatsApp support: ${SUPPORT_WHATSAPP}</strong></p>
+ <p><strong>1-year subscription: US$23</strong><br><a href="${BASE}/subscribe.html">${BASE}/subscribe.html</a></p>
+ <p>Full visual installation page: <a href="${BASE}/download.html#installation-guides">${BASE}/download.html#installation-guides</a></p>`;
  await sendEmail(lead.email,'Thank you for downloading WORLD TV — installation guide',text,htmlShell('Thank You for Downloading WORLD TV',body,'Subscribe — US$23 / 1 Year',`${BASE}/subscribe.html`),`worldtv-download-thank-${lead.id}`);
  db.prepare('UPDATE download_email_leads SET thank_sent_at=CURRENT_TIMESTAMP WHERE id=?').run(lead.id);
 }
@@ -75,6 +107,16 @@ const originalUse=express.application.use;
 express.application.use=function patchedEmailOnlyDownloadUse(...args){
  if(!this.__wtvEmailOnlyDownloadRoute){
   this.__wtvEmailOnlyDownloadRoute=true;
+  originalUse.call(this,'/assets/guides',(req,res,next)=>{
+   if(req.method!=='GET'&&req.method!=='HEAD') return next();
+   const key=String(req.path||'').replace(/^\//,'').replace(/\.jpg$/,'');
+   const image=GUIDE_IMAGES[key];
+   if(!image) return next();
+   res.setHeader('Content-Type','image/jpeg');
+   res.setHeader('Cache-Control','public, max-age=86400');
+   if(req.method==='HEAD') return res.end();
+   return res.end(image);
+  });
   originalUse.call(this,'/api/download/email-register',express.json({limit:'32kb'}),(req,res,next)=>{
    if(req.method!=='POST') return next();
    return register(req,res);
