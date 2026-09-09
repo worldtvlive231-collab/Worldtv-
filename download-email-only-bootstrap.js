@@ -55,15 +55,14 @@ async function sendThankYou(lead){
  const text=`Thank you for downloading WORLD TV!\n\nYour WORLD TV v8.2.8 download has started.\n\nANDROID PHONE / TABLET — IF YOU SEE “UNSAFE APP BLOCKED”\n1. Tap More details.\n2. Scroll down.\n3. Tap Install anyway.\n4. Continue the installation.\n5. Open WORLD TV and tap Get Free Trial.\n\nOnly choose Install anyway for the WORLD TV APK you intentionally downloaded from our official download page: ${BASE}/download.html\n\nANDROID TV / GOOGLE TV\n1. Open the Downloader app.\n2. Enter Downloader code: 4193413.\n3. Download the WORLD TV APK.\n4. If your Android device asks for permission, allow installation from the Downloader app, then install WORLD TV.\n5. Open WORLD TV and tap Get Free Trial.\n\nIF INSTALLATION IS NOT WORKING\n- Send us a screenshot of the message on your device.\n- Make sure you are using an Android device.\n- Go to Settings > Security or Privacy > Install unknown apps and allow the browser, Files app, or Downloader app you used for this WORLD TV APK.\n- Try the installation again.\n\nWhatsApp support: ${SUPPORT_WHATSAPP}\n\n1-year subscription: US$23\nSubscribe: ${BASE}/subscribe.html\nVisual installation guide: ${BASE}/download.html#installation-guides\n\nThank you for choosing WORLD TV.`;
  const imgStyle='display:block;width:100%;max-width:640px;height:auto;margin:14px auto;border-radius:12px;border:1px solid #e5e5e5';
  const body=`<p>Thank you for downloading <strong>WORLD TV v8.2.8</strong>! 🎉 Your APK download has started.</p>
- <h3 style="margin-bottom:6px">Android phone / tablet — “Unsafe app blocked”</h3>
- <ol style="padding-left:22px"><li>Tap <strong>More details</strong>.</li><li>Scroll down.</li><li>Tap <strong>Install anyway</strong>.</li><li>Continue the installation.</li><li>Open WORLD TV and tap <strong>Get Free Trial</strong>.</li></ol>
+ <h3 style="margin-bottom:6px">WORLD TV installation guide — English & Français</h3>
+ <p>If Google Play Protect shows <strong>“Unsafe app blocked”</strong>, follow the four steps in the guide below: tap <strong>More details</strong>, scroll down, tap <strong>Install anyway</strong>, then continue the installation.</p>
  <p style="background:#fff3cd;border:1px solid #f1d58a;border-radius:10px;padding:12px"><strong>Important:</strong> Use “Install anyway” only for the WORLD TV APK you intentionally downloaded from our official page: <a href="${BASE}/download.html">${BASE}/download.html</a>.</p>
- <img src="${BASE}/assets/guide-play-protect-choice.svg" alt="WORLD TV Install Anyway guide in English and French" style="${imgStyle}">
- <h3 style="margin-bottom:6px">Supported devices & subscription</h3>
- <img src="${BASE}/assets/guide-devices-subscription.svg" alt="WORLD TV supported Android devices and US$23 one-year subscription" style="${imgStyle}">
+ <a href="${BASE}/assets/world-tv-installation-guide-en-fr.jpeg?v=20260909-1" style="text-decoration:none"><img src="${BASE}/assets/world-tv-installation-guide-en-fr.jpeg?v=20260909-1" width="640" alt="WORLD TV installation guide in English and French" style="${imgStyle}"></a>
+ <p style="text-align:center;font-size:14px">Tap the guide to open it full size.</p>
+ <p>After installation, open WORLD TV and select <strong>Get Free Trial</strong>.</p>
  <h3 style="margin-bottom:6px">If installation is not working</h3>
  <p>Send a screenshot, confirm you are using Android, then go to <strong>Settings → Security/Privacy → Install unknown apps</strong> and allow the browser, Files app, or Downloader app you used for this WORLD TV APK. Try the installation again.</p>
- <img src="${BASE}/assets/guide-troubleshooting-help.svg" alt="WORLD TV installation troubleshooting guide" style="${imgStyle}">
  <p><strong>Android TV / Google TV Downloader code: 4193413</strong></p>
  <p><strong>WhatsApp support: ${SUPPORT_WHATSAPP}</strong></p>
  <p><strong>1-year subscription: US$23</strong><br><a href="${BASE}/subscribe.html">${BASE}/subscribe.html</a></p>

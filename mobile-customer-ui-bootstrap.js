@@ -6,11 +6,9 @@ const previousStatic=express.static;
 const targets=new Set(['/','/index.html','/subscribe.html','/download.html','/login.html','/register.html','/account.html','/products.html']);
 
 const DOWNLOAD_GUIDES=`
-<section id="installation-guides"><div class="install-heading"><h2>Visual Installation Guides</h2><p>Follow these clear WORLD TV guides for installation, supported devices and troubleshooting.</p></div>
+<section id="installation-guides"><div class="install-heading"><h2>WORLD TV Installation Guide</h2><p>This clear English and French guide is also included in the download email.</p></div>
 <div class="guide-grid">
- <article class="guide-card"><h3>1. “Unsafe App Blocked” — English &amp; Français</h3><img class="guide-img" src="/assets/guide-play-protect-choice.svg?v=20260908-2" alt="WORLD TV Google Play Protect Install Anyway guide in English and French"><p class="guide-note">If Google Play Protect shows <strong>“Unsafe app blocked”</strong> for the WORLD TV APK you intentionally downloaded from <strong>myworldtvlive.com</strong>, tap <strong>More details</strong>, scroll down, tap <strong>Install anyway</strong>, then continue the installation.</p></article>
- <article class="guide-card"><h3>2. Supported Devices &amp; US$23 / 1 Year</h3><img class="guide-img" src="/assets/guide-devices-subscription.svg?v=20260908-2" alt="WORLD TV supported Android devices and US$23 one-year subscription guide"><p class="guide-note">Android TV, Android TV Box, compatible Android Smart TV, Android phone and tablet. iPhone/iOS is not available at the moment. 1-year subscription: <strong>US$23</strong>.</p></article>
- <article class="guide-card"><h3>3. Installation Troubleshooting</h3><img class="guide-img" src="/assets/guide-troubleshooting-help.svg?v=20260908-2" alt="WORLD TV installation troubleshooting guide"><p class="guide-note">If installation still does not work, send a screenshot to WhatsApp <strong>+1 (530) 904-0310</strong> and support can guide you step by step.</p></article>
+ <article class="guide-card"><h3>“Unsafe App Blocked” — English &amp; Français</h3><a href="/assets/world-tv-installation-guide-en-fr.jpeg?v=20260909-1" target="_blank" rel="noopener"><img class="guide-img" src="/assets/world-tv-installation-guide-en-fr.jpeg?v=20260909-1" alt="WORLD TV bilingual installation guide: More details, scroll down, Install anyway, and continue installation"></a><p class="guide-note">More details → scroll down → Install anyway → continue installation. After installation, open WORLD TV and select <strong>Get Free Trial</strong>. Tap the guide to view it full size.</p></article>
 </div></section>`;
 
 express.static=function worldTvMobileCustomerStatic(root,...args){
@@ -32,7 +30,7 @@ express.static=function worldTvMobileCustomerStatic(root,...args){
         if((p==='/download.html')&&typeof output==='string'){
           output=output.replace(/<div class="security-note">[\s\S]*?<\/div>/,
             '<div class="security-note"><strong>Google Play Protect:</strong> Google may show an “Unsafe app blocked” message and provide the <strong>Install anyway</strong> option. If this is the WORLD TV APK you intentionally downloaded from <strong>myworldtvlive.com</strong> and you choose to continue, tap <strong>More details</strong> → scroll down → <strong>Install anyway</strong> → continue installation.</div>');
-          output=output.replace(/<section(?: id="installation-guides")?><div class="install-heading"><h2>Visual Installation Guides<\/h2>[\s\S]*?<\/section>/,DOWNLOAD_GUIDES);
+          output=output.replace(/<section(?: id="installation-guides")?><div class="install-heading"><h2>(?:Visual Installation Guides|WORLD TV Visual Installation Guide)<\/h2>[\s\S]*?<\/section>/,DOWNLOAD_GUIDES);
         }
         res.setHeader('Cache-Control','no-cache, no-store, must-revalidate');
       }catch(_){ }
