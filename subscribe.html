@@ -1,51 +1,557 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<title>Get 1 Year for US$23 — World TV</title>
-<meta name="description" content="WORLD TV 1-year subscription for US$23. Contact us on WhatsApp to subscribe and make payment.">
-<link rel="canonical" href="https://myworldtvlive.com/subscribe.html">
-<link rel="icon" href="/world-tv-logo.png">
-<meta name="theme-color" content="#0f2417">
-<style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(circle at 50% 0,#ffe28b 0,#fff4cf 30%,#fff9eb 70%);color:#17130a}.top{background:#0f2417;color:#fff;text-align:center;padding:13px 18px;font-size:14px;font-weight:800}.wrap{width:min(620px,92%);margin:34px auto 60px}.card{background:#fff;border:2px solid #e7bd38;border-radius:28px;padding:34px;box-shadow:0 22px 70px rgba(71,48,0,.15);text-align:center}.logo{width:145px;max-width:42%;height:auto;margin:0 auto 12px;display:block}.badge{display:inline-block;padding:7px 13px;border-radius:999px;background:#fff1ad;border:1px solid #e6c34f;font-size:12px;font-weight:950}.card h1{font-size:clamp(34px,7vw,48px);line-height:1.05;margin:16px 0 8px}.price{font-size:52px;font-weight:950;color:#d08f00;line-height:1;margin:14px 0 8px}.term{font-size:17px;color:#675d46;margin:0 0 22px}.benefits{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:22px 0}.benefit{padding:12px 8px;border-radius:12px;background:#fff9e9;border:1px solid #efe0b6;font-size:12px;font-weight:850}.notice{margin:24px 0;padding:18px;border-radius:17px;background:#eefaf1;border:1px solid #bfe6c8}.notice h2{font-size:20px;margin:0 0 8px;color:#123d20}.notice p{margin:5px 0;color:#31523a;line-height:1.55}.number{font-size:20px;font-weight:950;color:#102d18;margin-top:8px}.pay{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:58px;padding:15px 18px;border-radius:15px;background:#d99a00;color:#fff;text-decoration:none;font-size:18px;font-weight:950;box-shadow:0 10px 28px rgba(217,154,0,.25)}.divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:#81765f;font-size:12px;font-weight:900}.divider:before,.divider:after{content:"";height:1px;background:#e5dcc7;flex:1}.wa{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:58px;padding:15px 18px;border-radius:15px;background:#25D366;color:#07150c;text-decoration:none;font-size:18px;font-weight:950;box-shadow:0 10px 28px rgba(37,211,102,.25)}.small{font-size:12px;color:#777064;line-height:1.55;margin:16px 0 0}.links{margin-top:22px;font-size:14px}.links a{color:#4d3b08;font-weight:800;text-decoration:none;margin:0 8px}@media(max-width:560px){.card{padding:24px 20px}.benefits{grid-template-columns:1fr}.price{font-size:46px}.wa{font-size:16px}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>WORLD TV Annual Subscription — 1 Year for US$23</title>
+  <meta name="description" content="Subscribe to WORLD TV for one full year at US$23. Ghana customers can pay online, and international customers can get payment help on WhatsApp.">
+  <link rel="canonical" href="https://myworldtvlive.com/subscribe.html">
+  <link rel="icon" href="/world-tv-logo.png">
+  <meta name="theme-color" content="#07150f">
+  <meta property="og:title" content="WORLD TV — One Year. A World of Entertainment.">
+  <meta property="og:description" content="Get 365 days of WORLD TV for US$23.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://myworldtvlive.com/subscribe.html">
+  <style>
+    :root{
+      --ink:#f9f7ee;
+      --muted:#b7c4bd;
+      --night:#06100c;
+      --night-2:#0a1e15;
+      --panel:rgba(14,35,25,.82);
+      --panel-solid:#10291d;
+      --line:rgba(255,255,255,.11);
+      --gold:#f8c84a;
+      --gold-2:#ff9f1a;
+      --green:#45e38c;
+      --green-2:#20bc6e;
+      --shadow:0 30px 90px rgba(0,0,0,.38);
+      --radius:28px;
+    }
+
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      min-height:100vh;
+      overflow-x:hidden;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(circle at 8% 10%,rgba(40,188,109,.18),transparent 29rem),
+        radial-gradient(circle at 90% 16%,rgba(248,200,74,.16),transparent 27rem),
+        linear-gradient(145deg,#050d09 0%,#07150f 48%,#06110c 100%);
+    }
+    body:before{
+      content:"";
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:-3;
+      opacity:.18;
+      background-image:
+        linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+      background-size:64px 64px;
+      -webkit-mask-image:linear-gradient(to bottom,#000,transparent 78%);
+      mask-image:linear-gradient(to bottom,#000,transparent 78%);
+    }
+    a{color:inherit}
+    button{font:inherit}
+    .shell{width:min(1180px,calc(100% - 40px));margin:0 auto}
+    .glow{
+      position:fixed;
+      width:420px;
+      height:420px;
+      border-radius:50%;
+      filter:blur(80px);
+      opacity:.17;
+      pointer-events:none;
+      z-index:-2;
+      animation:drift 13s ease-in-out infinite alternate;
+    }
+    .glow.one{background:#17d871;top:22%;left:-220px}
+    .glow.two{background:#ffc928;right:-210px;top:54%;animation-delay:-5s}
+    @keyframes drift{to{transform:translate3d(40px,-24px,0) scale(1.12)}}
+
+    .announcement{
+      position:relative;
+      z-index:5;
+      padding:10px 20px;
+      text-align:center;
+      color:#1b1606;
+      background:linear-gradient(90deg,#f4b824,#ffe07c,#f4b824);
+      background-size:200% 100%;
+      font-size:13px;
+      font-weight:900;
+      letter-spacing:.02em;
+      animation:shine 7s linear infinite;
+    }
+    @keyframes shine{to{background-position:200% 0}}
+
+    .site-header{position:relative;z-index:4;padding:20px 0}
+    .nav{display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-weight:950;letter-spacing:.08em}
+    .brand img{display:block;width:66px;height:52px;object-fit:contain;filter:drop-shadow(0 8px 16px rgba(0,0,0,.24))}
+    .brand span{font-size:16px}
+    .nav-links{display:flex;align-items:center;gap:8px}
+    .nav-links a{
+      padding:10px 14px;
+      border-radius:999px;
+      color:#dce8e1;
+      text-decoration:none;
+      font-size:14px;
+      font-weight:750;
+      transition:.2s ease;
+    }
+    .nav-links a:hover{background:rgba(255,255,255,.08);color:#fff}
+    .nav-links .nav-cta{border:1px solid rgba(248,200,74,.4);color:var(--gold)}
+
+    .hero{
+      display:grid;
+      grid-template-columns:minmax(0,1.08fr) minmax(390px,.92fr);
+      gap:64px;
+      align-items:center;
+      padding:54px 0 86px;
+    }
+    .eyebrow{display:flex;align-items:center;gap:10px;margin:0 0 20px;color:var(--green);font-size:12px;font-weight:950;letter-spacing:.16em;text-transform:uppercase}
+    .eyebrow:before{content:"";width:30px;height:2px;border-radius:2px;background:var(--green);box-shadow:0 0 16px var(--green)}
+    h1{max-width:760px;margin:0;font-size:clamp(48px,6.5vw,86px);line-height:.98;letter-spacing:-.058em}
+    h1 span{
+      display:block;
+      color:transparent;
+      background:linear-gradient(110deg,#fff3bd 0%,var(--gold) 48%,#ffac28 100%);
+      -webkit-background-clip:text;
+      background-clip:text;
+    }
+    .lead{max-width:630px;margin:28px 0 26px;color:var(--muted);font-size:clamp(17px,2vw,20px);line-height:1.65}
+    .content-pills{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 28px}
+    .content-pills span{padding:9px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.045);color:#e8eee9;font-size:13px;font-weight:750}
+    .hero-note{display:flex;align-items:center;gap:13px;color:#dce6e0;font-size:14px;font-weight:750}
+    .avatars{display:flex;padding-left:8px}
+    .avatars i{display:grid;place-items:center;width:34px;height:34px;margin-left:-8px;border:2px solid #0a1911;border-radius:50%;font-style:normal;background:linear-gradient(145deg,#19422d,#0f2c1e);box-shadow:0 6px 14px rgba(0,0,0,.2)}
+
+    .plan-wrap{position:relative}
+    .plan-wrap:before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      border-radius:calc(var(--radius) + 2px);
+      background:linear-gradient(135deg,rgba(248,200,74,.8),rgba(69,227,140,.22),rgba(255,255,255,.08));
+      filter:blur(.2px);
+      z-index:-1;
+    }
+    .plan-card{
+      position:relative;
+      overflow:hidden;
+      padding:28px;
+      border-radius:var(--radius);
+      background:linear-gradient(160deg,rgba(20,50,35,.96),rgba(8,25,17,.97));
+      box-shadow:var(--shadow);
+      isolation:isolate;
+    }
+    .plan-card:after{
+      content:"";
+      position:absolute;
+      width:220px;
+      height:220px;
+      right:-100px;
+      top:-110px;
+      border-radius:50%;
+      background:radial-gradient(circle,rgba(248,200,74,.24),transparent 66%);
+      z-index:-1;
+    }
+    .plan-top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:22px}
+    .plan-kicker{margin:0 0 5px;color:#c9d5ce;font-size:12px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
+    .plan-title{margin:0;font-size:24px;letter-spacing:-.02em}
+    .live-chip{display:flex;align-items:center;gap:7px;white-space:nowrap;padding:8px 10px;border:1px solid rgba(69,227,140,.24);border-radius:999px;background:rgba(69,227,140,.09);color:#8ff0b8;font-size:11px;font-weight:900;text-transform:uppercase}
+    .live-chip:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 5px rgba(69,227,140,.12);animation:pulse 1.8s ease-out infinite}
+    @keyframes pulse{50%{box-shadow:0 0 0 8px rgba(69,227,140,0)}}
+    .price-row{display:flex;align-items:flex-end;gap:11px;padding:0 0 24px;border-bottom:1px solid var(--line)}
+    .price{font-size:64px;font-weight:950;line-height:.85;letter-spacing:-.06em;color:#fff}
+    .price-meta{padding-bottom:4px;color:#bdc9c2;font-size:13px;line-height:1.35}
+    .price-meta strong{display:block;color:var(--gold);font-size:14px}
+
+    .region-label{display:block;margin:22px 0 10px;color:#dbe5df;font-size:12px;font-weight:850;letter-spacing:.06em;text-transform:uppercase}
+    .region-switch{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;border:1px solid var(--line);border-radius:15px;background:rgba(0,0,0,.2)}
+    .region-switch button{min-height:46px;padding:10px;border:0;border-radius:11px;background:transparent;color:#9eafa5;cursor:pointer;font-size:13px;font-weight:850;transition:.22s ease}
+    .region-switch button[aria-selected="true"]{background:#f7f2df;color:#102219;box-shadow:0 8px 18px rgba(0,0,0,.24)}
+
+    .region-panel{display:none;padding-top:21px}
+    .region-panel.active{display:block;animation:panelIn .32s ease both}
+    @keyframes panelIn{from{opacity:0;transform:translateY(7px)}}
+    .included{display:grid;gap:11px;margin:0 0 20px;padding:0;list-style:none}
+    .included li{display:flex;align-items:flex-start;gap:10px;color:#d7e1db;font-size:14px;line-height:1.4}
+    .included li:before{content:"✓";display:grid;place-items:center;flex:0 0 20px;height:20px;border-radius:50%;background:rgba(69,227,140,.12);color:var(--green);font-size:12px;font-weight:950}
+    .primary-cta,.secondary-cta{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      width:100%;
+      min-height:60px;
+      padding:15px 18px;
+      border-radius:16px;
+      text-align:center;
+      text-decoration:none;
+      font-size:17px;
+      font-weight:950;
+      transition:transform .2s ease,box-shadow .2s ease,filter .2s ease;
+    }
+    .primary-cta{color:#201703;background:linear-gradient(120deg,#f6b91f,#ffe075 53%,#f2a91c);background-size:180% 100%;box-shadow:0 16px 34px rgba(248,184,31,.22);animation:buttonGlow 5s ease-in-out infinite}
+    .secondary-cta{color:#062013;background:linear-gradient(120deg,#2bcf77,#72efa9);box-shadow:0 16px 34px rgba(43,207,119,.17)}
+    .primary-cta:hover,.secondary-cta:hover{transform:translateY(-2px);filter:saturate(1.1);box-shadow:0 20px 42px rgba(0,0,0,.3)}
+    @keyframes buttonGlow{50%{background-position:100% 0}}
+    .cta-arrow{font-size:23px;line-height:1;transition:transform .2s ease}
+    .primary-cta:hover .cta-arrow,.secondary-cta:hover .cta-arrow{transform:translateX(3px)}
+    .cta-help{margin:11px 3px 0;text-align:center;color:#90a298;font-size:11px;line-height:1.5}
+
+    .trust-strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:rgba(255,255,255,.025)}
+    .trust-items{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;padding:22px 0}
+    .trust-item{display:flex;align-items:center;justify-content:center;gap:10px;color:#cad6cf;font-size:13px;font-weight:750;text-align:center}
+    .trust-icon{display:grid;place-items:center;width:30px;height:30px;border:1px solid rgba(248,200,74,.18);border-radius:9px;background:rgba(248,200,74,.07);color:var(--gold);font-weight:950}
+
+    .section{padding:96px 0}
+    .section-heading{max-width:700px;margin:0 auto 42px;text-align:center}
+    .section-heading .mini{color:var(--green);font-size:12px;font-weight:950;letter-spacing:.15em;text-transform:uppercase}
+    .section-heading h2{margin:12px 0 14px;font-size:clamp(34px,5vw,52px);line-height:1.05;letter-spacing:-.04em}
+    .section-heading p{margin:0;color:var(--muted);font-size:17px;line-height:1.65}
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .step{position:relative;min-height:260px;padding:28px;border:1px solid var(--line);border-radius:24px;background:linear-gradient(155deg,rgba(255,255,255,.065),rgba(255,255,255,.025));overflow:hidden}
+    .step:after{content:attr(data-step);position:absolute;right:-4px;bottom:-35px;color:rgba(255,255,255,.035);font-size:150px;font-weight:950;line-height:1}
+    .step-number{display:grid;place-items:center;width:48px;height:48px;margin-bottom:42px;border:1px solid rgba(248,200,74,.25);border-radius:15px;background:rgba(248,200,74,.09);color:var(--gold);font-size:18px;font-weight:950}
+    .step h3{position:relative;z-index:1;margin:0 0 10px;font-size:22px}
+    .step p{position:relative;z-index:1;margin:0;color:var(--muted);line-height:1.65}
+
+    .devices-panel{display:grid;grid-template-columns:.9fr 1.1fr;gap:44px;align-items:center;padding:42px;border:1px solid var(--line);border-radius:32px;background:linear-gradient(135deg,rgba(248,200,74,.085),rgba(69,227,140,.055));box-shadow:0 24px 70px rgba(0,0,0,.18)}
+    .devices-panel h2{margin:0 0 14px;font-size:clamp(34px,4.5vw,50px);line-height:1.06;letter-spacing:-.04em}
+    .devices-panel p{margin:0;color:var(--muted);line-height:1.65}
+    .device-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .device{display:flex;align-items:center;gap:13px;min-height:76px;padding:16px;border:1px solid var(--line);border-radius:17px;background:rgba(5,18,12,.55);font-size:14px;font-weight:850}
+    .device-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:rgba(69,227,140,.1);color:var(--green);font-size:19px}
+    .device-note{grid-column:1/-1;padding:5px 3px 0;color:#95a79d;font-size:12px;text-align:center}
+
+    .faq{max-width:850px;margin:0 auto;display:grid;gap:12px}
+    details{border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.035);transition:border-color .2s ease,background .2s ease}
+    details[open]{border-color:rgba(248,200,74,.25);background:rgba(248,200,74,.055)}
+    summary{position:relative;padding:21px 54px 21px 22px;cursor:pointer;list-style:none;font-weight:850}
+    summary::-webkit-details-marker{display:none}
+    summary:after{content:"+";position:absolute;right:22px;top:50%;transform:translateY(-50%);color:var(--gold);font-size:24px;font-weight:500;transition:transform .2s ease}
+    details[open] summary:after{transform:translateY(-50%) rotate(45deg)}
+    details p{margin:0;padding:0 22px 22px;color:var(--muted);line-height:1.65}
+
+    .final-card{position:relative;overflow:hidden;padding:58px 30px;border:1px solid rgba(248,200,74,.25);border-radius:32px;background:linear-gradient(135deg,#183a29,#0d2419);text-align:center;box-shadow:var(--shadow)}
+    .final-card:before{content:"";position:absolute;inset:auto -20% -100px;width:140%;height:210px;border-radius:50%;background:rgba(248,200,74,.08);filter:blur(30px)}
+    .final-card h2{position:relative;margin:0 auto 14px;max-width:760px;font-size:clamp(36px,5vw,60px);line-height:1.05;letter-spacing:-.045em}
+    .final-card p{position:relative;margin:0 auto 26px;max-width:600px;color:#bdccc3;font-size:17px;line-height:1.6}
+    .final-actions{position:relative;display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+    .final-actions a{min-width:230px;width:auto;padding-inline:24px}
+
+    footer{padding:30px 0 100px;color:#91a197;font-size:13px}
+    .footer-row{display:flex;align-items:center;justify-content:space-between;gap:22px;padding-top:26px;border-top:1px solid var(--line)}
+    .footer-links{display:flex;flex-wrap:wrap;gap:18px}
+    .footer-links a{text-decoration:none}
+    .footer-links a:hover{color:#fff}
+
+    .support-fab{position:fixed;right:22px;bottom:22px;z-index:20;display:flex;align-items:center;gap:10px;padding:13px 16px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:#25d366;color:#061c10;text-decoration:none;font-size:13px;font-weight:950;box-shadow:0 16px 34px rgba(0,0,0,.34);transition:transform .2s ease}
+    .support-fab:hover{transform:translateY(-3px)}
+    .support-fab b{font-size:19px}
+    .mobile-buy{display:none}
+    .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+    .reveal.visible{opacity:1;transform:none}
+
+    @media(max-width:900px){
+      .hero{grid-template-columns:1fr;gap:42px;padding:38px 0 68px}
+      .hero-copy{text-align:center}
+      .eyebrow{justify-content:center}
+      .lead{margin-left:auto;margin-right:auto}
+      .content-pills,.hero-note{justify-content:center}
+      .plan-wrap{width:min(560px,100%);margin:0 auto}
+      .steps{grid-template-columns:1fr}
+      .step{min-height:auto}
+      .step-number{margin-bottom:28px}
+      .devices-panel{grid-template-columns:1fr;text-align:center}
+      .device{text-align:left}
+    }
+    @media(max-width:650px){
+      .shell{width:min(100% - 28px,1180px)}
+      .announcement{font-size:11px;line-height:1.4}
+      .site-header{padding:14px 0}
+      .brand img{width:56px;height:43px}
+      .brand span{display:none}
+      .nav-links a{display:none}
+      .nav-links .nav-cta{display:block;padding:9px 12px;font-size:12px}
+      .hero{padding-top:30px}
+      h1{font-size:clamp(44px,14vw,64px)}
+      .lead{font-size:16px}
+      .content-pills{gap:7px}
+      .content-pills span{padding:8px 10px;font-size:11px}
+      .plan-card{padding:22px 18px;border-radius:23px}
+      .plan-title{font-size:20px}
+      .live-chip{padding:7px 8px;font-size:9px}
+      .price{font-size:58px}
+      .trust-items{grid-template-columns:1fr;gap:13px;padding:18px 0}
+      .trust-item{justify-content:flex-start}
+      .section{padding:70px 0}
+      .section-heading{margin-bottom:30px}
+      .section-heading p{font-size:15px}
+      .step{padding:22px}
+      .devices-panel{padding:28px 18px;border-radius:24px}
+      .device-grid{grid-template-columns:1fr}
+      .device-note{grid-column:auto}
+      .final-card{padding:42px 18px;border-radius:24px}
+      .final-actions{display:grid}
+      .final-actions a{width:100%;min-width:0}
+      .footer-row{align-items:flex-start;flex-direction:column}
+      .support-fab{display:none}
+      footer{padding-bottom:112px}
+      .mobile-buy{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px max(14px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));border-top:1px solid rgba(255,255,255,.12);background:rgba(5,16,11,.92);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+      .mobile-buy a{min-height:54px;font-size:15px}
+    }
+    @media(prefers-reduced-motion:reduce){
+      *,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}
+      .reveal{opacity:1;transform:none}
+    }
+  </style>
 </head>
 <body>
-<div class="top">Ghana subscribers can now pay online securely. International subscribers can contact WORLD TV on WhatsApp.</div>
-<main class="wrap">
-  <section class="card">
-    <img class="logo" src="/world-tv-logo.png" alt="WORLD TV logo">
-    <span class="badge">PROMOTION LIVE</span>
-    <h1>Get 1 Year for US$23</h1>
-    <div class="price">$23 USD</div>
-    <p class="term">365-day WORLD TV subscription</p>
+  <div class="glow one"></div>
+  <div class="glow two"></div>
 
-    <div class="benefits">
-      <div class="benefit">✓ 365-Day Access</div>
-      <div class="benefit">✓ Ghana Online Payment</div>
-      <div class="benefit">✓ WhatsApp Assistance</div>
+  <div class="announcement">Ghana online payment is now available • International payment support on WhatsApp</div>
+
+  <header class="site-header">
+    <div class="shell nav">
+      <a class="brand" href="/" aria-label="WORLD TV home">
+        <img src="/world-tv-logo.png" alt="WORLD TV">
+        <span>WORLD TV</span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="/">Home</a>
+        <a href="/download.html">Download App</a>
+        <a href="#how-it-works">How It Works</a>
+        <a class="nav-cta" href="#subscribe">Subscribe Now</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="shell hero" id="subscribe">
+      <div class="hero-copy">
+        <p class="eyebrow">Your entertainment. Your way.</p>
+        <h1>One subscription.<span>A world to watch.</span></h1>
+        <p class="lead">Unlock 365 days of WORLD TV on supported Android devices. Choose where you are paying from, complete your subscription, and activate your viewing code.</p>
+        <div class="content-pills" aria-label="WORLD TV content">
+          <span>Live TV</span><span>Movies</span><span>Series</span><span>Sports</span><span>Kids</span><span>International</span>
+        </div>
+        <div class="hero-note">
+          <div class="avatars" aria-hidden="true"><i>TV</i><i>▶</i><i>★</i></div>
+          <span>Simple annual plan • No monthly renewal</span>
+        </div>
+      </div>
+
+      <div class="plan-wrap reveal">
+        <article class="plan-card" aria-label="WORLD TV annual subscription plan">
+          <div class="plan-top">
+            <div>
+              <p class="plan-kicker">Annual pass</p>
+              <h2 class="plan-title">WORLD TV — 1 Year</h2>
+            </div>
+            <span class="live-chip">Available now</span>
+          </div>
+
+          <div class="price-row">
+            <div class="price">$23</div>
+            <div class="price-meta"><strong>US dollars</strong>one payment / 365 days</div>
+          </div>
+
+          <span class="region-label">Where are you paying from?</span>
+          <div class="region-switch" role="tablist" aria-label="Choose your payment region">
+            <button id="ghana-tab" type="button" role="tab" aria-selected="true" aria-controls="ghana-panel" data-region="ghana">🇬🇭 Ghana</button>
+            <button id="global-tab" type="button" role="tab" aria-selected="false" aria-controls="global-panel" data-region="global">🌍 Outside Ghana</button>
+          </div>
+
+          <div class="region-panel active" id="ghana-panel" role="tabpanel" aria-labelledby="ghana-tab">
+            <ul class="included">
+              <li>One full year of WORLD TV access</li>
+              <li>Complete payment through the Ghana checkout page</li>
+              <li>Subscription code sent after payment confirmation</li>
+            </ul>
+            <a class="primary-cta" id="ghana-pay" href="https://pocketi.shop/worldtv/p/worldtv-yearly-subscription" target="_blank" rel="noopener noreferrer">
+              <span>Continue to Ghana Payment</span><span class="cta-arrow">→</span>
+            </a>
+            <p class="cta-help">The final amount and available payment options are shown on the checkout page.</p>
+          </div>
+
+          <div class="region-panel" id="global-panel" role="tabpanel" aria-labelledby="global-tab" hidden>
+            <ul class="included">
+              <li>One full year of WORLD TV access</li>
+              <li>Personal payment assistance for your country</li>
+              <li>Subscription code sent after payment confirmation</li>
+            </ul>
+            <a class="secondary-cta" href="https://wa.me/15309040310?text=Hello%20WORLD%20TV%2C%20I%20want%20to%20subscribe%20for%201%20year%20at%20US%2423%20and%20make%20payment.%20Please%20assist%20me." target="_blank" rel="noopener noreferrer">
+              <span>Continue on WhatsApp</span><span class="cta-arrow">→</span>
+            </a>
+            <p class="cta-help">Chat with WORLD TV at +1 (530) 904-0310 for payment assistance.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <div class="trust-strip">
+      <div class="shell trust-items">
+        <div class="trust-item"><span class="trust-icon">✓</span><span>Clear annual pricing</span></div>
+        <div class="trust-item"><span class="trust-icon">365</span><span>365-day access</span></div>
+        <div class="trust-item"><span class="trust-icon">?</span><span>WhatsApp assistance</span></div>
+      </div>
     </div>
 
-    <div class="notice">
-      <h2>🇬🇭 Ghana Subscribers</h2>
-      <p>Click <strong>Pay Now</strong> to open the secure yearly-subscription payment page and complete your payment.</p>
+    <section class="section shell" id="how-it-works">
+      <div class="section-heading reveal">
+        <span class="mini">Fast and simple</span>
+        <h2>From payment to watching in three steps</h2>
+        <p>Everything is designed to make starting your annual subscription clear and easy.</p>
+      </div>
+      <div class="steps">
+        <article class="step reveal" data-step="1">
+          <div class="step-number">01</div>
+          <h3>Choose your location</h3>
+          <p>Select Ghana for the online checkout, or Outside Ghana for payment assistance on WhatsApp.</p>
+        </article>
+        <article class="step reveal" data-step="2">
+          <div class="step-number">02</div>
+          <h3>Complete payment</h3>
+          <p>Follow the payment instructions shown on your selected checkout or provided by WORLD TV support.</p>
+        </article>
+        <article class="step reveal" data-step="3">
+          <div class="step-number">03</div>
+          <h3>Receive and activate</h3>
+          <p>After payment is confirmed, use your subscription code to activate one full year in the WORLD TV app.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section shell">
+      <div class="devices-panel reveal">
+        <div>
+          <p class="eyebrow">Watch your way</p>
+          <h2>Made for your Android screens</h2>
+          <p>Enjoy WORLD TV at home or on the go across supported Android devices.</p>
+        </div>
+        <div class="device-grid">
+          <div class="device"><span class="device-icon">▣</span><span>Android TV</span></div>
+          <div class="device"><span class="device-icon">G</span><span>Google TV</span></div>
+          <div class="device"><span class="device-icon">□</span><span>Android TV Box</span></div>
+          <div class="device"><span class="device-icon">▯</span><span>Android Phone &amp; Tablet</span></div>
+          <div class="device-note">WORLD TV is not currently available for iPhone or iOS.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section shell">
+      <div class="section-heading reveal">
+        <span class="mini">Good to know</span>
+        <h2>Questions before you subscribe?</h2>
+      </div>
+      <div class="faq reveal">
+        <details>
+          <summary>How much is the annual subscription?</summary>
+          <p>The WORLD TV annual subscription is US$23 for 365 days. Ghana customers can continue to the local checkout page, where the final amount is displayed before payment.</p>
+        </details>
+        <details>
+          <summary>What happens after I make payment?</summary>
+          <p>Your payment will be confirmed and your one-year subscription code will be provided for activation in the WORLD TV app. Keep your payment receipt until activation is complete.</p>
+        </details>
+        <details>
+          <summary>What if I need help?</summary>
+          <p>Message WORLD TV on WhatsApp at +1 (530) 904-0310. Include the name or phone number used for payment so support can assist you faster.</p>
+        </details>
+        <details>
+          <summary>Where can I download the WORLD TV app?</summary>
+          <p>Visit the <a href="/download.html">WORLD TV download page</a> for the app and step-by-step installation instructions.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="section shell">
+      <div class="final-card reveal">
+        <h2>Ready for a full year of entertainment?</h2>
+        <p>Choose your payment route and take the next step toward activating WORLD TV today.</p>
+        <div class="final-actions">
+          <a class="primary-cta" href="https://pocketi.shop/worldtv/p/worldtv-yearly-subscription" target="_blank" rel="noopener noreferrer"><span>Pay from Ghana</span><span class="cta-arrow">→</span></a>
+          <a class="secondary-cta" href="https://wa.me/15309040310?text=Hello%20WORLD%20TV%2C%20I%20want%20to%20subscribe%20for%201%20year%20at%20US%2423%20and%20make%20payment.%20Please%20assist%20me." target="_blank" rel="noopener noreferrer"><span>Outside Ghana</span><span class="cta-arrow">→</span></a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-row">
+      <span>© <span id="year"></span> WORLD TV. All rights reserved.</span>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="/terms.html">Terms</a>
+        <a href="/refund.html">Refund Policy</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/contact.html">Contact</a>
+      </nav>
     </div>
+  </footer>
 
-    <a class="pay" href="https://pocketi.shop/worldtv/p/worldtv-yearly-subscription" target="_blank" rel="noopener">🇬🇭 Pay Now — Ghana Subscribers</a>
+  <a class="support-fab" href="https://wa.me/15309040310?text=Hello%20WORLD%20TV%2C%20I%20need%20help%20with%20a%20subscription." target="_blank" rel="noopener noreferrer" aria-label="Get WORLD TV help on WhatsApp"><b>✆</b><span>Need help?</span></a>
 
-    <div class="divider">INTERNATIONAL SUBSCRIBERS</div>
+  <div class="mobile-buy">
+    <a class="primary-cta" id="mobile-cta" href="https://pocketi.shop/worldtv/p/worldtv-yearly-subscription" target="_blank" rel="noopener noreferrer"><span>Pay from Ghana</span><span class="cta-arrow">→</span></a>
+  </div>
 
-    <p style="margin:0 0 12px;color:#675d46">Outside Ghana? Contact WORLD TV on WhatsApp for payment assistance.</p>
-    <a class="wa" href="https://wa.me/15309040310?text=Hello%20WORLD%20TV%2C%20I%20want%20to%20subscribe%20for%201%20year%20at%20US%2423%20and%20make%20payment.%20Please%20assist%20me." target="_blank" rel="noopener">💬 Subscribe & Pay on WhatsApp</a>
+  <script>
+    (() => {
+      const tabs = [...document.querySelectorAll('[data-region]')];
+      const panels = {
+        ghana: document.getElementById('ghana-panel'),
+        global: document.getElementById('global-panel')
+      };
+      const mobileCta = document.getElementById('mobile-cta');
+      const ghanaUrl = 'https://pocketi.shop/worldtv/p/worldtv-yearly-subscription';
+      const whatsappUrl = 'https://wa.me/15309040310?text=Hello%20WORLD%20TV%2C%20I%20want%20to%20subscribe%20for%201%20year%20at%20US%2423%20and%20make%20payment.%20Please%20assist%20me.';
 
-    <p class="small">Ghana customers should use the Pay Now button. International customers can use WhatsApp for assistance.</p>
-    <div class="links"><a href="/">Home</a><a href="/login.html">Login</a><a href="/account.html">My Account</a></div>
-  </section>
-</main>
+      function selectRegion(region) {
+        tabs.forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.region === region)));
+        Object.entries(panels).forEach(([key, panel]) => {
+          const active = key === region;
+          panel.hidden = !active;
+          panel.classList.toggle('active', active);
+        });
+        mobileCta.href = region === 'ghana' ? ghanaUrl : whatsappUrl;
+        mobileCta.querySelector('span').textContent = region === 'ghana' ? 'Pay from Ghana' : 'Continue on WhatsApp';
+      }
+
+      tabs.forEach(tab => tab.addEventListener('click', () => selectRegion(tab.dataset.region)));
+
+      try {
+        const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (zone && zone !== 'Africa/Accra') selectRegion('global');
+      } catch (_) {}
+
+      document.getElementById('year').textContent = new Date().getFullYear();
+
+      const items = document.querySelectorAll('.reveal');
+      if ('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, {threshold:.12});
+        items.forEach(item => observer.observe(item));
+      } else {
+        items.forEach(item => item.classList.add('visible'));
+      }
+    })();
+  </script>
 </body>
 </html>
