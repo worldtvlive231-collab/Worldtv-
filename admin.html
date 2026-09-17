@@ -581,7 +581,11 @@ async function loadLiveChatConversations(){
     if(toggle) toggle.checked=!!ai.enabled;
     if(aiState){
       aiState.className="live-chat-ai-state "+(ai.active?"active":ai.enabled&&!ai.configured?"warning":"");
-      aiState.textContent=ai.active?`● Active • ${ai.model}`:ai.enabled&&!ai.configured?"API key required":"Off";
+      aiState.textContent=ai.active
+        ? `● Active • ${ai.model}${ai.last_error?` • ${ai.last_error}`:""}`
+        : ai.enabled&&!ai.configured
+          ? (ai.configuration_error==="invalid_format"?"API key format invalid":"Key not loaded in Railway")
+          : "Off";
     }
     renderLiveChatList();
     const status=$("liveChatStatusText");
