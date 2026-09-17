@@ -149,6 +149,31 @@ CREATE TABLE IF NOT EXISTS site_settings(
  key TEXT PRIMARY KEY,
  value TEXT NOT NULL DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS live_chat_conversations(
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ visitor_token_hash TEXT NOT NULL UNIQUE,
+ name TEXT NOT NULL DEFAULT 'Website visitor',
+ email TEXT NOT NULL DEFAULT '',
+ page_path TEXT NOT NULL DEFAULT '/',
+ status TEXT NOT NULL DEFAULT 'open',
+ unread_admin INTEGER NOT NULL DEFAULT 0,
+ unread_customer INTEGER NOT NULL DEFAULT 0,
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ last_message_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_live_chat_conversations_status
+ ON live_chat_conversations(status,last_message_at);
+CREATE TABLE IF NOT EXISTS live_chat_messages(
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ conversation_id INTEGER NOT NULL,
+ sender TEXT NOT NULL,
+ body TEXT NOT NULL,
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(conversation_id) REFERENCES live_chat_conversations(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_live_chat_messages_conversation
+ ON live_chat_messages(conversation_id,id);
 `);
 
 // ============ LIVE ANALYTICS V2 TABLES ============
@@ -302,6 +327,224 @@ function adminOnly(req,res,next){
 
   next();
 }
+
+// ============ WEBSITE LIVE CHAT ============
+const liveChatRateLimits = new Map();
+
+function liveChatToken(req){
+  const token=String(
+    req.headers["x-chat-token"] || req.body?.chat_token || req.query?.chat_token || ""
+  ).trim();
+  return /^[A-Za-z0-9._:-]{20,200}$/.test(token) ? token : "";
+}
+
+function liveChatTokenHash(token){
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function cleanLiveChatText(value,maxLength){
+  return String(value||"").replace(/\u0000/g,"").trim().slice(0,maxLength);
+}
+
+function liveChatMessageRateLimit(req,res,next){
+  const token=liveChatToken(req);
+  const key=`${req.ip}:${token ? liveChatTokenHash(token) : "missing"}`;
+  const now=Date.now();
+  const windowMs=10*60*1000;
+  const current=liveChatRateLimits.get(key)||{count:0,startedAt:now};
+  if(now-current.startedAt>windowMs){
+    current.count=0;
+    current.startedAt=now;
+  }
+  current.count+=1;
+  liveChatRateLimits.set(key,current);
+  if(current.count>30){
+    return res.status(429).json({error:"Too many messages. Please wait a few minutes and try again."});
+  }
+  next();
+}
+
+function publicLiveChatConversation(req){
+  const token=liveChatToken(req);
+  if(!token) return null;
+  return db.prepare(
+    "SELECT * FROM live_chat_conversations WHERE visitor_token_hash=?"
+  ).get(liveChatTokenHash(token))||null;
+}
+
+app.get("/api/chat/messages",(req,res)=>{
+  const token=liveChatToken(req);
+  if(!token) return res.status(400).json({error:"Chat session is missing"});
+
+  const conversation=publicLiveChatConversation(req);
+  res.setHeader("Cache-Control","no-store");
+  if(!conversation){
+    return res.json({conversation:null,messages:[],unread:0});
+  }
+
+  const after=Math.max(0,Number.parseInt(req.query.after,10)||0);
+  const messages=db.prepare(`
+    SELECT id,sender,body,created_at
+    FROM live_chat_messages
+    WHERE conversation_id=? AND id>?
+    ORDER BY id ASC
+    LIMIT 250
+  `).all(conversation.id,after);
+
+  const markRead=String(req.query.mark_read||"")==="1";
+  if(markRead && conversation.unread_customer){
+    db.prepare(
+      "UPDATE live_chat_conversations SET unread_customer=0,updated_at=CURRENT_TIMESTAMP WHERE id=?"
+    ).run(conversation.id);
+  }
+
+  res.json({
+    conversation:{
+      id:conversation.id,
+      name:conversation.name,
+      email:conversation.email,
+      status:conversation.status,
+      created_at:conversation.created_at
+    },
+    messages,
+    unread:markRead?0:Number(conversation.unread_customer||0)
+  });
+});
+
+app.post("/api/chat/messages",liveChatMessageRateLimit,(req,res)=>{
+  const token=liveChatToken(req);
+  if(!token) return res.status(400).json({error:"Chat session is missing"});
+
+  const body=cleanLiveChatText(req.body?.body,2000);
+  const name=cleanLiveChatText(req.body?.name,80)||"Website visitor";
+  const email=cleanLiveChatText(req.body?.email,160).toLowerCase();
+  const pagePath=cleanLiveChatText(req.body?.page_path,300)||"/";
+  if(!body) return res.status(400).json({error:"Please enter a message"});
+  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    return res.status(400).json({error:"Please enter a valid email address"});
+  }
+
+  const tokenHash=liveChatTokenHash(token);
+  const saveMessage=db.transaction(()=>{
+    let conversation=db.prepare(
+      "SELECT * FROM live_chat_conversations WHERE visitor_token_hash=?"
+    ).get(tokenHash);
+
+    if(!conversation){
+      const result=db.prepare(`
+        INSERT INTO live_chat_conversations(
+          visitor_token_hash,name,email,page_path,status,unread_admin,unread_customer
+        ) VALUES(?,?,?,?, 'open',0,0)
+      `).run(tokenHash,name,email,pagePath);
+      conversation=db.prepare("SELECT * FROM live_chat_conversations WHERE id=?").get(result.lastInsertRowid);
+    }else{
+      db.prepare(`
+        UPDATE live_chat_conversations
+        SET name=?,email=?,page_path=?,status='open',updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
+      `).run(name,email,pagePath,conversation.id);
+    }
+
+    const result=db.prepare(`
+      INSERT INTO live_chat_messages(conversation_id,sender,body)
+      VALUES(?,'customer',?)
+    `).run(conversation.id,body);
+
+    db.prepare(`
+      UPDATE live_chat_conversations
+      SET unread_admin=unread_admin+1,last_message_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(conversation.id);
+
+    return db.prepare(
+      "SELECT id,sender,body,created_at FROM live_chat_messages WHERE id=?"
+    ).get(result.lastInsertRowid);
+  });
+
+  const message=saveMessage();
+  res.status(201).json({ok:true,message});
+});
+
+app.get("/api/admin/chat/conversations",adminOnly,(req,res)=>{
+  const conversations=db.prepare(`
+    SELECT c.id,c.name,c.email,c.page_path,c.status,c.unread_admin,c.unread_customer,
+           c.created_at,c.updated_at,c.last_message_at,
+           COALESCE((
+             SELECT m.body FROM live_chat_messages m
+             WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1
+           ),'') AS last_message,
+           COALESCE((
+             SELECT m.sender FROM live_chat_messages m
+             WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1
+           ),'customer') AS last_sender
+    FROM live_chat_conversations c
+    ORDER BY CASE WHEN c.status='open' THEN 0 ELSE 1 END,
+             c.last_message_at DESC,c.id DESC
+    LIMIT 500
+  `).all();
+  const unreadTotal=conversations.reduce((sum,row)=>sum+Number(row.unread_admin||0),0);
+  res.setHeader("Cache-Control","no-store");
+  res.json({conversations,unread_total:unreadTotal});
+});
+
+app.get("/api/admin/chat/conversations/:id/messages",adminOnly,(req,res)=>{
+  const conversation=db.prepare(`
+    SELECT id,name,email,page_path,status,unread_admin,unread_customer,
+           created_at,updated_at,last_message_at
+    FROM live_chat_conversations WHERE id=?
+  `).get(req.params.id);
+  if(!conversation) return res.status(404).json({error:"Conversation not found"});
+
+  const messages=db.prepare(`
+    SELECT id,sender,body,created_at
+    FROM live_chat_messages
+    WHERE conversation_id=? ORDER BY id ASC LIMIT 1000
+  `).all(conversation.id);
+  db.prepare(
+    "UPDATE live_chat_conversations SET unread_admin=0,updated_at=CURRENT_TIMESTAMP WHERE id=?"
+  ).run(conversation.id);
+  res.setHeader("Cache-Control","no-store");
+  res.json({conversation:{...conversation,unread_admin:0},messages});
+});
+
+app.post("/api/admin/chat/conversations/:id/messages",adminOnly,(req,res)=>{
+  const body=cleanLiveChatText(req.body?.body,2000);
+  if(!body) return res.status(400).json({error:"Please enter a reply"});
+  const conversation=db.prepare(
+    "SELECT id FROM live_chat_conversations WHERE id=?"
+  ).get(req.params.id);
+  if(!conversation) return res.status(404).json({error:"Conversation not found"});
+
+  const reply=db.transaction(()=>{
+    const result=db.prepare(`
+      INSERT INTO live_chat_messages(conversation_id,sender,body)
+      VALUES(?,'admin',?)
+    `).run(conversation.id,body);
+    db.prepare(`
+      UPDATE live_chat_conversations
+      SET status='open',unread_admin=0,unread_customer=unread_customer+1,
+          last_message_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(conversation.id);
+    return db.prepare(
+      "SELECT id,sender,body,created_at FROM live_chat_messages WHERE id=?"
+    ).get(result.lastInsertRowid);
+  })();
+  res.status(201).json({ok:true,message:reply});
+});
+
+app.patch("/api/admin/chat/conversations/:id",adminOnly,(req,res)=>{
+  const status=String(req.body?.status||"").toLowerCase();
+  if(!["open","closed"].includes(status)){
+    return res.status(400).json({error:"Status must be open or closed"});
+  }
+  const result=db.prepare(`
+    UPDATE live_chat_conversations SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?
+  `).run(status,req.params.id);
+  if(!result.changes) return res.status(404).json({error:"Conversation not found"});
+  res.json({ok:true,status});
+});
+
 db.exec(`CREATE TABLE IF NOT EXISTS resellers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,email TEXT NOT NULL UNIQUE,phone TEXT,password_hash TEXT NOT NULL,commission_percent REAL NOT NULL DEFAULT 10,status TEXT NOT NULL DEFAULT 'active',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS reseller_sales(id INTEGER PRIMARY KEY AUTOINCREMENT,reseller_id INTEGER NOT NULL,customer_id INTEGER NOT NULL,plan_id INTEGER NOT NULL,amount_ghs REAL NOT NULL,commission_ghs REAL NOT NULL,status TEXT NOT NULL DEFAULT 'completed',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS reseller_payouts(id INTEGER PRIMARY KEY AUTOINCREMENT,reseller_id INTEGER NOT NULL,amount_ghs REAL NOT NULL,status TEXT NOT NULL DEFAULT 'pending',payout_date TEXT,notes TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS reseller_code_allocation(id INTEGER PRIMARY KEY AUTOINCREMENT,reseller_id INTEGER NOT NULL UNIQUE,allocated_count INTEGER NOT NULL DEFAULT 0,used_count INTEGER NOT NULL DEFAULT 0,available_count INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);`);
 
 // Reseller Management API
@@ -914,8 +1157,8 @@ function recordAnalyticsV2(req, res, next){
     .catch(err=>console.error("Analytics V2 page tracking error:", err.message));
 }
 
-// Adds the heartbeat script to every public HTML page, including pages that were
-// created before Analytics V2. Admin and reseller pages are intentionally excluded.
+// Adds analytics and customer chat to every public HTML page, including pages
+// created before these features. Admin and reseller pages are intentionally excluded.
 function injectAnalyticsScriptV2(req, res, next){
   if(req.method !== "GET") return next();
 
@@ -949,6 +1192,12 @@ function injectAnalyticsScriptV2(req, res, next){
 
     if(!/\/assets\/analytics\.js\?v=2/i.test(html)){
       const tag = '<script src="/assets/analytics.js?v=2"></script>';
+      if(/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, `${tag}</body>`);
+      else html += tag;
+    }
+
+    if(!/\/assets\/live-chat\.js\?v=1/i.test(html)){
+      const tag = '<script src="/assets/live-chat.js?v=1"></script>';
       if(/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, `${tag}</body>`);
       else html += tag;
     }
