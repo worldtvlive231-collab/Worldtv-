@@ -7,6 +7,7 @@ const bcrypt = require("bcryptjs");
 const multer = require("multer");
 const fs = require("fs");
 const Database = require("better-sqlite3");
+const {openAiApiKeyStatus}=require("./openai-key");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -352,6 +353,7 @@ function cleanLiveChatText(value,maxLength){
 }
 
 const liveChatAiInFlight=new Set();
+let liveChatAiLastError=null;
 
 function liveChatSiteSetting(key,fallback=""){
   const row=db.prepare("SELECT value FROM site_settings WHERE key=?").get(key);
@@ -361,12 +363,13 @@ function liveChatSiteSetting(key,fallback=""){
 function liveChatAiStatus(){
   const setting=liveChatSiteSetting("chat_ai_enabled","1").trim().toLowerCase();
   const enabled=!["0","false","off","no"].includes(setting);
-  const apiKey=String(process.env.OPENAI_API_KEY||"").trim();
-  const configured=apiKey.startsWith("sk-") && !apiKey.includes("your_openai_key_here");
+  const keyStatus=openAiApiKeyStatus(process.env.OPENAI_API_KEY);
   return {
     enabled,
-    configured,
-    active:enabled&&configured,
+    configured:keyStatus.configured,
+    active:enabled&&keyStatus.configured,
+    configuration_error:keyStatus.configuration_error,
+    last_error:liveChatAiLastError,
     model:String(process.env.OPENAI_MODEL||"gpt-5-mini").trim()
   };
 }
@@ -446,7 +449,7 @@ async function generateLiveChatAiReply(conversationId,triggerMessageId){
       response=await fetch(`${apiBase}/responses`,{
         method:"POST",
         headers:{
-          "Authorization":`Bearer ${process.env.OPENAI_API_KEY}`,
+          "Authorization":`Bearer ${openAiApiKeyStatus(process.env.OPENAI_API_KEY).key}`,
           "Content-Type":"application/json"
         },
         body:JSON.stringify({
@@ -464,11 +467,13 @@ async function generateLiveChatAiReply(conversationId,triggerMessageId){
     if(!response.ok){
       requestFailed=true;
       const detail=cleanLiveChatText(await response.text().catch(()=>""),300);
+      liveChatAiLastError=`OpenAI ${response.status}`;
       console.error(`Live chat AI error (${response.status}): ${detail}`);
       return;
     }
     const reply=liveChatAiOutputText(await response.json());
     if(!reply) return;
+    liveChatAiLastError=null;
 
     // A human reply or newer customer message always takes priority over the
     // answer generated for an older message.
@@ -490,6 +495,7 @@ async function generateLiveChatAiReply(conversationId,triggerMessageId){
     })();
   }catch(error){
     requestFailed=true;
+    liveChatAiLastError=error?.name==="AbortError"?"OpenAI timeout":"OpenAI connection error";
     console.error("Live chat AI generation failed:",error?.name==="AbortError"?"request timed out":error?.message||error);
   }finally{
     liveChatAiInFlight.delete(conversationId);
