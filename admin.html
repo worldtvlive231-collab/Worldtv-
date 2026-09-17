@@ -15,6 +15,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 .modal{display:none;position:fixed;inset:0;background:#0008;z-index:50;align-items:center;justify-content:center;padding:20px}.modal.open{display:flex}.modalbox{background:#fff;width:min(760px,100%);max-height:90vh;overflow:auto;border-radius:20px;padding:24px;position:relative}.close{position:absolute;right:16px;top:12px;border:0;background:none;font-size:26px;cursor:pointer}
 .sales-card{position:relative;overflow:hidden}.sales-card:after{content:"";position:absolute;right:-25px;bottom:-35px;width:90px;height:90px;border-radius:50%;background:#e0a20018}.live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#21a453;box-shadow:0 0 0 5px #21a4531c;margin-right:7px}.negative{color:#dc3545!important}
 .chat-tab-badge{display:none;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:#c93434;color:#fff;align-items:center;justify-content:center;font-size:11px;margin-left:5px}.chat-tab-badge.show{display:inline-flex}
+.live-chat-ai-controls{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.live-chat-ai-toggle{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #d8c9a7;border-radius:10px;padding:9px 12px;font-weight:800;font-size:13px}.live-chat-ai-toggle input{width:auto;margin:0}.live-chat-ai-state{font-size:12px;font-weight:800;color:#716958}.live-chat-ai-state.active{color:#21864a}.live-chat-ai-state.warning{color:#b36a00}.live-chat-ai-label{display:inline-block;margin-bottom:5px;padding:2px 7px;border-radius:99px;background:#fff3c9;border:1px solid #e6c45f;color:#765000;font-size:10px;font-weight:900}
 .live-chat-layout{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:16px;min-height:590px}.live-chat-sidebar,.live-chat-main{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden}.live-chat-filters{padding:14px;border-bottom:1px solid #eee6d6}.live-chat-filters input,.live-chat-filters select{margin:4px 0}.live-chat-list{max-height:510px;overflow:auto}.live-chat-list-item{display:block;width:100%;border:0;border-bottom:1px solid #eee6d6;background:#fff;padding:14px;text-align:left;cursor:pointer}.live-chat-list-item:hover,.live-chat-list-item.active{background:#fff7df}.live-chat-list-top{display:flex;align-items:center;gap:8px}.live-chat-list-top strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.live-chat-unread{min-width:21px;height:21px;border-radius:99px;background:#d89a00;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;margin-left:auto}.live-chat-preview{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}.live-chat-time{font-size:10px;color:#8b826e;margin-top:5px}.live-chat-main{display:flex;flex-direction:column}.live-chat-header{padding:16px;border-bottom:1px solid #eee6d6;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:78px}.live-chat-header h3{margin:0}.live-chat-messages{flex:1;min-height:360px;max-height:450px;overflow:auto;padding:18px;background:#fffaf0;display:flex;flex-direction:column;gap:10px}.live-chat-empty{margin:auto;color:var(--muted);text-align:center;padding:30px}.live-chat-bubble{max-width:78%;border-radius:15px;padding:10px 13px;white-space:pre-wrap;word-break:break-word;font-size:14px}.live-chat-bubble.customer{align-self:flex-start;background:#fff;border:1px solid #e4dac5;border-radius:15px 15px 15px 4px}.live-chat-bubble.admin{align-self:flex-end;background:#e0a200;border-radius:15px 15px 4px 15px}.live-chat-bubble small{display:block;opacity:.65;margin-top:5px}.live-chat-reply{padding:12px;border-top:1px solid #eee6d6;background:#fff;display:flex;gap:10px}.live-chat-reply textarea{margin:0;min-height:54px}.live-chat-reply button{min-width:92px}.live-chat-status-open{color:#21864a}.live-chat-status-closed{color:#7c7464}
 @media(max-width:850px){.grid{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr}table{display:block;overflow:auto;white-space:nowrap}.live-chat-layout{grid-template-columns:1fr}.live-chat-list{max-height:260px}.live-chat-messages{min-height:330px}.live-chat-reply{flex-direction:column}.live-chat-reply button{min-height:44px}}
 </style><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#e0a200"><link rel="apple-touch-icon" href="/assets/world-tv-logo.png"><link rel="icon" href="/assets/world-tv-logo.png"><meta property="og:site_name" content="World TV"><meta property="og:type" content="website"><meta property="og:image" content="https://myworldtvlive.com/assets/world-tv-logo.png"><script src="/assets/site-meta.js"></script><meta name="robots" content="noindex,nofollow"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head>
@@ -116,7 +117,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <section id="liveChatTab" class="hide">
   <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin:20px 0 12px">
     <div><h2 style="margin:0">Customer Live Chat</h2><p id="liveChatStatusText" class="muted" style="margin:5px 0 0">Messages update automatically.</p></div>
-    <button class="btn secondary" onclick="refreshLiveChat()">Refresh Now</button>
+    <div class="live-chat-ai-controls"><label class="live-chat-ai-toggle"><input id="liveChatAiToggle" type="checkbox" onchange="saveLiveChatAiSetting(this.checked)"> AI Auto-Reply</label><span id="liveChatAiState" class="live-chat-ai-state">Checking AI…</span><button class="btn secondary" onclick="refreshLiveChat()">Refresh Now</button></div>
   </div>
   <div class="live-chat-layout">
     <aside class="live-chat-sidebar">
@@ -562,7 +563,7 @@ function renderLiveChatList(){
         <span class="${item.status==="open"?"live-chat-status-open":"live-chat-status-closed"}">${item.status==="open"?"● Open":"Closed"}</span>
         ${Number(item.unread_admin||0)>0?`<span class="live-chat-unread">${Number(item.unread_admin)}</span>`:""}
       </div>
-      <div class="live-chat-preview">${item.last_sender==="admin"?"You: ":""}${escHtml(item.last_message||"No messages")}</div>
+      <div class="live-chat-preview">${item.last_sender==="admin"?(item.last_source==="ai"?"AI: ":"You: "):""}${escHtml(item.last_message||"No messages")}</div>
       <div class="live-chat-time">${escHtml(liveChatTime(item.last_message_at))}${item.email?` • ${escHtml(item.email)}`:""}</div>
     </button>
   `).join("");
@@ -574,6 +575,14 @@ async function loadLiveChatConversations(){
     const data=await api("/api/admin/chat/conversations");
     liveChatConversations=data.conversations||[];
     setLiveChatBadge(data.unread_total||0);
+    const ai=data.ai||{};
+    const toggle=$("liveChatAiToggle");
+    const aiState=$("liveChatAiState");
+    if(toggle) toggle.checked=!!ai.enabled;
+    if(aiState){
+      aiState.className="live-chat-ai-state "+(ai.active?"active":ai.enabled&&!ai.configured?"warning":"");
+      aiState.textContent=ai.active?`● Active • ${ai.model}`:ai.enabled&&!ai.configured?"API key required":"Off";
+    }
     renderLiveChatList();
     const status=$("liveChatStatusText");
     if(status) status.textContent=`Live • ${liveChatConversations.length} conversation${liveChatConversations.length===1?"":"s"} • Updated ${new Date().toLocaleTimeString()}`;
@@ -597,8 +606,9 @@ async function selectLiveChat(id,options={}){
     messagesEl.innerHTML=(data.messages||[]).length
       ? data.messages.map(message=>`
           <div class="live-chat-bubble ${message.sender==="admin"?"admin":"customer"}">
+            ${message.source==="ai"?'<span class="live-chat-ai-label">AI AUTO-REPLY</span>':""}
             ${escHtml(message.body)}
-            <small>${message.sender==="admin"?"You":"Customer"} • ${escHtml(liveChatTime(message.created_at))}</small>
+            <small>${message.sender==="admin"?(message.source==="ai"?"WORLD TV AI":"You"):"Customer"} • ${escHtml(liveChatTime(message.created_at))}</small>
           </div>`).join("")
       : '<div class="live-chat-empty">No messages in this conversation.</div>';
     $("liveChatReply").disabled=false;
@@ -645,6 +655,23 @@ async function setLiveChatStatus(status){
     await loadLiveChatConversations();
     await selectLiveChat(selectedLiveChatId);
   }catch(error){alert(error.message||"Could not update the conversation.")}
+}
+
+async function saveLiveChatAiSetting(enabled){
+  const toggle=$("liveChatAiToggle");
+  if(toggle) toggle.disabled=true;
+  try{
+    await api("/api/admin/site-settings",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({chat_ai_enabled:enabled?"1":"0"})
+    });
+    await loadLiveChatConversations();
+  }catch(error){
+    alert(error.message||"Could not update AI auto-reply.");
+    if(toggle) toggle.checked=!enabled;
+  }finally{
+    if(toggle) toggle.disabled=false;
+  }
 }
 
 async function refreshLiveChat(){
