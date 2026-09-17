@@ -7,9 +7,9 @@
   const language=(document.documentElement.lang||navigator.language||"en").toLowerCase();
   const locale=language.startsWith("fr")?"fr":language.startsWith("es")?"es":"en";
   const copy={
-    en:{button:"Chat with us",title:"WORLD TV Support",subtitle:"Send us a message",welcome:"Hello! How can we help you today?",name:"Your name",email:"Email (optional)",message:"Type your message…",send:"Send",start:"Enter your name, then send us a message.",offline:"Your message is saved. We will reply here.",error:"Chat is temporarily unavailable. Please try again.",closed:"This conversation was closed. Send a new message to reopen it.",agent:"WORLD TV Support",you:"You"},
-    fr:{button:"Discutez avec nous",title:"Assistance WORLD TV",subtitle:"Envoyez-nous un message",welcome:"Bonjour ! Comment pouvons-nous vous aider aujourd’hui ?",name:"Votre nom",email:"E-mail (facultatif)",message:"Écrivez votre message…",send:"Envoyer",start:"Entrez votre nom, puis envoyez-nous un message.",offline:"Votre message est enregistré. Nous répondrons ici.",error:"Le chat est temporairement indisponible. Réessayez.",closed:"Cette conversation est fermée. Envoyez un nouveau message pour la rouvrir.",agent:"Assistance WORLD TV",you:"Vous"},
-    es:{button:"Chatea con nosotros",title:"Soporte WORLD TV",subtitle:"Envíanos un mensaje",welcome:"¡Hola! ¿Cómo podemos ayudarte hoy?",name:"Tu nombre",email:"Correo (opcional)",message:"Escribe tu mensaje…",send:"Enviar",start:"Escribe tu nombre y envíanos un mensaje.",offline:"Tu mensaje está guardado. Responderemos aquí.",error:"El chat no está disponible temporalmente. Inténtalo de nuevo.",closed:"Esta conversación está cerrada. Envía un mensaje para reabrirla.",agent:"Soporte WORLD TV",you:"Tú"}
+    en:{button:"Chat with us",title:"WORLD TV Support",subtitle:"AI-assisted support",welcome:"Hello! How can we help you today?",name:"Your name",email:"Email (optional)",message:"Type your message…",send:"Send",start:"Enter your name, then send us a message.",offline:"Your message is saved. We will reply here.",error:"Chat is temporarily unavailable. Please try again.",closed:"This conversation was closed. Send a new message to reopen it.",agent:"WORLD TV Support",ai:"WORLD TV AI",you:"You"},
+    fr:{button:"Discutez avec nous",title:"Assistance WORLD TV",subtitle:"Assistance aidée par l’IA",welcome:"Bonjour ! Comment pouvons-nous vous aider aujourd’hui ?",name:"Votre nom",email:"E-mail (facultatif)",message:"Écrivez votre message…",send:"Envoyer",start:"Entrez votre nom, puis envoyez-nous un message.",offline:"Votre message est enregistré. Nous répondrons ici.",error:"Le chat est temporairement indisponible. Réessayez.",closed:"Cette conversation est fermée. Envoyez un nouveau message pour la rouvrir.",agent:"Assistance WORLD TV",ai:"IA WORLD TV",you:"Vous"},
+    es:{button:"Chatea con nosotros",title:"Soporte WORLD TV",subtitle:"Soporte asistido por IA",welcome:"¡Hola! ¿Cómo podemos ayudarte hoy?",name:"Tu nombre",email:"Correo (opcional)",message:"Escribe tu mensaje…",send:"Enviar",start:"Escribe tu nombre y envíanos un mensaje.",offline:"Tu mensaje está guardado. Responderemos aquí.",error:"El chat no está disponible temporalmente. Inténtalo de nuevo.",closed:"Esta conversación está cerrada. Envía un mensaje para reabrirla.",agent:"Soporte WORLD TV",ai:"IA WORLD TV",you:"Tú"}
   }[locale];
 
   const storage={
@@ -104,7 +104,7 @@
     item.appendChild(document.createTextNode(message.body||""));
     const meta=document.createElement("span");
     meta.className="wtv-chat-meta";
-    meta.textContent=`${message.sender==="admin"?copy.agent:copy.you}${formatTime(message.created_at)?" • "+formatTime(message.created_at):""}`;
+    meta.textContent=`${message.sender==="admin"?(message.source==="ai"?copy.ai:copy.agent):copy.you}${formatTime(message.created_at)?" • "+formatTime(message.created_at):""}`;
     item.appendChild(meta);
     messagesEl.appendChild(item);
     lastMessageId=Math.max(lastMessageId,id);
