@@ -370,11 +370,23 @@
 
           <span class="region-label">Where are you paying from?</span>
           <div class="region-switch" role="tablist" aria-label="Choose your payment region">
-            <button id="ghana-tab" type="button" role="tab" aria-selected="true" aria-controls="ghana-panel" data-region="ghana">🇬🇭 Ghana</button>
-            <button id="global-tab" type="button" role="tab" aria-selected="false" aria-controls="global-panel" data-region="global">🌍 Outside Ghana</button>
+            <button id="global-tab" type="button" role="tab" aria-selected="true" aria-controls="global-panel" data-region="global">🌍 Worldwide</button>
+            <button id="ghana-tab" type="button" role="tab" aria-selected="false" aria-controls="ghana-panel" data-region="ghana">🇬🇭 Ghana</button>
           </div>
 
-          <div class="region-panel active" id="ghana-panel" role="tabpanel" aria-labelledby="ghana-tab">
+          <div class="region-panel active" id="global-panel" role="tabpanel" aria-labelledby="global-tab">
+            <ul class="included">
+              <li>One full year of WORLD TV access</li>
+              <li>Complete payment through the worldwide checkout page</li>
+              <li>Subscription code sent after payment confirmation</li>
+            </ul>
+            <a class="secondary-cta" id="worldwide-pay" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer">
+              <span>Continue to Worldwide Payment</span><span class="cta-arrow">→</span>
+            </a>
+            <p class="cta-help">The final amount and available payment options are shown on the secure checkout page.</p>
+          </div>
+
+          <div class="region-panel" id="ghana-panel" role="tabpanel" aria-labelledby="ghana-tab" hidden>
             <ul class="included">
               <li>One full year of WORLD TV access</li>
               <li>Complete payment through the Ghana checkout page</li>
@@ -386,17 +398,6 @@
             <p class="cta-help">The final amount and available payment options are shown on the checkout page.</p>
           </div>
 
-          <div class="region-panel" id="global-panel" role="tabpanel" aria-labelledby="global-tab" hidden>
-            <ul class="included">
-              <li>One full year of WORLD TV access</li>
-              <li>Complete payment through the worldwide checkout page</li>
-              <li>Subscription code sent after payment confirmation</li>
-            </ul>
-            <a class="secondary-cta" id="worldwide-pay" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer">
-              <span>Continue to Worldwide Payment</span><span class="cta-arrow">→</span>
-            </a>
-            <p class="cta-help">The final amount and available payment options are shown on the secure checkout page.</p>
-          </div>
         </article>
       </div>
     </section>
@@ -419,7 +420,7 @@
         <article class="step reveal" data-step="1">
           <div class="step-number">01</div>
           <h3>Choose your location</h3>
-          <p>Select Ghana or Outside Ghana to open the correct secure online checkout.</p>
+          <p>Select Worldwide or Ghana to open the correct secure online checkout.</p>
         </article>
         <article class="step reveal" data-step="2">
           <div class="step-number">02</div>
@@ -503,7 +504,7 @@
   <a class="support-fab" href="https://wa.me/15309040310?text=Hello%20WORLD%20TV%2C%20I%20need%20help%20with%20a%20subscription." target="_blank" rel="noopener noreferrer" aria-label="Get WORLD TV help on WhatsApp"><b>✆</b><span>Need help?</span></a>
 
   <div class="mobile-buy">
-    <a class="primary-cta" id="mobile-cta" href="https://pocketi.shop/worldtv/p/worldtv-yearly-subscription" target="_blank" rel="noopener noreferrer"><span>Pay from Ghana</span><span class="cta-arrow">→</span></a>
+    <a class="primary-cta" id="mobile-cta" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer"><span>Pay Worldwide</span><span class="cta-arrow">→</span></a>
   </div>
 
   <script>
@@ -532,7 +533,7 @@
 
       try {
         const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        if (zone && zone !== 'Africa/Accra') selectRegion('global');
+        if (zone === 'Africa/Accra') selectRegion('ghana');
       } catch (_) {}
 
       document.getElementById('year').textContent = new Date().getFullYear();
