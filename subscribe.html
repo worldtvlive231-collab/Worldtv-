@@ -207,6 +207,9 @@
     @keyframes buttonGlow{50%{background-position:100% 0}}
     .cta-arrow{font-size:23px;line-height:1;transition:transform .2s ease}
     .primary-cta:hover .cta-arrow,.secondary-cta:hover .cta-arrow{transform:translateX(3px)}
+    .payment-explanation{margin:0 0 20px;padding:16px;border:1px solid rgba(248,200,74,.18);border-radius:15px;background:rgba(248,200,74,.06);color:#d7e1db;font-size:14px;line-height:1.55}
+    .payment-explanation p{margin:0}
+    .payment-explanation p+p{margin-top:10px}
     .cta-help{margin:11px 3px 0;text-align:center;color:#90a298;font-size:11px;line-height:1.5}
 
     .trust-strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:rgba(255,255,255,.025)}
@@ -375,11 +378,10 @@
           </div>
 
           <div class="region-panel active" id="global-panel" role="tabpanel" aria-labelledby="global-tab">
-            <ul class="included">
-              <li>Enter your first name, last name and email address on the payment page</li>
-              <li>The amount shown is the equivalent of US$23</li>
-              <li>Your bank will deduct the payment in your local currency — no US-dollar account is required</li>
-            </ul>
+            <div class="payment-explanation">
+              <p>The amount payable will be displayed in Ghana cedis (GHS). Enter your name and email address, then click “Pay Now” to continue.</p>
+              <p>The payment is equivalent to US$23, but your bank will deduct the amount in your local currency. You do not need a US-dollar account to complete the payment.</p>
+            </div>
             <a class="secondary-cta" id="worldwide-pay" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer">
               <span>Continue to Worldwide Payment</span><span class="cta-arrow">→</span>
             </a>
