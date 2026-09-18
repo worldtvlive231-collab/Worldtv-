@@ -14,12 +14,7 @@ h1{font-size:42px;margin-bottom:8px}.muted{color:var(--muted)}.grid{display:grid
 <body><header><div class="wrap nav"><a href="/"><img class="logo" src="/world-tv-logo.png"></a><a href="/">Home</a></div></header>
 <main class="wrap"><h1>Products</h1><p class="muted">Shop products and services from World TV.</p><div id="currency-selector"><strong>Currency:</strong> </div><div id="grid" class="grid"><div class="status muted">Loading products...</div></div></main>
 <script>
-function waLink(p){
-  const n=String(p.whatsapp_number||"+233244909092").replace(/\D/g,"");
-  const tvBox=/android\s*tv\s*box|world\s*tv\s*box/i.test(String(p.name||""));
-  const price=tvBox?" — Ghana GH₵850 / USA & other countries US$100 equivalent / Free shipping":p.price_ghs!=null?` for GH₵${Number(p.price_ghs).toFixed(2)}`:"";
-  return `https://wa.me/${n}?text=${encodeURIComponent(`Hello World TV, I am interested in ${p.name}${price}.`)}`;
-}
+function telegramLink(){return "https://t.me/MYWORLDTVLIVE"}
 function addText(parent,tag,text,className){const el=document.createElement(tag);if(className)el.className=className;el.textContent=text;parent.appendChild(el);return el}
 function makeProductCard(p){
   const card=document.createElement("article");card.className="card";
@@ -33,7 +28,7 @@ function makeProductCard(p){
   if(tvBox)addText(body,"p","🚚 Free shipping to USA and other countries","shipping-note");
   addText(body,"p",p.stock_status==="in_stock"?"In stock":p.stock_status==="preorder"?"Pre-order":"Out of stock","muted");
   const order=document.createElement("a");order.className="btn";order.href=`/order.html?product=${encodeURIComponent(p.id)}`;order.textContent="Order on Website";body.appendChild(order);body.appendChild(document.createTextNode(" "));
-  const wa=document.createElement("a");wa.className="btn";wa.href=waLink(p);wa.target="_blank";wa.rel="noopener";wa.textContent="WhatsApp";body.appendChild(wa);
+  const telegram=document.createElement("a");telegram.className="btn";telegram.href=telegramLink();telegram.target="_blank";telegram.rel="noopener";telegram.textContent="Message on Telegram";body.appendChild(telegram);
   return card;
 }
 async function loadProducts(){
