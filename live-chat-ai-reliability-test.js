@@ -10,6 +10,8 @@ const mockPort=4317;
 const appBase=`http://127.0.0.1:${appPort}`;
 const captured=[];
 let retryFailures=0;
+let incompleteFailures=0;
+let permanentFailures=0;
 
 function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 
@@ -39,8 +41,25 @@ function mockOpenAi(){
         res.end(JSON.stringify({error:{message:"temporary test failure"}}));
         return;
       }
+      if(text.includes("FAIL_ALWAYS")){
+        permanentFailures+=1;
+        res.writeHead(503,{"content-type":"application/json"});
+        res.end(JSON.stringify({error:{message:"persistent test failure"}}));
+        return;
+      }
+      if(text.includes("INCOMPLETE_TEST")&&incompleteFailures++===0){
+        res.writeHead(200,{"content-type":"application/json"});
+        res.end(JSON.stringify({
+          status:"incomplete",
+          incomplete_details:{reason:"max_output_tokens"},
+          output:[{type:"message",content:[{type:"output_text",text:"Do not save this partial answer"}]}]
+        }));
+        return;
+      }
       const answer=text.includes("RETRY_TEST")
         ? "Recovered after a temporary error."
+        : text.includes("INCOMPLETE_TEST")
+          ? "Recovered after the incomplete response."
         : "You can subscribe and download the app using the official WORLD TV links.";
       res.writeHead(200,{"content-type":"application/json"});
       res.end(JSON.stringify({output:[{type:"message",content:[{type:"output_text",text:answer}]}]}));
@@ -131,6 +150,8 @@ async function main(){
     assert.match(rapidRequest.instructions,/https:\/\/myworldtvlive\.com\/download\.html/);
     assert.match(rapidRequest.instructions,/4193413/);
     assert.match(rapidRequest.instructions,/US\$19 per one-year code/);
+    assert.equal(rapidRequest.max_output_tokens,1600);
+    assert.deepEqual(rapidRequest.reasoning,{effort:"low"});
 
     const retryToken=`retry-${Date.now()}-abcdefghijklmnopqrstuvwxyz`;
     await postMessage(retryToken,"RETRY_TEST");
@@ -140,6 +161,25 @@ async function main(){
     });
     assert.ok(retryMessages.some(row=>row.body.includes("Recovered after")));
     assert.equal(retryFailures,2,"Expected one failed request followed by a retry");
+
+    const incompleteToken=`incomplete-${Date.now()}-abcdefghijklmnopqrstuvwxyz`;
+    await postMessage(incompleteToken,"INCOMPLETE_TEST");
+    const incompleteMessages=await waitFor(async()=>{
+      const rows=await messages(incompleteToken);
+      return rows.some(row=>row.sender==="admin"&&row.source==="ai")?rows:null;
+    });
+    assert.ok(incompleteMessages.some(row=>row.body.includes("Recovered after the incomplete")));
+    assert.ok(!incompleteMessages.some(row=>row.body.includes("partial answer")));
+    assert.equal(incompleteFailures,2,"Expected an incomplete response followed by a retry");
+
+    const fallbackToken=`fallback-${Date.now()}-abcdefghijklmnopqrstuvwxyz`;
+    await postMessage(fallbackToken,"FAIL_ALWAYS How do I download the app and start a free trial?");
+    const fallbackMessages=await waitFor(async()=>{
+      const rows=await messages(fallbackToken);
+      return rows.some(row=>row.sender==="admin"&&row.source==="ai")?rows:null;
+    },12000);
+    assert.ok(fallbackMessages.some(row=>row.body.includes("https://myworldtvlive.com/download.html")));
+    assert.equal(permanentFailures,3,"Expected three failed requests before the verified fallback");
 
     process.stdout.write("Live chat AI reliability tests passed.\n");
   }finally{

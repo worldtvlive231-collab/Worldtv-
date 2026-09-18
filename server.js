@@ -429,6 +429,37 @@ function liveChatAiOutputText(payload){
   return cleanLiveChatText(parts.join("\n"),2000);
 }
 
+function liveChatAiFallbackReply(messages=[]){
+  const latest=messages.filter(message=>message.sender==="customer").slice(-3)
+    .map(message=>String(message.body||"")).join(" ");
+  const text=latest.toLowerCase();
+  const whatsapp=liveChatSiteSetting("support_whatsapp","+1 (530) 904-0310")||"+1 (530) 904-0310";
+  if(/download|install|apk|free trial|trial|application|app\b/.test(text)){
+    return "Download WORLD TV here: https://myworldtvlive.com/download.html. After installing the app, select Get Free Trial for 3 free days—no payment or card is required. If installation fails, please tell us your device type and send a screenshot of the error.";
+  }
+  if(/subscribe|subscription|price|cost|pay|payment|renew/.test(text)){
+    return "The WORLD TV annual subscription is US$23 for 365 days. Pay worldwide here: https://paystack.shop/pay/x4sqejilmz. The checkout shows the equivalent in Ghana cedis, and your bank deducts it in your local currency; no US-dollar account is required.";
+  }
+  return `Your message is saved for a human support agent. For urgent help, contact WORLD TV on WhatsApp: ${whatsapp}.`;
+}
+
+function saveLiveChatAutomatedReply(conversationId,triggerMessageId,reply){
+  const currentLatest=liveChatLatestMessage(conversationId);
+  if(!currentLatest||currentLatest.sender!=="customer"||Number(currentLatest.id)!==Number(triggerMessageId)) return false;
+  db.transaction(()=>{
+    db.prepare(`
+      INSERT INTO live_chat_messages(conversation_id,sender,source,body)
+      VALUES(?,'admin','ai',?)
+    `).run(conversationId,reply);
+    db.prepare(`
+      UPDATE live_chat_conversations
+      SET unread_customer=unread_customer+1,last_message_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(conversationId);
+  })();
+  return true;
+}
+
 function liveChatLatestMessage(conversationId){
   return db.prepare(
     "SELECT id,sender FROM live_chat_messages WHERE conversation_id=? ORDER BY id DESC LIMIT 1"
@@ -496,18 +527,21 @@ async function generateLiveChatAiReply(conversationId){
     let response;
     try{
       const apiBase=String(process.env.OPENAI_API_BASE_URL||"https://api.openai.com/v1").replace(/\/+$/,"");
+      const outputTokens=Math.min(8000,Math.max(600,Number(process.env.OPENAI_MAX_OUTPUT_TOKENS)||1600));
+      const requestBody={
+        model:ai.model,
+        instructions:liveChatAiInstructions(conversation),
+        input,
+        max_output_tokens:outputTokens
+      };
+      if(/^gpt-5(?:-|$)/i.test(ai.model)) requestBody.reasoning={effort:"low"};
       response=await fetch(`${apiBase}/responses`,{
         method:"POST",
         headers:{
           "Authorization":`Bearer ${openAiApiKeyStatus(process.env.OPENAI_API_KEY).key}`,
           "Content-Type":"application/json"
         },
-        body:JSON.stringify({
-          model:ai.model,
-          instructions:liveChatAiInstructions(conversation),
-          input,
-          max_output_tokens:300
-        }),
+        body:JSON.stringify(requestBody),
         signal:controller.signal
       });
     }finally{
@@ -523,7 +557,15 @@ async function generateLiveChatAiReply(conversationId){
       console.error(`Live chat AI error (${response.status}): ${detail}`);
       return;
     }
-    const reply=liveChatAiOutputText(await response.json());
+    const payload=await response.json();
+    if(payload?.status==="incomplete"){
+      requestFailed=true;
+      const reason=cleanLiveChatText(payload?.incomplete_details?.reason,80)||"unknown";
+      liveChatAiLastError=`OpenAI incomplete: ${reason}`;
+      console.error(`Live chat AI incomplete response: ${reason}`);
+      return;
+    }
+    const reply=liveChatAiOutputText(payload);
     if(!reply){
       requestFailed=true;
       liveChatAiLastError="OpenAI empty response";
@@ -533,20 +575,7 @@ async function generateLiveChatAiReply(conversationId){
 
     // A human reply or newer customer message always takes priority over the
     // answer generated for an older message.
-    const currentLatest=liveChatLatestMessage(conversationId);
-    if(!currentLatest||currentLatest.sender!=="customer"||Number(currentLatest.id)!==Number(triggerMessageId)) return;
-
-    db.transaction(()=>{
-      db.prepare(`
-        INSERT INTO live_chat_messages(conversation_id,sender,source,body)
-        VALUES(?,'admin','ai',?)
-      `).run(conversationId,reply);
-      db.prepare(`
-        UPDATE live_chat_conversations
-        SET unread_customer=unread_customer+1,last_message_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP
-        WHERE id=?
-      `).run(conversationId);
-    })();
+    if(!saveLiveChatAutomatedReply(conversationId,triggerMessageId,reply)) return;
     liveChatAiRetryCounts.delete(conversationId);
     liveChatAiNextRetryAt.delete(conversationId);
   }catch(error){
@@ -557,6 +586,17 @@ async function generateLiveChatAiReply(conversationId){
     liveChatAiInFlight.delete(conversationId);
     const latest=liveChatLatestMessage(conversationId);
     if(latest?.sender==="customer"){
+      if(requestFailed&&(liveChatAiRetryCounts.get(conversationId)||0)>=2&&triggerMessageId){
+        const history=db.prepare(`
+          SELECT sender,body FROM live_chat_messages
+          WHERE conversation_id=? ORDER BY id DESC LIMIT 6
+        `).all(conversationId).reverse();
+        if(saveLiveChatAutomatedReply(conversationId,triggerMessageId,liveChatAiFallbackReply(history))){
+          liveChatAiRetryCounts.delete(conversationId);
+          liveChatAiNextRetryAt.delete(conversationId);
+          return;
+        }
+      }
       const delay=requestFailed
         ? liveChatAiRetryDelay(conversationId,retryAfterMs)
         : LIVE_CHAT_AI_DEBOUNCE_MS;
