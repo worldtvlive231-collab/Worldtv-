@@ -7,9 +7,9 @@
   const language=(document.documentElement.lang||navigator.language||"en").toLowerCase();
   const locale=language.startsWith("fr")?"fr":language.startsWith("es")?"es":"en";
   const copy={
-    en:{button:"Chat with us",title:"WORLD TV Support",subtitle:"AI-assisted support",welcome:"Hello! How can we help you today?",name:"Your name",email:"Email (optional)",message:"Type your message…",send:"Send",start:"Enter your name, then send us a message.",offline:"Your message is saved. We will reply here.",error:"Chat is temporarily unavailable. Please try again.",closed:"This conversation was closed. Send a new message to reopen it.",agent:"WORLD TV Support",ai:"WORLD TV AI",you:"You"},
-    fr:{button:"Discutez avec nous",title:"Assistance WORLD TV",subtitle:"Assistance aidée par l’IA",welcome:"Bonjour ! Comment pouvons-nous vous aider aujourd’hui ?",name:"Votre nom",email:"E-mail (facultatif)",message:"Écrivez votre message…",send:"Envoyer",start:"Entrez votre nom, puis envoyez-nous un message.",offline:"Votre message est enregistré. Nous répondrons ici.",error:"Le chat est temporairement indisponible. Réessayez.",closed:"Cette conversation est fermée. Envoyez un nouveau message pour la rouvrir.",agent:"Assistance WORLD TV",ai:"IA WORLD TV",you:"Vous"},
-    es:{button:"Chatea con nosotros",title:"Soporte WORLD TV",subtitle:"Soporte asistido por IA",welcome:"¡Hola! ¿Cómo podemos ayudarte hoy?",name:"Tu nombre",email:"Correo (opcional)",message:"Escribe tu mensaje…",send:"Enviar",start:"Escribe tu nombre y envíanos un mensaje.",offline:"Tu mensaje está guardado. Responderemos aquí.",error:"El chat no está disponible temporalmente. Inténtalo de nuevo.",closed:"Esta conversación está cerrada. Envía un mensaje para reabrirla.",agent:"Soporte WORLD TV",ai:"IA WORLD TV",you:"Tú"}
+    en:{button:"Chat with us",title:"WORLD TV Support",subtitle:"AI-assisted support",welcome:"Hello! How can we help you today?",name:"Your name",email:"Email (optional)",message:"Type your message…",send:"Send",start:"Enter your name, then send us a message.",thinking:"WORLD TV AI is preparing a reply…",offline:"Your message is saved. We will reply here.",error:"Chat is temporarily unavailable. Please try again.",closed:"This conversation was closed. Send a new message to reopen it.",agent:"WORLD TV Support",ai:"WORLD TV AI",you:"You"},
+    fr:{button:"Discutez avec nous",title:"Assistance WORLD TV",subtitle:"Assistance aidée par l’IA",welcome:"Bonjour ! Comment pouvons-nous vous aider aujourd’hui ?",name:"Votre nom",email:"E-mail (facultatif)",message:"Écrivez votre message…",send:"Envoyer",start:"Entrez votre nom, puis envoyez-nous un message.",thinking:"L’IA WORLD TV prépare une réponse…",offline:"Votre message est enregistré. Nous répondrons ici.",error:"Le chat est temporairement indisponible. Réessayez.",closed:"Cette conversation est fermée. Envoyez un nouveau message pour la rouvrir.",agent:"Assistance WORLD TV",ai:"IA WORLD TV",you:"Vous"},
+    es:{button:"Chatea con nosotros",title:"Soporte WORLD TV",subtitle:"Soporte asistido por IA",welcome:"¡Hola! ¿Cómo podemos ayudarte hoy?",name:"Tu nombre",email:"Correo (opcional)",message:"Escribe tu mensaje…",send:"Enviar",start:"Escribe tu nombre y envíanos un mensaje.",thinking:"La IA de WORLD TV está preparando una respuesta…",offline:"Tu mensaje está guardado. Responderemos aquí.",error:"El chat no está disponible temporalmente. Inténtalo de nuevo.",closed:"Esta conversación está cerrada. Envía un mensaje para reabrirla.",agent:"Soporte WORLD TV",ai:"IA WORLD TV",you:"Tú"}
   }[locale];
 
   const storage={
@@ -81,6 +81,7 @@
   let lastMessageId=0;
   let hasConversation=false;
   let busy=false;
+  let awaitingReply=false;
 
   nameEl.value=localStorage.getItem(storage.name)||"";
   emailEl.value=localStorage.getItem(storage.email)||"";
@@ -108,6 +109,7 @@
     item.appendChild(meta);
     messagesEl.appendChild(item);
     lastMessageId=Math.max(lastMessageId,id);
+    awaitingReply=message.sender!=="admin";
   }
   function scrollToBottom(){messagesEl.scrollTop=messagesEl.scrollHeight;}
 
@@ -123,7 +125,7 @@
       (data.messages||[]).forEach(addMessage);
       if(markRead) updateBadge(0); else updateBadge(data.unread||0);
       if(data.conversation?.status==="closed") setState(copy.closed);
-      else if(hasConversation) setState(copy.offline);
+      else if(hasConversation) setState(awaitingReply?copy.thinking:copy.offline);
       if(markRead&&data.messages?.length) scrollToBottom();
     }catch(error){
       setState(copy.error);
@@ -156,7 +158,8 @@
       identityEl.classList.add("hidden");
       textarea.value="";
       addMessage(data.message);
-      setState(copy.offline);
+      awaitingReply=true;
+      setState(data.ai?copy.thinking:copy.offline);
       scrollToBottom();
     }catch(error){
       setState(error.message||copy.error);
