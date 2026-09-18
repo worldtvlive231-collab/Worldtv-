@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>WORLD TV Annual Subscription — 1 Year for US$23</title>
-  <meta name="description" content="Subscribe to WORLD TV for one full year at US$23. Ghana customers can pay online, and international customers can get payment help on WhatsApp.">
+  <meta name="description" content="Subscribe to WORLD TV for one full year at US$23. Ghana and worldwide customers can pay online using the payment option for their location.">
   <link rel="canonical" href="https://myworldtvlive.com/subscribe.html">
   <link rel="icon" href="/world-tv-logo.png">
   <meta name="theme-color" content="#07150f">
@@ -321,7 +321,7 @@
   <div class="glow one"></div>
   <div class="glow two"></div>
 
-  <div class="announcement">Ghana online payment is now available • International payment support on WhatsApp</div>
+  <div class="announcement">Secure online payment available for Ghana and worldwide subscribers</div>
 
   <header class="site-header">
     <div class="shell nav">
@@ -389,13 +389,13 @@
           <div class="region-panel" id="global-panel" role="tabpanel" aria-labelledby="global-tab" hidden>
             <ul class="included">
               <li>One full year of WORLD TV access</li>
-              <li>Personal payment assistance for your country</li>
+              <li>Complete payment through the worldwide checkout page</li>
               <li>Subscription code sent after payment confirmation</li>
             </ul>
-            <a class="secondary-cta" href="https://wa.me/15309040310?text=Hello%20WORLD%20TV%2C%20I%20want%20to%20subscribe%20for%201%20year%20at%20US%2423%20and%20make%20payment.%20Please%20assist%20me." target="_blank" rel="noopener noreferrer">
-              <span>Continue on WhatsApp</span><span class="cta-arrow">→</span>
+            <a class="secondary-cta" id="worldwide-pay" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer">
+              <span>Continue to Worldwide Payment</span><span class="cta-arrow">→</span>
             </a>
-            <p class="cta-help">Chat with WORLD TV at +1 (530) 904-0310 for payment assistance.</p>
+            <p class="cta-help">The final amount and available payment options are shown on the secure checkout page.</p>
           </div>
         </article>
       </div>
@@ -419,12 +419,12 @@
         <article class="step reveal" data-step="1">
           <div class="step-number">01</div>
           <h3>Choose your location</h3>
-          <p>Select Ghana for the online checkout, or Outside Ghana for payment assistance on WhatsApp.</p>
+          <p>Select Ghana or Outside Ghana to open the correct secure online checkout.</p>
         </article>
         <article class="step reveal" data-step="2">
           <div class="step-number">02</div>
           <h3>Complete payment</h3>
-          <p>Follow the payment instructions shown on your selected checkout or provided by WORLD TV support.</p>
+          <p>Follow the payment instructions shown on your selected checkout page.</p>
         </article>
         <article class="step reveal" data-step="3">
           <div class="step-number">03</div>
@@ -482,7 +482,7 @@
         <p>Choose your payment route and take the next step toward activating WORLD TV today.</p>
         <div class="final-actions">
           <a class="primary-cta" href="https://pocketi.shop/worldtv/p/worldtv-yearly-subscription" target="_blank" rel="noopener noreferrer"><span>Pay from Ghana</span><span class="cta-arrow">→</span></a>
-          <a class="secondary-cta" href="https://wa.me/15309040310?text=Hello%20WORLD%20TV%2C%20I%20want%20to%20subscribe%20for%201%20year%20at%20US%2423%20and%20make%20payment.%20Please%20assist%20me." target="_blank" rel="noopener noreferrer"><span>Outside Ghana</span><span class="cta-arrow">→</span></a>
+          <a class="secondary-cta" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer"><span>Pay Worldwide</span><span class="cta-arrow">→</span></a>
         </div>
       </div>
     </section>
@@ -515,7 +515,7 @@
       };
       const mobileCta = document.getElementById('mobile-cta');
       const ghanaUrl = 'https://pocketi.shop/worldtv/p/worldtv-yearly-subscription';
-      const whatsappUrl = 'https://wa.me/15309040310?text=Hello%20WORLD%20TV%2C%20I%20want%20to%20subscribe%20for%201%20year%20at%20US%2423%20and%20make%20payment.%20Please%20assist%20me.';
+      const worldwideUrl = 'https://paystack.shop/pay/x4sqejilmz';
 
       function selectRegion(region) {
         tabs.forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.region === region)));
@@ -524,8 +524,8 @@
           panel.hidden = !active;
           panel.classList.toggle('active', active);
         });
-        mobileCta.href = region === 'ghana' ? ghanaUrl : whatsappUrl;
-        mobileCta.querySelector('span').textContent = region === 'ghana' ? 'Pay from Ghana' : 'Continue on WhatsApp';
+        mobileCta.href = region === 'ghana' ? ghanaUrl : worldwideUrl;
+        mobileCta.querySelector('span').textContent = region === 'ghana' ? 'Pay from Ghana' : 'Pay Worldwide';
       }
 
       tabs.forEach(tab => tab.addEventListener('click', () => selectRegion(tab.dataset.region)));
