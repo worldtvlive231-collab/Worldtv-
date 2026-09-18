@@ -1,15 +1,14 @@
 (()=>{
   'use strict';
 
-  const WHATSAPP_NUMBER='+1 (530) 904-0310';
-  const WHATSAPP_URL='https://wa.me/15309040310?text='+encodeURIComponent('Hello WORLD TV, I want to subscribe and make payment. Please assist me.');
+  const TELEGRAM_URL='https://t.me/MYWORLDTVLIVE';
   const path=String(location.pathname||'/').toLowerCase();
   const allowed=new Set(['/','/index.html','/subscribe.html','/order.html','/checkout.html','/payment.html','/reseller','/reseller.html']);
   if(!allowed.has(path))return;
 
-  function goWhatsApp(event){
+  function goTelegram(event){
     if(event){event.preventDefault();event.stopPropagation();}
-    location.href=WHATSAPP_URL;
+    location.href=TELEGRAM_URL;
   }
 
   function start(){
@@ -30,7 +29,7 @@
     if(!document.getElementById('wtv-wa-notice')){
       const notice=document.createElement('div');
       notice.id='wtv-wa-notice';
-      notice.innerHTML=`<div class="wtv-wa-row"><span><strong>Online payment is temporarily paused.</strong> To subscribe or make payment, WhatsApp WORLD TV at <strong>${WHATSAPP_NUMBER}</strong>.</span><a href="${WHATSAPP_URL}">💬 Subscribe & Pay on WhatsApp</a></div>`;
+      notice.innerHTML=`<div class="wtv-wa-row"><span><strong>Online payment is temporarily paused.</strong> Message WORLD TV on Telegram at <strong>@MYWORLDTVLIVE</strong>.</span><a href="${TELEGRAM_URL}">✈ Contact us on Telegram</a></div>`;
       document.body.prepend(notice);
     }
 
@@ -46,15 +45,15 @@
       el.dataset.wtvWaBound='1';
       el.classList.add('wtv-wa-button');
       if(el.tagName==='A'){
-        el.href=WHATSAPP_URL;
+        el.href=TELEGRAM_URL;
         el.removeAttribute('target');
       }else{
         el.type='button';
-        el.addEventListener('click',goWhatsApp,{capture:true});
+        el.addEventListener('click',goTelegram,{capture:true});
       }
       if(/pay|stripe|paystack|paypal|checkout|subscribe|renew/i.test(String(el.textContent||el.value||''))){
-        if(el.tagName==='INPUT')el.value='Subscribe & Pay on WhatsApp';
-        else el.textContent='💬 Subscribe & Pay on WhatsApp';
+        if(el.tagName==='INPUT')el.value='Contact us on Telegram';
+        else el.textContent='✈ Contact us on Telegram';
       }
     });
   }

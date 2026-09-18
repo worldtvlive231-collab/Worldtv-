@@ -75,7 +75,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <h2 id="productFormTitle">Add Product</h2>
 <form id="productForm" class="formgrid">
 <div><label>Product name</label><input id="pName" required><label>Price (GH₵)</label><input id="pPrice" type="number" min="0" step="0.01"><label>Category</label><input id="pCategory" value="General"><label>Stock status</label><select id="pStock"><option value="in_stock">In stock</option><option value="preorder">Pre-order</option><option value="out_of_stock">Out of stock</option></select></div>
-<div><label>Description</label><textarea id="pDescription"></textarea><label>WhatsApp number</label><input id="pWhatsapp" value="+233244909092"><label>Product image</label><input id="pImage" type="file" accept="image/*"><label><input id="pFeatured" type="checkbox" style="width:auto"> Featured product</label></div>
+<div><label>Description</label><textarea id="pDescription"></textarea><label>Legacy contact field</label><input id="pWhatsapp" value="+233244909092"><label>Product image</label><input id="pImage" type="file" accept="image/*"><label><input id="pFeatured" type="checkbox" style="width:auto"> Featured product</label></div>
 <div style="grid-column:1/-1"><button class="btn primary" type="submit">Save Product</button> <button class="btn secondary" type="button" onclick="resetProductForm()">Clear</button> <span id="pMsg" class="muted"></span></div>
 </form></div>
 <div class="card"><h2>Manage Products</h2><div style="overflow:auto"><table><thead><tr><th>Image</th><th>Name</th><th>Price</th><th>Stock</th><th>Featured</th><th>Actions</th></tr></thead><tbody id="productRows"></tbody></table></div></div>
@@ -140,7 +140,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 
 <section id="settingsTab" class="hide">
 <div class="card"><h2>Site Settings</h2>
-<label>Support WhatsApp</label><input id="settingWhatsapp" placeholder="+233 24 490 9092">
+<label>Support Telegram</label><input id="settingWhatsapp" placeholder="@MYWORLDTVLIVE">
 <label>Support Email</label><input id="settingEmail" placeholder="support@example.com">
 <label>App Version</label><input id="settingAppVersion" placeholder="1.0.0">
 <label>App Download URL</label><input id="settingAppUrl" placeholder="https://.../worldtv.apk">
@@ -1028,7 +1028,7 @@ async function setSupportStatus(id,status){await api(`/api/admin/support/${id}/s
 async function deleteSupport(id){if(!confirm("Delete this support message?"))return;await api(`/api/admin/support/${id}`,{method:"DELETE"});await loadSupport()}
 async function loadSettings(){
  const s=await api("/api/admin/site-settings");
- if($("settingWhatsapp"))$("settingWhatsapp").value=s.support_whatsapp||"+233 24 490 9092";
+ if($("settingWhatsapp"))$("settingWhatsapp").value=s.support_whatsapp||"@MYWORLDTVLIVE";
  if($("settingEmail"))$("settingEmail").value=s.support_email||"";
  if($("settingAppVersion"))$("settingAppVersion").value=s.app_version||"";
  if($("settingAppUrl"))$("settingAppUrl").value=s.app_download_url||"";
