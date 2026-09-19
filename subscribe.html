@@ -211,6 +211,23 @@
     .payment-explanation p{margin:0}
     .payment-explanation p+p{margin-top:10px}
     .cta-help{margin:11px 3px 0;text-align:center;color:#90a298;font-size:11px;line-height:1.5}
+    .payment-status{display:none;margin:0 0 18px;padding:14px 16px;border:1px solid rgba(69,227,140,.28);border-radius:14px;background:rgba(69,227,140,.09);color:#dff8e9;font-size:13px;line-height:1.55}
+    .payment-status.show{display:block}
+    .payment-status.error{border-color:rgba(255,105,97,.35);background:rgba(255,105,97,.09);color:#ffd9d6}
+    .payment-status strong{display:block;margin-top:6px;color:var(--gold);font-size:22px;letter-spacing:.08em}
+    .payment-modal{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+    .payment-modal.open{display:flex}
+    .payment-dialog{width:min(460px,100%);padding:25px;border:1px solid rgba(248,200,74,.26);border-radius:24px;background:#10291d;box-shadow:var(--shadow)}
+    .payment-dialog h2{margin:0 0 8px;font-size:25px}
+    .payment-dialog>p{margin:0 0 19px;color:var(--muted);font-size:14px;line-height:1.5}
+    .payment-dialog label{display:block;margin:13px 0 6px;color:#dce6e0;font-size:12px;font-weight:850}
+    .payment-dialog input,.payment-dialog select{width:100%;min-height:49px;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#081a11;color:#fff;font:inherit}
+    .dialog-actions{display:grid;grid-template-columns:1fr 1.6fr;gap:9px;margin-top:20px}
+    .dialog-actions button{min-height:50px;border:0;border-radius:12px;cursor:pointer;font-weight:900}
+    .dialog-cancel{background:rgba(255,255,255,.08);color:#dce6e0}
+    .dialog-submit{background:linear-gradient(120deg,#f6b91f,#ffe075);color:#201703}
+    .dialog-submit:disabled{opacity:.6;cursor:wait}
+    .dialog-message{min-height:20px;margin:12px 0 0!important;color:#ffd9d6!important}
 
     .trust-strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:rgba(255,255,255,.025)}
     .trust-items{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;padding:22px 0}
@@ -371,6 +388,8 @@
             <div class="price-meta"><strong>US dollars</strong>one payment / 365 days</div>
           </div>
 
+          <div class="payment-status" id="payment-status" role="status" aria-live="polite"></div>
+
           <span class="region-label">Where are you paying from?</span>
           <div class="region-switch" role="tablist" aria-label="Choose your payment region">
             <button id="global-tab" type="button" role="tab" aria-selected="true" aria-controls="global-panel" data-region="global">🌍 Worldwide</button>
@@ -382,10 +401,10 @@
               <p>The amount payable will be displayed in Ghana cedis (GHS). Enter your name and email address, then click “Pay Now” to continue.</p>
               <p>The payment is equivalent to US$23, but your bank will deduct the amount in your local currency. You do not need a US-dollar account to complete the payment.</p>
             </div>
-            <a class="secondary-cta" id="worldwide-pay" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer">
+            <a class="secondary-cta payment-link" id="worldwide-pay" href="#" data-payment-region="global">
               <span>Continue to Worldwide Payment</span><span class="cta-arrow">→</span>
             </a>
-            <p class="cta-help">After entering your information, click “Pay Now” on the secure checkout page to complete your payment.</p>
+            <p class="cta-help">Sign in to WORLD TV, complete the secure Paystack checkout, and receive your code automatically after successful payment.</p>
           </div>
 
           <div class="region-panel" id="ghana-panel" role="tabpanel" aria-labelledby="ghana-tab" hidden>
@@ -394,10 +413,10 @@
               <li>Complete payment through the Ghana checkout page</li>
               <li>Subscription code sent after payment confirmation</li>
             </ul>
-            <a class="primary-cta" id="ghana-pay" href="https://pocketi.shop/worldtv/p/worldtv-yearly-subscription" target="_blank" rel="noopener noreferrer">
+            <a class="primary-cta payment-link" id="ghana-pay" href="#" data-payment-region="ghana">
               <span>Continue to Ghana Payment</span><span class="cta-arrow">→</span>
             </a>
-            <p class="cta-help">The final amount and available payment options are shown on the checkout page.</p>
+            <p class="cta-help">Pocketi sends a secure Mobile Money payment request to your phone. Your code is issued automatically after payment.</p>
           </div>
 
         </article>
@@ -432,7 +451,7 @@
         <article class="step reveal" data-step="3">
           <div class="step-number">03</div>
           <h3>Receive and activate</h3>
-          <p>After payment is confirmed, use your subscription code to activate one full year in the WORLD TV app.</p>
+          <p>After successful payment, your code is issued automatically, emailed to you and saved in your WORLD TV account.</p>
         </article>
       </div>
     </section>
@@ -466,7 +485,7 @@
         </details>
         <details>
           <summary>What happens after I make payment?</summary>
-          <p>Your payment will be confirmed and your one-year subscription code will be provided for activation in the WORLD TV app. Keep your payment receipt until activation is complete.</p>
+          <p>Your payment is verified automatically. One unused one-year subscription code is assigned, emailed to you and saved in your WORLD TV account.</p>
         </details>
         <details>
           <summary>What if I need help?</summary>
@@ -484,12 +503,32 @@
         <h2>Ready for a full year of entertainment?</h2>
         <p>Choose your payment route and take the next step toward activating WORLD TV today.</p>
         <div class="final-actions">
-          <a class="primary-cta" href="https://pocketi.shop/worldtv/p/worldtv-yearly-subscription" target="_blank" rel="noopener noreferrer"><span>Pay from Ghana</span><span class="cta-arrow">→</span></a>
-          <a class="secondary-cta" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer"><span>Pay Worldwide</span><span class="cta-arrow">→</span></a>
+          <a class="primary-cta payment-link" href="#" data-payment-region="ghana"><span>Pay from Ghana</span><span class="cta-arrow">→</span></a>
+          <a class="secondary-cta payment-link" href="#" data-payment-region="global"><span>Pay Worldwide</span><span class="cta-arrow">→</span></a>
         </div>
       </div>
     </section>
   </main>
+
+  <div class="payment-modal" id="pocketi-modal" role="dialog" aria-modal="true" aria-labelledby="pocketi-title">
+    <form class="payment-dialog" id="pocketi-form">
+      <h2 id="pocketi-title">Pay securely with Pocketi</h2>
+      <p>Enter the Ghana Mobile Money number that should receive the Pocketi payment request.</p>
+      <label for="pocketi-phone">Mobile Money number</label>
+      <input id="pocketi-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="024 XXX XXXX" required>
+      <label for="pocketi-provider">Mobile Money provider</label>
+      <select id="pocketi-provider" required>
+        <option value="MTN">MTN MoMo</option>
+        <option value="VODAFONE">Telecel Cash</option>
+        <option value="AIRTELTIGO">AirtelTigo Money</option>
+      </select>
+      <div class="dialog-actions">
+        <button class="dialog-cancel" id="pocketi-cancel" type="button">Cancel</button>
+        <button class="dialog-submit" id="pocketi-submit" type="submit">Send Payment Request</button>
+      </div>
+      <p class="dialog-message" id="pocketi-message" role="status"></p>
+    </form>
+  </div>
 
   <footer>
     <div class="shell footer-row">
@@ -506,7 +545,7 @@
   <a class="support-fab" href="https://t.me/MYWORLDTVLIVE" target="_blank" rel="noopener noreferrer" aria-label="Get WORLD TV help on Telegram"><b>✈</b><span>Need help?</span></a>
 
   <div class="mobile-buy">
-    <a class="primary-cta" id="mobile-cta" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer"><span>Pay Worldwide</span><span class="cta-arrow">→</span></a>
+    <a class="primary-cta payment-link" id="mobile-cta" href="#" data-payment-region="global"><span>Pay Worldwide</span><span class="cta-arrow">→</span></a>
   </div>
 
   <script>
@@ -517,8 +556,46 @@
         global: document.getElementById('global-panel')
       };
       const mobileCta = document.getElementById('mobile-cta');
-      const ghanaUrl = 'https://pocketi.shop/worldtv/p/worldtv-yearly-subscription';
-      const worldwideUrl = 'https://paystack.shop/pay/x4sqejilmz';
+      const statusBox = document.getElementById('payment-status');
+      const pocketiModal = document.getElementById('pocketi-modal');
+      const pocketiForm = document.getElementById('pocketi-form');
+      const pocketiMessage = document.getElementById('pocketi-message');
+      const pocketiSubmit = document.getElementById('pocketi-submit');
+      let pocketiTimer = null;
+
+      function customerToken() {
+        return localStorage.getItem('wtv_customer_token') || '';
+      }
+
+      function showStatus(message, type = 'success', code = '') {
+        statusBox.className = `payment-status show${type === 'error' ? ' error' : ''}`;
+        statusBox.textContent = String(message || '');
+        if (code) {
+          const codeLine = document.createElement('strong');
+          codeLine.textContent = String(code);
+          statusBox.appendChild(codeLine);
+        }
+        statusBox.scrollIntoView({behavior:'smooth', block:'center'});
+      }
+
+      function loginFor(region) {
+        const next = `/subscribe.html?pay=${encodeURIComponent(region)}`;
+        location.href = `/login.html?next=${encodeURIComponent(next)}`;
+      }
+
+      async function jsonRequest(url, options = {}) {
+        const headers = {...(options.headers || {})};
+        const token = customerToken();
+        if (token) headers['x-customer-token'] = token;
+        const response = await fetch(url, {...options, headers});
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const error = new Error(data.error || 'The request could not be completed');
+          error.status = response.status;
+          throw error;
+        }
+        return data;
+      }
 
       function selectRegion(region) {
         tabs.forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.region === region)));
@@ -527,16 +604,142 @@
           panel.hidden = !active;
           panel.classList.toggle('active', active);
         });
-        mobileCta.href = region === 'ghana' ? ghanaUrl : worldwideUrl;
+        mobileCta.dataset.paymentRegion = region;
         mobileCta.querySelector('span').textContent = region === 'ghana' ? 'Pay from Ghana' : 'Pay Worldwide';
       }
 
+      async function startPaystack() {
+        if (!customerToken()) return loginFor('global');
+        showStatus('Preparing your secure Worldwide payment…');
+        try {
+          const plans = await jsonRequest('/api/plans');
+          const plan = plans.find(item => Number(item.duration_days) >= 360 && Number(item.price_usd) === 23) || plans[0];
+          if (!plan) throw new Error('The annual subscription plan is unavailable');
+          const checkout = await jsonRequest('/api/customer/checkout-request', {
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({planId:plan.id})
+          });
+          const payment = await jsonRequest('/api/payment/paystack/initialize', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({reference:checkout.reference, payment_region:'worldwide'})
+          });
+          if (!payment.authorization_url) throw new Error('The secure payment page was not returned');
+          location.href = payment.authorization_url;
+        } catch (error) {
+          if (error.status === 401) {
+            localStorage.removeItem('wtv_customer_token');
+            return loginFor('global');
+          }
+          showStatus(error.message || 'Could not start Worldwide payment.', 'error');
+        }
+      }
+
+      function openPocketi() {
+        if (!customerToken()) return loginFor('ghana');
+        pocketiMessage.textContent = '';
+        pocketiModal.classList.add('open');
+        document.getElementById('pocketi-phone').focus();
+      }
+
+      function closePocketi() {
+        pocketiModal.classList.remove('open');
+      }
+
+      async function pollPocketi(orderId) {
+        clearTimeout(pocketiTimer);
+        try {
+          const payment = await jsonRequest(`/api/payment/pocketi/status/${encodeURIComponent(orderId)}`);
+          if (payment.status === 'fulfilled' && payment.code) {
+            localStorage.removeItem('wtv_pending_pocketi_order');
+            showStatus('Pocketi payment successful. Your one-year WORLD TV code has been issued and emailed to you:', 'success', payment.code);
+            return;
+          }
+          if (payment.status === 'payment_confirmed') {
+            showStatus('Pocketi payment received. Activation is waiting for an available subscription code.');
+          } else {
+            showStatus('Pocketi payment request sent. Complete the Mobile Money payment on your phone; this page will activate your subscription automatically.');
+          }
+          pocketiTimer = setTimeout(() => pollPocketi(orderId), 10000);
+        } catch (error) {
+          if (error.status === 401) {
+            localStorage.removeItem('wtv_customer_token');
+            return loginFor('ghana');
+          }
+          showStatus(`${error.message || 'Could not check Pocketi payment.'} We will keep checking automatically.`, 'error');
+          pocketiTimer = setTimeout(() => pollPocketi(orderId), 20000);
+        }
+      }
+
+      pocketiForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        pocketiSubmit.disabled = true;
+        pocketiMessage.textContent = 'Sending the secure Pocketi request…';
+        try {
+          const payment = await jsonRequest('/api/payment/pocketi/initialize', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              phone:document.getElementById('pocketi-phone').value,
+              provider:document.getElementById('pocketi-provider').value
+            })
+          });
+          localStorage.setItem('wtv_pending_pocketi_order', payment.orderId);
+          closePocketi();
+          showStatus(payment.message || 'Pocketi sent a secure payment request to your phone.');
+          pollPocketi(payment.orderId);
+        } catch (error) {
+          if (error.status === 401) {
+            localStorage.removeItem('wtv_customer_token');
+            return loginFor('ghana');
+          }
+          pocketiMessage.textContent = error.message || 'Could not start Pocketi payment.';
+        } finally {
+          pocketiSubmit.disabled = false;
+        }
+      });
+
+      document.getElementById('pocketi-cancel').addEventListener('click', closePocketi);
+      pocketiModal.addEventListener('click', event => { if (event.target === pocketiModal) closePocketi(); });
+
+      document.querySelectorAll('.payment-link').forEach(link => link.addEventListener('click', event => {
+        event.preventDefault();
+        link.dataset.paymentRegion === 'ghana' ? openPocketi() : startPaystack();
+      }));
+
       tabs.forEach(tab => tab.addEventListener('click', () => selectRegion(tab.dataset.region)));
+
+      async function verifyPaystackReturn() {
+        const params = new URLSearchParams(location.search);
+        const reference = params.get('reference') || params.get('trxref');
+        if (!reference) return false;
+        showStatus('Payment received. Verifying and issuing your subscription code…');
+        try {
+          const result = await jsonRequest('/api/payment/paystack/verify', {
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({reference})
+          });
+          if (result.fulfilled || result.code) {
+            showStatus('Payment successful. Your one-year WORLD TV code has been issued and emailed to you:', 'success', result.code || 'Saved in My Account');
+          } else {
+            showStatus(result.message || 'Payment received. Activation is pending an available subscription code.');
+          }
+        } catch (error) {
+          showStatus(error.message || 'Payment could not be verified yet. Please open My Account shortly.', 'error');
+        }
+        return true;
+      }
 
       try {
         const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         if (zone === 'Africa/Accra') selectRegion('ghana');
       } catch (_) {}
+
+      verifyPaystackReturn().then(wasReturn => {
+        if (wasReturn) return;
+        const requested = new URLSearchParams(location.search).get('pay');
+        if (requested === 'global') startPaystack();
+        if (requested === 'ghana') openPocketi();
+      });
+
+      const pendingPocketi = localStorage.getItem('wtv_pending_pocketi_order');
+      if (pendingPocketi && customerToken()) pollPocketi(pendingPocketi);
 
       document.getElementById('year').textContent = new Date().getFullYear();
 
