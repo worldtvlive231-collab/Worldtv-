@@ -24,6 +24,67 @@ const db = new Database(path.join(__dirname, "data", "worldtv.sqlite"));
 db.pragma("journal_mode=WAL");
 db.pragma("busy_timeout=5000");
 
+const HOSTED_PAGE_URL = String(process.env.PAYSTACK_HOSTED_PAGE_URL || "https://paystack.shop/pay/x4sqejilmz");
+const HOSTED_PAGE_AMOUNT_GHS = Number(process.env.PAYSTACK_HOSTED_PAGE_AMOUNT_GHS || 270);
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS paystack_hosted_intents(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  plan_id INTEGER NOT NULL,
+  email TEXT NOT NULL,
+  expected_amount_pesewas INTEGER NOT NULL,
+  provider_reference TEXT UNIQUE,
+  status TEXT NOT NULL DEFAULT 'awaiting_payment',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_paystack_hosted_intents_pending
+  ON paystack_hosted_intents(email,status,created_at);
+`);
+
+function customerTokenHash(token) {
+  return crypto.createHash("sha256").update(String(token || "")).digest("hex");
+}
+
+function customerFromRequest(req) {
+  const token = String(req.headers["x-customer-token"] || "").trim();
+  if (!token) return null;
+  return db.prepare(`
+    SELECT s.user_id AS userId,u.name,u.email
+    FROM customer_sessions s JOIN users u ON u.id=s.user_id
+    WHERE s.token_hash=? AND datetime(s.expires_at)>datetime('now')
+  `).get(customerTokenHash(token)) || null;
+}
+
+function initializeHostedPaystack(req, res) {
+  try {
+    const customer = customerFromRequest(req);
+    if (!customer) return res.status(401).json({ error: "Please sign in before paying" });
+    const plan = db.prepare("SELECT id FROM plans WHERE active=1 AND duration_days>=360 ORDER BY duration_days DESC,id ASC LIMIT 1").get();
+    if (!plan) return res.status(503).json({ error: "The annual subscription plan is unavailable" });
+    const expectedAmount = Math.round(HOSTED_PAGE_AMOUNT_GHS * 100);
+    let intent = db.prepare(`
+      SELECT id FROM paystack_hosted_intents
+      WHERE user_id=? AND status='awaiting_payment' AND datetime(created_at)>datetime('now','-24 hours')
+      ORDER BY id DESC LIMIT 1
+    `).get(customer.userId);
+    if (!intent) {
+      const inserted = db.prepare(`
+        INSERT INTO paystack_hosted_intents(user_id,plan_id,email,expected_amount_pesewas)
+        VALUES(?,?,?,?)
+      `).run(customer.userId, plan.id, String(customer.email).trim().toLowerCase(), expectedAmount);
+      intent = { id: inserted.lastInsertRowid };
+    }
+    const url = new URL(HOSTED_PAGE_URL);
+    url.searchParams.set("email", customer.email);
+    res.json({ ok: true, intentId: intent.id, authorization_url: url.toString() });
+  } catch (error) {
+    console.error("Paystack hosted intent initialization failed:", error);
+    res.status(500).json({ error: "Could not prepare the Paystack payment" });
+  }
+}
+
 function safeEqualHex(a, b) {
   try {
     const left = Buffer.from(String(a || ""), "hex");
@@ -97,7 +158,7 @@ async function sendActivationEmail(email, customerName, code, expiresAt) {
 }
 
 async function fulfillSubscription(reference, payment) {
-  const checkout = db.prepare(`
+  let checkout = db.prepare(`
     SELECT c.*, p.duration_days, p.name AS plan_name, u.email, u.name AS customer_name
     FROM checkout_requests c
     JOIN plans p ON p.id=c.plan_id
@@ -106,7 +167,38 @@ async function fulfillSubscription(reference, payment) {
   `).get(reference);
 
   if (!checkout) {
-    return { ok: true, ignored: true, reason: "checkout_not_found" };
+    const email = String(payment.customer?.email || payment.email || "").trim().toLowerCase();
+    const amount = Number(payment.amount);
+    const currency = String(payment.currency || "").toUpperCase();
+    const intent = email ? db.prepare(`
+      SELECT i.*,u.name AS customer_name
+      FROM paystack_hosted_intents i JOIN users u ON u.id=i.user_id
+      WHERE lower(i.email)=? AND i.status='awaiting_payment'
+        AND datetime(i.created_at)>datetime('now','-7 days')
+      ORDER BY i.id DESC LIMIT 1
+    `).get(email) : null;
+    if (!intent || payment.status !== "success" || amount !== Number(intent.expected_amount_pesewas) || currency !== "GHS") {
+      return { ok: true, ignored: true, reason: "checkout_not_found" };
+    }
+    db.transaction(() => {
+      db.prepare(`
+        INSERT OR IGNORE INTO checkout_requests(
+          reference,user_id,plan_id,original_amount_usd,discount_usd,final_amount_usd,
+          original_amount_ghs,discount_ghs,final_amount_ghs,status,notes
+        ) VALUES(?,?,?,23,0,23,?,0,?,'awaiting_payment',?)
+      `).run(reference, intent.user_id, intent.plan_id, amount / 100, amount / 100, "Paystack hosted page x4sqejilmz");
+      db.prepare(`
+        UPDATE paystack_hosted_intents
+        SET provider_reference=?,status='payment_confirmed',updated_at=CURRENT_TIMESTAMP
+        WHERE id=? AND status='awaiting_payment'
+      `).run(reference, intent.id);
+    })();
+    checkout = db.prepare(`
+      SELECT c.*, p.duration_days, p.name AS plan_name, u.email, u.name AS customer_name
+      FROM checkout_requests c JOIN plans p ON p.id=c.plan_id JOIN users u ON u.id=c.user_id
+      WHERE c.reference=?
+    `).get(reference);
+    if (!checkout) return { ok: true, ignored: true, reason: "hosted_checkout_not_created" };
   }
 
   const existing = db.prepare(`
@@ -138,7 +230,8 @@ async function fulfillSubscription(reference, payment) {
   const code = db.prepare(`
     SELECT id, code
     FROM subscription_codes
-    WHERE plan_id=? AND status='unused'
+    WHERE plan_id=? AND status='unused' AND user_id IS NULL AND reseller_id IS NULL
+      AND (expires_at IS NULL OR datetime(expires_at)>datetime('now'))
     ORDER BY id ASC
     LIMIT 1
   `).get(checkout.plan_id);
@@ -182,7 +275,7 @@ async function fulfillSubscription(reference, payment) {
     const assigned = db.prepare(`
       UPDATE subscription_codes
       SET status='used', user_id=?, expires_at=?
-      WHERE id=? AND status='unused'
+      WHERE id=? AND status='unused' AND user_id IS NULL AND reseller_id IS NULL
     `).run(checkout.user_id, expiresAt, code.id);
     if (assigned.changes !== 1) throw new Error("Subscription code assignment conflict");
 
@@ -238,6 +331,10 @@ async function fulfillSubscription(reference, payment) {
   }
 
   await sendActivationEmail(checkout.email, checkout.customer_name, code.code, expiresAt);
+  db.prepare(`
+    UPDATE paystack_hosted_intents SET status='fulfilled',updated_at=CURRENT_TIMESTAMP
+    WHERE provider_reference=?
+  `).run(reference);
   console.log("Paystack webhook fulfilled WORLD TV subscription", { reference, user_id: checkout.user_id, code_id: code.id });
 
   return { ok: true, paid: true, fulfilled: true, code: code.code, expires_at: expiresAt };
@@ -279,6 +376,7 @@ express.application.post = function worldTvPost(route, ...handlers) {
   if (route === "/api/payment/paystack/verify" && !this.locals.__worldTvPaystackWebhookInstalled) {
     this.locals.__worldTvPaystackWebhookInstalled = true;
     originalPost.call(this, "/api/payment/paystack/webhook", paystackWebhookHandler);
+    originalPost.call(this, "/api/payment/paystack/hosted-intent", initializeHostedPaystack);
     console.log("WORLD TV Paystack webhook route enabled: /api/payment/paystack/webhook");
   }
   return result;
