@@ -401,10 +401,10 @@
               <p>The amount payable will be displayed in Ghana cedis (GHS). Enter your name and email address, then click “Pay Now” to continue.</p>
               <p>The payment is equivalent to US$23, but your bank will deduct the amount in your local currency. You do not need a US-dollar account to complete the payment.</p>
             </div>
-            <a class="secondary-cta payment-link" id="worldwide-pay" href="#" data-payment-region="global">
+            <a class="secondary-cta payment-link" id="worldwide-pay" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer" data-payment-region="global">
               <span>Continue to Worldwide Payment</span><span class="cta-arrow">→</span>
             </a>
-            <p class="cta-help">Sign in to WORLD TV, complete the secure Paystack checkout, and receive your code automatically after successful payment.</p>
+            <p class="cta-help">Sign in, complete the secure Paystack payment link, and receive your code automatically after successful payment.</p>
           </div>
 
           <div class="region-panel" id="ghana-panel" role="tabpanel" aria-labelledby="ghana-tab" hidden>
@@ -504,7 +504,7 @@
         <p>Choose your payment route and take the next step toward activating WORLD TV today.</p>
         <div class="final-actions">
           <a class="primary-cta payment-link" href="#" data-payment-region="ghana"><span>Pay from Ghana</span><span class="cta-arrow">→</span></a>
-          <a class="secondary-cta payment-link" href="#" data-payment-region="global"><span>Pay Worldwide</span><span class="cta-arrow">→</span></a>
+          <a class="secondary-cta payment-link" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer" data-payment-region="global"><span>Pay Worldwide</span><span class="cta-arrow">→</span></a>
         </div>
       </div>
     </section>
@@ -545,7 +545,7 @@
   <a class="support-fab" href="https://t.me/MYWORLDTVLIVE" target="_blank" rel="noopener noreferrer" aria-label="Get WORLD TV help on Telegram"><b>✈</b><span>Need help?</span></a>
 
   <div class="mobile-buy">
-    <a class="primary-cta payment-link" id="mobile-cta" href="#" data-payment-region="global"><span>Pay Worldwide</span><span class="cta-arrow">→</span></a>
+    <a class="primary-cta payment-link" id="mobile-cta" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer" data-payment-region="global"><span>Pay Worldwide</span><span class="cta-arrow">→</span></a>
   </div>
 
   <script>
@@ -561,6 +561,7 @@
       const pocketiForm = document.getElementById('pocketi-form');
       const pocketiMessage = document.getElementById('pocketi-message');
       const pocketiSubmit = document.getElementById('pocketi-submit');
+      const worldwideUrl = 'https://paystack.shop/pay/x4sqejilmz';
       let pocketiTimer = null;
 
       function customerToken() {
@@ -610,26 +611,16 @@
 
       async function startPaystack() {
         if (!customerToken()) return loginFor('global');
-        showStatus('Preparing your secure Worldwide payment…');
+        showStatus('Preparing your secure Paystack payment link…');
         try {
-          const plans = await jsonRequest('/api/plans');
-          const plan = plans.find(item => Number(item.duration_days) >= 360 && Number(item.price_usd) === 23) || plans[0];
-          if (!plan) throw new Error('The annual subscription plan is unavailable');
-          const checkout = await jsonRequest('/api/customer/checkout-request', {
-            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({planId:plan.id})
-          });
-          const payment = await jsonRequest('/api/payment/paystack/initialize', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({reference:checkout.reference, payment_region:'worldwide'})
-          });
-          if (!payment.authorization_url) throw new Error('The secure payment page was not returned');
-          location.href = payment.authorization_url;
+          const payment = await jsonRequest('/api/payment/paystack/hosted-intent', {method:'POST'});
+          location.href = payment.authorization_url || worldwideUrl;
         } catch (error) {
           if (error.status === 401) {
             localStorage.removeItem('wtv_customer_token');
             return loginFor('global');
           }
-          showStatus(error.message || 'Could not start Worldwide payment.', 'error');
+          showStatus(error.message || 'Could not open the Paystack payment link.', 'error');
         }
       }
 
