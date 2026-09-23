@@ -8,6 +8,7 @@ const multer = require("multer");
 const fs = require("fs");
 const Database = require("better-sqlite3");
 const {openAiApiKeyStatus}=require("./openai-key");
+const {createLiveChatWhatsAppNotifier}=require("./live-chat-whatsapp");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,6 +16,7 @@ const SUBSCRIPTION_PROMO_USD = 23;
 const CUSTOMER_SESSION_DAYS = 30;
 const db = new Database(path.join(__dirname, 'data', 'worldtv.sqlite'));
 const adminSessions = new Map();
+const liveChatWhatsApp=createLiveChatWhatsAppNotifier();
 
 const uploadDir = path.join(__dirname, "public", "uploads");
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -740,6 +742,9 @@ app.post("/api/chat/messages",liveChatMessageRateLimit,(req,res)=>{
 
     return {
       conversationId:conversation.id,
+      conversation:db.prepare(
+        "SELECT id,name,email,page_path,status FROM live_chat_conversations WHERE id=?"
+      ).get(conversation.id),
       message:db.prepare(
         "SELECT id,sender,source,body,created_at FROM live_chat_messages WHERE id=?"
       ).get(result.lastInsertRowid)
@@ -749,6 +754,7 @@ app.post("/api/chat/messages",liveChatMessageRateLimit,(req,res)=>{
   const saved=saveMessage();
   res.status(201).json({ok:true,message:saved.message,ai:liveChatAiStatus().active});
   scheduleLiveChatAiReply(saved.conversationId);
+  void liveChatWhatsApp.notify({conversation:saved.conversation,message:saved.message});
 });
 
 app.get("/api/admin/chat/conversations",adminOnly,(req,res)=>{
@@ -774,7 +780,12 @@ app.get("/api/admin/chat/conversations",adminOnly,(req,res)=>{
   `).all();
   const unreadTotal=conversations.reduce((sum,row)=>sum+Number(row.unread_admin||0),0);
   res.setHeader("Cache-Control","no-store");
-  res.json({conversations,unread_total:unreadTotal,ai:liveChatAiStatus()});
+  res.json({
+    conversations,
+    unread_total:unreadTotal,
+    ai:liveChatAiStatus(),
+    whatsapp_notifications:liveChatWhatsApp.status()
+  });
 });
 
 app.get("/api/admin/chat/conversations/:id/messages",adminOnly,(req,res)=>{

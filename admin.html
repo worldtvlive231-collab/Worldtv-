@@ -117,7 +117,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <section id="liveChatTab" class="hide">
   <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin:20px 0 12px">
     <div><h2 style="margin:0">Customer Live Chat</h2><p id="liveChatStatusText" class="muted" style="margin:5px 0 0">Messages update automatically.</p></div>
-    <div class="live-chat-ai-controls"><label class="live-chat-ai-toggle"><input id="liveChatAiToggle" type="checkbox" onchange="saveLiveChatAiSetting(this.checked)"> AI Auto-Reply</label><span id="liveChatAiState" class="live-chat-ai-state">Checking AI…</span><button class="btn secondary" onclick="refreshLiveChat()">Refresh Now</button></div>
+    <div class="live-chat-ai-controls"><label class="live-chat-ai-toggle"><input id="liveChatAiToggle" type="checkbox" onchange="saveLiveChatAiSetting(this.checked)"> AI Auto-Reply</label><span id="liveChatAiState" class="live-chat-ai-state">Checking AI…</span><span id="liveChatWhatsappState" class="live-chat-ai-state">Checking WhatsApp alerts…</span><button class="btn secondary" onclick="refreshLiveChat()">Refresh Now</button></div>
   </div>
   <div class="live-chat-layout">
     <aside class="live-chat-sidebar">
@@ -586,6 +586,23 @@ async function loadLiveChatConversations(){
         : ai.enabled&&!ai.configured
           ? (ai.configuration_error==="invalid_format"?"API key format invalid":"Key not loaded in Railway")
           : "Off";
+    }
+    const whatsappState=$("liveChatWhatsappState");
+    if(whatsappState){
+      const alerts=data.whatsapp_notifications||{};
+      if(alerts.last_error){
+        whatsappState.textContent=`WhatsApp alert failed • ${alerts.last_error}`;
+        whatsappState.className="live-chat-ai-state warning";
+      }else if(alerts.active){
+        whatsappState.textContent=`WhatsApp alerts on${alerts.recipient_hint?` • ${alerts.recipient_hint}`:""}${alerts.mode==="template"?"":" • text window only"}`;
+        whatsappState.className=`live-chat-ai-state ${alerts.mode==="template"?"active":"warning"}`;
+      }else if(alerts.enabled&&!alerts.configured){
+        whatsappState.textContent="WhatsApp alerts need Cloud API setup";
+        whatsappState.className="live-chat-ai-state warning";
+      }else{
+        whatsappState.textContent="WhatsApp alerts off";
+        whatsappState.className="live-chat-ai-state";
+      }
     }
     renderLiveChatList();
     const status=$("liveChatStatusText");
