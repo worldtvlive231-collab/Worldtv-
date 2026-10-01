@@ -1,27 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="430" viewBox="0 0 900 430" role="img" aria-label="Accepted payment methods">
-  <rect width="900" height="430" rx="28" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1050" height="430" viewBox="0 0 1050 430" role="img" aria-label="Accepted payment methods including Stripe">
+  <rect width="1050" height="430" rx="28" fill="#ffffff"/>
   <defs>
     <filter id="s" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000000" flood-opacity="0.18"/></filter>
   </defs>
   <g filter="url(#s)">
-    <rect x="85" y="30" width="285" height="120" rx="22" fill="#ffffff" stroke="#dfe5ef"/>
-    <text x="228" y="104" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="60" font-weight="800" fill="#153f7a">VISA</text>
+    <rect x="35" y="30" width="220" height="120" rx="22" fill="#ffffff" stroke="#dfe5ef"/>
+    <text x="145" y="104" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="58" font-weight="800" fill="#153f7a">VISA</text>
 
-    <rect x="390" y="30" width="320" height="120" rx="22" fill="#ffffff" stroke="#dfe5ef"/>
-    <circle cx="500" cy="90" r="47" fill="#eb001b"/><circle cx="558" cy="90" r="47" fill="#f79e1b"/>
-    <text x="550" y="99" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="700" fill="#ffffff">Mastercard</text>
+    <rect x="275" y="30" width="250" height="120" rx="22" fill="#ffffff" stroke="#dfe5ef"/>
+    <circle cx="365" cy="90" r="43" fill="#eb001b"/><circle cx="415" cy="90" r="43" fill="#f79e1b"/>
+    <text x="390" y="99" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="27" font-weight="700" fill="#ffffff">Mastercard</text>
 
-    <rect x="20" y="220" width="255" height="135" rx="24" fill="#ffd400"/>
-    <text x="148" y="270" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="800" fill="#111111">MTN</text>
-    <text x="148" y="307" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="25" font-weight="700" fill="#e21b23">Mobile Money</text>
+    <rect x="545" y="30" width="300" height="120" rx="22" fill="#ffffff" stroke="#dfe5ef"/>
+    <rect x="596" y="57" width="198" height="66" rx="16" fill="#635bff"/>
+    <text x="695" y="101" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="38" font-weight="800" fill="#ffffff">stripe</text>
 
-    <rect x="300" y="220" width="270" height="135" rx="24" fill="#ed1c24"/>
-    <text x="435" y="272" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="800" fill="#ffffff">AirtelTigo</text>
-    <text x="435" y="309" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="25" font-weight="700" fill="#ffffff">Money</text>
+    <rect x="60" y="220" width="270" height="135" rx="24" fill="#ffd400"/>
+    <text x="195" y="270" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="800" fill="#111111">MTN</text>
+    <text x="195" y="307" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="25" font-weight="700" fill="#e21b23">Mobile Money</text>
 
-    <rect x="595" y="220" width="285" height="135" rx="24" fill="#e21c2a"/>
-    <text x="738" y="271" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="800" fill="#ffffff">Telecel</text>
-    <text x="738" y="309" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="25" font-weight="700" fill="#ffffff">Cash</text>
+    <rect x="390" y="220" width="270" height="135" rx="24" fill="#ed1c24"/>
+    <text x="525" y="272" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="800" fill="#ffffff">AirtelTigo</text>
+    <text x="525" y="309" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="25" font-weight="700" fill="#ffffff">Money</text>
+
+    <rect x="720" y="220" width="270" height="135" rx="24" fill="#e21c2a"/>
+    <text x="855" y="271" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="800" fill="#ffffff">Telecel</text>
+    <text x="855" y="309" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="25" font-weight="700" fill="#ffffff">Cash</text>
   </g>
-  <text x="450" y="405" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="700" fill="#555555">Mobile Money • Visa • Mastercard</text>
+  <text x="525" y="405" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="700" fill="#555555">Mobile Money • Visa • Mastercard • Stripe</text>
 </svg>
