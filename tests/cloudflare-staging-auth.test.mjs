@@ -68,7 +68,7 @@ function request(path, { method = "GET", payload, cookie, origin = BASE } = {}) 
   return new Request(BASE + path, { method, headers, body: payload ? JSON.stringify(payload) : undefined });
 }
 function context(db, req, enabled = "true") {
-  return { request: req, env: { DB: db, WORLDTV_STAGING_AUTH_ENABLED: enabled } };
+  return { request: req, env: { DB: db, WORLDTV_STAGING_AUTH_ENABLED: enabled, WORLDTV_STAGING_REGISTRATION_ENABLED: "true" } };
 }
 
 test("staging auth is disabled by default and on non-preview hosts", async () => {
@@ -162,4 +162,16 @@ test("staging auth responses carry browser security and no-cache headers", async
   assert.equal(response.headers.get("referrer-policy"), "no-referrer");
   assert.match(response.headers.get("content-security-policy"), /frame-ancestors 'none'/);
   assert.equal(response.headers.get("permissions-policy"), "camera=(), microphone=(), geolocation=()");
+});
+
+test("staging registration stays disabled unless separately approved", async () => {
+  const db = new FakeD1();
+  const req = request("/api/staging/auth/register", {
+    method: "POST", payload: { name: "Sample User", email, password }
+  });
+  const disabled = context(db, req);
+  disabled.env.WORLDTV_STAGING_REGISTRATION_ENABLED = "false";
+  const response = await register(disabled);
+  assert.equal(response.status, 404);
+  assert.equal(db.users.length, 0);
 });
