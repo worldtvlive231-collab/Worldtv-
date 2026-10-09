@@ -49,6 +49,7 @@ jobs:
         run: |
           node --check cloudflare/check-public-preview.mjs
           bash -n cloudflare/check-remote.sh
+          bash -n cloudflare/d1/apply-004-remote.sh
       - name: Test sandbox-only idempotent code issuance transaction
         run: node --test tests/cloudflare-staging-issuance.test.mjs
       - name: Build preview without secrets
