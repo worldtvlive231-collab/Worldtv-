@@ -146,7 +146,7 @@ test("admin write operations require same-origin JSON even with a valid Access t
 });
 
 test("Access identity rejects missing, empty and malformed signed subjects", async () => {
-  for (const sub of [null, "", 17, "bad\\nsubject"]) {
+  for (const sub of [null, "", 17, "bad" + String.fromCharCode(10) + "subject"]) {
     const { jwt, fetchJwks } = await keysAndJwt({ sub });
     assert.equal(await verifyAccessIdentity(jwt, {
       teamDomain: TEAM, audience: AUD, fetchJwks
