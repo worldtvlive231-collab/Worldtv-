@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - migration/cloudflare-preview-2026-10
+      - migration/cloudflare-staging-phase5-2026-10
   workflow_dispatch:
 
 permissions:
@@ -19,11 +20,4 @@ jobs:
         with:
           node-version: '22'
       - name: Verify staged authentication, subscriptions, sandbox payment, admin and chat
-        run: |
-          node --test \
-            tests/cloudflare-staging-auth.test.mjs \
-            tests/cloudflare-staging-subscriptions.test.mjs \
-            tests/cloudflare-staging-paystack.test.mjs \
-            tests/cloudflare-staging-paystack-route.test.mjs \
-            tests/cloudflare-staging-admin-access.test.mjs \
-            tests/cloudflare-staging-chat.test.mjs
+        run: node --test --test-concurrency=1 tests/*.test.mjs

@@ -1,3 +1,8 @@
+> Update 2026-10-09: PR #162 adds gated identity verification/recovery and D1 rate
+> limits in migration 005. These remain unconfigured and undeployed. See
+> [execution report](MIGRATION_EXECUTION_2026-10-09.md) for current behavior, blockers,
+> evidence and rollback. The historical prototype notes below describe earlier phases.
+
 # WORLD TV Cloudflare staged customer authentication
 
 **Status: code added to migration branch; DISABLED BY DEFAULT; not production-ready.**

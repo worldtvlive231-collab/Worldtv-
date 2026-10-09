@@ -3,8 +3,8 @@
  * Deliberately disabled until WORLDTV_STAGING_AUTH_ENABLED='true' is set
  * AND the request is made on the worldtv-preview.pages.dev hostname.
  *
- * Not production ready: add distributed rate limiting, email verification,
- * forgot-password delivery, abuse defenses, device policy and monitoring.
+ * Not production ready: identity routes require migration 005 and mailer;
+ * validate KDF compatibility/CPU on the actual Cloudflare runtime before enabling.
  * No Railway records or live payment integrations are used here.
  */
 
@@ -53,11 +53,23 @@ export function gate(context, { write = false } = {}) {
 }
 
 export async function readBody(request) {
-  const raw = await request.text();
-  if (encoder.encode(raw).length > 4096) {
-    throw new Error("request too large");
-  }
-  return JSON.parse(raw);
+  if (!request.body) throw new Error("empty body");
+  const reader = request.body.getReader();
+  let size = 0;
+  const chunks = [];
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 4096) { await reader.cancel(); throw new Error("request too large"); }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
 }
 
 export function normalizeEmail(value) {

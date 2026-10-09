@@ -56,6 +56,7 @@ async function setupAccount(sqlite) {
   sqlite.prepare(
     "INSERT INTO users(name,email,password_hash) VALUES('Buyer','buyer@example.invalid','only-test-hash')"
   ).run();
+  sqlite.exec("UPDATE users SET email_verified_at=CURRENT_TIMESTAMP");
   sqlite.prepare(
     "INSERT INTO customer_sessions(token_hash,user_id,expires_at) VALUES(?,1,datetime('now','+1 day'))"
   ).run(await hashSessionToken(token));
@@ -164,6 +165,7 @@ test("signed sandbox test webhook fulfills only a linked pending order once", as
   // A different signed-in customer must not be able to retrieve this code.
   const otherToken = "w".repeat(43);
   sqlite.prepare("INSERT INTO users(name,email,password_hash) VALUES('Other','other@example.invalid','hash')").run();
+  sqlite.exec("UPDATE users SET email_verified_at=CURRENT_TIMESTAMP");
   sqlite.prepare("INSERT INTO customer_sessions(token_hash,user_id,expires_at) VALUES(?,2,datetime('now','+1 day'))")
     .run(await hashSessionToken(otherToken));
   const foreign = await testCode(ctx(codeRequest(

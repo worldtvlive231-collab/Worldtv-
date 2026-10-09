@@ -1,3 +1,7 @@
+> Current execution status: **NO-GO**. See
+> [2026-10-09 execution report](MIGRATION_EXECUTION_2026-10-09.md).
+> Identity code has advanced; live browser/provider/runtime/continuity gates have not passed.
+
 # WORLD TV – Cloudflare launch readiness and remaining gates
 
 **Migration branch:** `migration/cloudflare-preview-2026-10`

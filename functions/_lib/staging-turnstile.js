@@ -1,5 +1,5 @@
 /** Fail-closed Turnstile verification for staging registration only. */
-export async function verifyTurnstile(token, { secret, remoteip, verify = fetch } = {}) {
+export async function verifyTurnstile(token, { secret, remoteip, hostname, action, verify = fetch } = {}) {
   if (typeof secret !== "string" || secret.length < 10 ||
       typeof token !== "string" || token.length < 10 || token.length > 2048) return false;
   const form = new URLSearchParams({ secret, response: token });
@@ -15,7 +15,8 @@ export async function verifyTurnstile(token, { secret, remoteip, verify = fetch 
     });
     if (!response?.ok) return false;
     const result = await response.json();
-    return result?.success === true;
+    return result?.success === true && typeof hostname === "string" &&
+      result.hostname === hostname && typeof action === "string" && result.action === action;
   } catch {
     return false;
   }
