@@ -37,6 +37,7 @@ export const STAGING_FULFILL_SQL = Object.freeze({
     "UPDATE orders SET status='paid', paid_at=CURRENT_TIMESTAMP, provider_reference=? " +
     "WHERE reference=? AND provider='paystack' AND status='pending' " +
     "AND amount_minor=? AND currency=? " +
+    "AND EXISTS(SELECT 1 FROM subscription_codes WHERE order_id=orders.id AND code_hash=?) " +
     "AND EXISTS(SELECT 1 FROM payment_events WHERE provider='paystack' " +
     "AND provider_event_id=? AND verification_status='verified')",
 
@@ -45,7 +46,7 @@ export const STAGING_FULFILL_SQL = Object.freeze({
     "SELECT ?, ?, o.plan_id, o.user_id, o.id, 'unused' FROM orders o " +
     "JOIN plans p ON p.id=o.plan_id AND p.active=1 " +
     "JOIN users u ON u.id=o.user_id AND u.status='active' AND u.role='customer' " +
-    "WHERE o.reference=? AND o.provider='paystack' AND o.status='paid' " +
+    "WHERE o.reference=? AND o.provider='paystack' AND o.status='pending' " +
     "AND o.provider_reference=? AND o.amount_minor=? AND o.currency=? " +
     "AND NOT EXISTS(SELECT 1 FROM subscription_codes c WHERE c.order_id=o.id) " +
     "AND EXISTS(SELECT 1 FROM payment_events e WHERE e.provider='paystack' " +
@@ -67,22 +68,23 @@ export async function sandboxFulfillInD1Batch(db, {
     throw new Error("Invalid verified payment input");
   }
   const { code_hash, code_hint } = await derivedActivationCode(reference, issuanceSecret);
-  // D1.batch executes on one connection, atomically. A duplicate cannot
-  // issue a second code because each order_id has a UNIQUE constraint.
+  // D1.batch executes atomically. A verified event first reserves exactly
+  // one code for a pending order, and only then marks that order paid if the
+  // SAME code was actually created (or exists for that order). Customers
+  // cannot redeem reserved codes for orders that remain pending.
   const results = await db.batch([
     db.prepare(STAGING_FULFILL_SQL.insertEvent).bind(
       eventId, reference, payloadSha256),
-    db.prepare(STAGING_FULFILL_SQL.payPendingOrder).bind(
-      String(transactionId), reference, amountMinor, currency, eventId),
     db.prepare(STAGING_FULFILL_SQL.issueCode).bind(
-      code_hash, code_hint, reference, String(transactionId), amountMinor, currency, eventId)
+      code_hash, code_hint, reference, String(transactionId), amountMinor, currency, eventId),
+    db.prepare(STAGING_FULFILL_SQL.payPendingOrder).bind(
+      String(transactionId), reference, amountMinor, currency, code_hash, eventId)
   ]);
   const changes = (results || []).map(row => row?.meta?.changes ?? 0);
   return {
-    // The raw code is deliberately NOT returned here or stored anywhere.
-    newly_paid: changes[1] === 1,
-    code_issued: changes[2] === 1,
+    newly_paid: changes[2] === 1,
+    code_issued: changes[1] === 1,
     duplicate: changes[1] !== 1 && changes[2] !== 1,
-    code_hint: changes[2] === 1 ? code_hint : null
+    code_hint: changes[1] === 1 && changes[2] === 1 ? code_hint : null
   };
 }
