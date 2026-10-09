@@ -172,7 +172,8 @@ test("redemption is account-bound and sends SHA256 hash, not plaintext, to D1", 
   assert.ok(prepared.every(item => !JSON.stringify(item).includes(rawCode)));
   assert.ok(prepared.filter(item => /(?:UPDATE subscription_codes|INSERT INTO subscriptions)/.test(item.query))
     .every(item => item.args.includes(1)));
-  assert.ok(prepared.some(item => item.args.includes(await activationCodeHash(rawCode))));
+  const digest = await activationCodeHash(rawCode);
+  assert.ok(prepared.some(item => item.args.includes(digest)));
 });
 
 test("subscription status is private and only queries active customer's own account", async () => {
