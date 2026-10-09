@@ -14,7 +14,9 @@ const paths = [
 const checks = [
   { path: "/api/cloudflare-health", method: "GET", allowed: [200], health: true },
   ...paths.map(path => ({ path, method: "GET", allowed: [404] })),
-  { path: "/api/staging/payment/paystack-validate", method: "POST", allowed: [404] }
+  { path: "/api/staging/payment/paystack-validate", method: "POST", allowed: [404] },
+  { path: "/api/staging/payment/checkout-draft", method: "POST", allowed: [404] },
+  { path: "/api/staging/payment/paystack-sandbox-webhook", method: "POST", allowed: [404] }
 ];
 let failures = 0;
 for (const check of checks) {
