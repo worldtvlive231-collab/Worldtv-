@@ -15,7 +15,9 @@
 - [x] Staging-only functions are disabled unless specific per-feature flags are explicitly configured.
 - [x] Offline integration tests cover atomic unread chat counters and duplicate-text handling using D1 migration 004.
 - [x] Offline sandbox-only issuance helper derives a code hash using HMAC, ties an authenticated event to an existing paid order, and tests duplicate event/amount/currency protection. **There is no public issuance route or email code delivery.**
-- [x] Offline signed Paystack **test-domain** webhook simulation now covers a synthetic pending checkout -> pending order -> verified event -> one reserved activation code -> paid order/checkout. New endpoints remain disabled by default and no real Paystack calls or code delivery occur.
+- [x] Offline signed Paystack **test-domain** webhook simulation now covers a synthetic pending checkout -> pending order -> verified event -> one reserved activation code -> paid order/checkout. New endpoints remain disabled by default and no real Paystack calls occur.
+- [x] Mock end-to-end tests now also verify authenticated retrieval of the reserved test code only by its own customer.
+- [x] A customer-facing Cloudflare staging lab UI is prepared, but responds 404 by default and is not wired to live accounts, admin tools or payments.
 
 ## Not done: required engineering
 
@@ -62,6 +64,8 @@ All functions require the correct preview domain plus their flags:
 - `WORLDTV_STAGING_TEST_CHECKOUT_ENABLED=true`: double-gated, test-only checkout reference creator that NEVER charges or returns a payment link.
 - `WORLDTV_STAGING_FULFILLMENT_ENABLED=true`: triple-gated signed Paystack test-domain webhook that reserves one hashed code but never delivers it.
 - `WORLDTV_STAGING_CODE_HMAC_SECRET`: Cloudflare test-only encrypted secret (at least 32 characters) required for deterministic code derivation. Never commit or share it.
+- `WORLDTV_STAGING_CODE_RETRIEVAL_ENABLED=true`: enables authenticated test-code retrieval **only** on preview.
+- `WORLDTV_STAGING_UI_ENABLED=true`: with staging auth, exposes the gated `/staging-lab` browser test page; never use for production.
 
 See `cloudflare/SANDBOX_CHECKOUT.md` for the mock end-to-end transaction, limitations and verification requirements. **Do not enable any of these features yet.** Current auth and chat prototypes still need rate limiting and operational protections; signed payment validation does NOT mean payment integration is ready.
 
