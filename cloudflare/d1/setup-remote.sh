@@ -7,7 +7,7 @@ set -euo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 DB="worldtv-fresh"
-WRANGLER_VERSION="4.86.0"
+WRANGLER_VERSION="4.119.0"
 
 if ! command -v node >/dev/null || ! command -v npm >/dev/null; then
   echo >&2 "Node.js and npm are required. Use GitHub Codespaces (Node 22+) if your Mac is unsupported."
@@ -29,9 +29,12 @@ python3 cloudflare/d1/test_schema.py
 echo
 echo "Checking Wrangler access to the Cloudflare database..."
 if ! npx --yes "wrangler@$WRANGLER_VERSION" d1 info "$DB"; then
-  echo "Cloudflare authorization may be required. Starting secure browser sign-in..."
-  npx --yes "wrangler@$WRANGLER_VERSION" login || {
-    echo >&2 "Unable to complete Cloudflare sign-in. Try opening this project in ChatGPT Work's Cloud Browser or Codespaces browser."
+  echo "Cloudflare authorization is required. Starting browserless device login..."
+  echo "Wrangler will print a short-lived verification URL and a user code."
+  echo "Open the verification URL in your OWN browser, enter the code, and approve."
+  echo "No localhost callback, port forwarding, xdg-open, or API token is needed."
+  npx --yes "wrangler@$WRANGLER_VERSION" login --device --browser=false || {
+    echo >&2 "Device sign-in did not finish. Retry the script; codes expire after a few minutes."
     exit 1
   }
   npx --yes "wrangler@$WRANGLER_VERSION" d1 info "$DB" || {
