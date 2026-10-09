@@ -152,3 +152,14 @@ test("write requests must be JSON and same-origin", async () => {
   assert.equal(noOrigin.status, 403);
   assert.equal(db.users.length, 0);
 });
+
+test("staging auth responses carry browser security and no-cache headers", async () => {
+  const db = new FakeD1();
+  const response = await me(context(db, request("/api/staging/auth/me"), "false"));
+  assert.equal(response.status, 404);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(response.headers.get("referrer-policy"), "no-referrer");
+  assert.match(response.headers.get("content-security-policy"), /frame-ancestors 'none'/);
+  assert.equal(response.headers.get("permissions-policy"), "camera=(), microphone=(), geolocation=()");
+});
