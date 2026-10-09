@@ -15,6 +15,7 @@ on:
       - 'tests/cloudflare-staging-chat.test.mjs'
       - 'tests/cloudflare-staging-paystack-route.test.mjs'
       - 'tests/cloudflare-staging-issuance.test.mjs'
+      - 'tests/cloudflare-staging-sandbox-e2e.test.mjs'
       - '.github/workflows/cloudflare-preview-check.yml'
   workflow_dispatch:
 
@@ -52,6 +53,8 @@ jobs:
           bash -n cloudflare/d1/apply-004-remote.sh
       - name: Test sandbox-only idempotent code issuance transaction
         run: node --test tests/cloudflare-staging-issuance.test.mjs
+      - name: Test mock signed Paystack checkout-to-code sandbox flow
+        run: node --test tests/cloudflare-staging-sandbox-e2e.test.mjs
       - name: Build preview without secrets
         run: node cloudflare/build-preview.mjs
       - name: Check output is read-only and contains no backend sources
