@@ -45,6 +45,11 @@ export const STAGING_FULFILL_SQL = Object.freeze({
   issueCode:
     "INSERT INTO subscription_codes(code_hash,code_hint,plan_id,user_id,order_id,status) " +
     "SELECT ?, ?, o.plan_id, o.user_id, o.id, 'unused' FROM orders o " +
+    "JOIN checkout_requests co ON co.id=o.checkout_request_id " +
+    "AND co.reference=o.reference AND co.user_id=o.user_id " +
+    "AND co.plan_id=o.plan_id AND co.provider=o.provider " +
+    "AND co.amount_minor=o.amount_minor AND co.currency=o.currency " +
+    "AND co.status='pending' " +
     "JOIN plans p ON p.id=o.plan_id AND p.active=1 " +
     "JOIN users u ON u.id=o.user_id AND u.status='active' AND u.role='customer' " +
     "WHERE o.reference=? AND o.provider='paystack' AND o.status='pending' " +
@@ -53,7 +58,14 @@ export const STAGING_FULFILL_SQL = Object.freeze({
     "AND EXISTS(SELECT 1 FROM payment_events e WHERE e.provider='paystack' " +
     "AND e.provider_event_id=? AND e.provider_reference=o.reference " +
     "AND e.payload_sha256=? AND e.verification_status='verified') " +
-    "ON CONFLICT DO NOTHING"
+    "ON CONFLICT DO NOTHING",
+
+  markCheckoutPaid:
+    "UPDATE checkout_requests SET status='paid',updated_at=CURRENT_TIMESTAMP " +
+    "WHERE reference=? AND status='pending' AND EXISTS(" +
+    "SELECT 1 FROM orders o JOIN subscription_codes code ON code.order_id=o.id " +
+    "WHERE o.checkout_request_id=checkout_requests.id AND o.status='paid' " +
+    "AND o.provider_reference=? AND code.status='unused')"
 });
 
 export async function sandboxFulfillInD1Batch(db, {
@@ -83,13 +95,14 @@ export async function sandboxFulfillInD1Batch(db, {
     db.prepare(STAGING_FULFILL_SQL.issueCode).bind(
       code_hash, code_hint, reference, amountMinor, currency, eventId, payloadSha256),
     db.prepare(STAGING_FULFILL_SQL.payPendingOrder).bind(
-      String(transactionId), reference, amountMinor, currency, code_hash, eventId, reference, payloadSha256)
+      String(transactionId), reference, amountMinor, currency, code_hash, eventId, reference, payloadSha256),
+    db.prepare(STAGING_FULFILL_SQL.markCheckoutPaid).bind(reference, String(transactionId))
   ]);
   const changes = (results || []).map(row => row?.meta?.changes ?? 0);
   return {
-    newly_paid: changes[2] === 1,
-    code_issued: changes[1] === 1,
-    duplicate: changes[1] !== 1 && changes[2] !== 1,
-    code_hint: changes[1] === 1 && changes[2] === 1 ? code_hint : null
+    newly_paid: changes[2] === 1 && changes[3] === 1,
+    code_issued: changes[1] === 1 && changes[2] === 1 && changes[3] === 1,
+    duplicate: changes[1] !== 1 && changes[2] !== 1 && changes[3] !== 1,
+    code_hint: changes[1] === 1 && changes[2] === 1 && changes[3] === 1 ? code_hint : null
   };
 }
