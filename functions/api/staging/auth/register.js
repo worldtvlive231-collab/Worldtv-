@@ -23,7 +23,8 @@ export async function onRequestPost(context) {
 
   const verified = await verifyTurnstile(input?.turnstileToken, {
     secret: context.env?.WORLDTV_TURNSTILE_SECRET,
-    remoteip: context.request.headers.get("cf-connecting-ip") || undefined
+    remoteip: context.request.headers.get("cf-connecting-ip") || undefined,
+    verify: context.data?.turnstileTestVerify || fetch
   });
   if (!verified) return reply({ error: "Verification required" }, 403);
 
