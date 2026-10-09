@@ -2,6 +2,27 @@
 
 **Status:** schema prepared and validated separately. A database has **not** been created in the customer's Cloudflare account from ChatGPT. No customer data was migrated. This is not a completed hosting move.
 
+## Simple setup for an older Mac: one command inside GitHub Codespaces
+
+The user's Mac runs macOS 11.7 and cannot run current Wrangler officially, so a safe **GitHub Codespace** is prepared on this branch with Node 22 and Python.
+
+1. Go to [the WORLD TV GitHub repo](https://github.com/worldtvlive231-collab/Worldtv-).
+2. Set branch to `migration/cloudflare-preview-2026-10`.
+3. Click **Code → Codespaces → Create codespace on migration/cloudflare-preview-2026-10**.
+4. After the cloud terminal is ready, run exactly:
+
+```bash
+bash cloudflare/d1/setup-remote.sh
+```
+
+The setup script checks the schema locally, checks Cloudflare D1 access, opens an OAuth browser login if needed, asks you to confirm `worldtv-fresh`, applies the three prepared SQL files in order, and queries the table counts. **Do not paste Cloudflare API tokens, passwords, or private records into ChatGPT or GitHub.**
+
+**Safety:** If Codespaces is not enabled or the browser cannot finish the Wrangler OAuth callback, run this task in **ChatGPT Work mode**, which has a Cloud Browser that can navigate the Cloudflare dashboard, or follow the manual Wrangler instructions below. A GitHub connection in the normal chat does not grant Cloudflare API access. Codespaces may incur costs beyond your included GitHub allowance; check GitHub usage before proceeding.
+
+The schema setup is not the production backend migration. It does not enable login, chats, payments or subscription codes until Workers APIs are implemented and tested.
+
+---
+
 ## First, create a NEW database in your Cloudflare account
 
 1. Open https://dash.cloudflare.com/.
@@ -18,6 +39,7 @@ There are two reviewed SQL files:
 
 - `cloudflare/d1/001_core.sql`: users, plans, hashed sessions and password reset tokens, checkout, orders, payment events, hashed activation codes, subscriptions.
 - `cloudflare/d1/002_operations.sql`: resellers, live chat, product orders, site settings, notifications and audit logs.
+- `cloudflare/d1/003_user_guards.sql`: guard manually created `users` tables against invalid roles/status values.
 
 Either use Cloudflare D1's **Console** tab to run the SQL contents **in order** (copy from your GitHub branch), or use Wrangler from a local checkout:
 
@@ -25,6 +47,7 @@ Either use Cloudflare D1's **Console** tab to run the SQL contents **in order** 
 npx wrangler login
 npx wrangler d1 execute worldtv-fresh --remote --file=cloudflare/d1/001_core.sql
 npx wrangler d1 execute worldtv-fresh --remote --file=cloudflare/d1/002_operations.sql
+npx wrangler d1 execute worldtv-fresh --remote --file=cloudflare/d1/003_user_guards.sql
 npx wrangler d1 execute worldtv-fresh --remote --command="SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;"
 ```
 
