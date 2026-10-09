@@ -20,7 +20,7 @@ const flags = {
 function testDB() {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec("PRAGMA foreign_keys=ON");
-  for (const file of ["001_core.sql", "002_operations.sql", "003_user_guards.sql"]) {
+  for (const file of ["001_core.sql", "002_operations.sql", "003_user_guards.sql", "004_chat_message_counters.sql"]) {
     sqlite.exec(readFileSync(resolve("cloudflare/d1", file), "utf8"));
   }
   const api = {
@@ -114,6 +114,22 @@ test("customers can start chat and exchange own messages, not see another accoun
   assert.deepEqual((await listed.json()).messages.map(x => x.body),
     ["Hello admin, subscription question"]);
   assert.equal(sqlite.prepare("SELECT unread_admin FROM live_chat_conversations").get().unread_admin, 1);
+  // Identical content must still create two distinct messages, not rely on
+  // a recent-text lookup which could corrupt unread counts.
+  const repeat = await sendMessage(context(api, request("/api/staging/chat/send", {
+    method: "POST", cookie: ownCookie, body: { message: "Hello admin, subscription question" }
+  })));
+  assert.equal(repeat.status, 200);
+  assert.equal(sqlite.prepare("SELECT unread_admin FROM live_chat_conversations").get().unread_admin, 2);
+  assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM live_chat_messages").get().n, 2);
+  // Simulate an authenticated admin reply at D1 level to verify the trigger.
+  const conversationId = sqlite.prepare("SELECT id FROM live_chat_conversations").get().id;
+  sqlite.prepare("INSERT INTO live_chat_messages(conversation_id,sender,source,body) VALUES(?,'admin','human',?)")
+    .run(conversationId, "Admin response");
+  assert.equal(sqlite.prepare("SELECT unread_customer FROM live_chat_conversations").get().unread_customer, 1);
+  const counters = sqlite.prepare("SELECT unread_admin,unread_customer FROM live_chat_conversations").get();
+  assert.deepEqual(counters, { unread_admin: 2, unread_customer: 1 });
+
 
   const foreignCookie = otherAuthCookie + "; " + chatCookie;
   const foreignRead = await getMessages(context(api, request("/api/staging/chat/messages", {
@@ -125,7 +141,7 @@ test("customers can start chat and exchange own messages, not see another accoun
     method: "POST", cookie: foreignCookie, body: { message: "Trying to hijack" }
   })));
   assert.equal(foreignSend.status, 404);
-  assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM live_chat_messages").get().n, 1);
+  assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM live_chat_messages").get().n, 3);
 });
 
 test("chat rejects anonymous users, bad paths, invalid messages and cross-origin writes", async () => {
