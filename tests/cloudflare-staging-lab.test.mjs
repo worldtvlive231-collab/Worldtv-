@@ -29,7 +29,8 @@ test("authorized preview lab has restrictive response headers and no payment for
   assert.match(html, /TEST ACCOUNTS ONLY/);
   assert.match(html, /Create test checkout/);
   assert.match(html, //api/staging/subscriptions/test-code/);
-  assert.doesNotMatch(html, /paystack\.shop\/pay\/|api\/transaction\/initialize/);
+  assert.equal(html.includes("paystack.shop/pay/"), false);
+  assert.equal(html.includes("api/transaction/initialize"), false);
   assert.doesNotMatch(html, /<script nonce="__NONCE__"/);
   assert.match(html, /<script nonce="[0-9a-f]{48}"/);
 });
