@@ -122,3 +122,25 @@ test("Access identity needs admin D1 role AND explicit email allowlist", async (
   }, { fetchJwks });
   assert.equal(wrongHost.response.status, 404);
 });
+
+test("admin write operations require same-origin JSON even with a valid Access token", async () => {
+  const { jwt, fetchJwks } = await keysAndJwt();
+  const makeWrite = (origin, contentType) => new Request(HOST + "/api/staging/admin/overview", {
+    method: "POST",
+    headers: { "cf-access-jwt-assertion": jwt, ...(origin ? { origin } : {}),
+      ...(contentType ? { "content-type": contentType } : {}) },
+    body: "{}"
+  });
+  const wrongOrigin = await requireStagingAdmin({
+    request: makeWrite("https://attacker.example", "application/json"), env
+  }, { write: true, fetchJwks });
+  assert.equal(wrongOrigin.response.status, 403);
+  const missingJSON = await requireStagingAdmin({
+    request: makeWrite(HOST, "text/plain"), env
+  }, { write: true, fetchJwks });
+  assert.equal(missingJSON.response.status, 415);
+  const correct = await requireStagingAdmin({
+    request: makeWrite(HOST, "application/json; charset=UTF-8"), env
+  }, { write: true, fetchJwks });
+  assert.deepEqual(correct.account, { id: 91, email: EMAIL });
+});
