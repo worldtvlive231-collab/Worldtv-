@@ -28,12 +28,17 @@ echo
 python3 cloudflare/d1/test_schema.py
 echo
 echo "Checking Wrangler access to the Cloudflare database..."
-npx --yes "wrangler@$WRANGLER_VERSION" d1 info "$DB" || {
-  echo >&2 "Cloudflare login or D1 access is missing."
-  echo >&2 "In the Codespaces terminal run: npx --yes wrangler@$WRANGLER_VERSION login"
-  echo >&2 "Then retry: bash cloudflare/d1/setup-remote.sh"
-  exit 1
-}
+if ! npx --yes "wrangler@$WRANGLER_VERSION" d1 info "$DB"; then
+  echo "Cloudflare authorization may be required. Starting secure browser sign-in..."
+  npx --yes "wrangler@$WRANGLER_VERSION" login || {
+    echo >&2 "Unable to complete Cloudflare sign-in. Try opening this project in ChatGPT Work's Cloud Browser or Codespaces browser."
+    exit 1
+  }
+  npx --yes "wrangler@$WRANGLER_VERSION" d1 info "$DB" || {
+    echo >&2 "Database '$DB' not found in this authenticated Cloudflare account, or access denied."
+    exit 1
+  }
+fi
 
 echo
 echo "To protect against applying schema to the wrong account, confirm database name."
