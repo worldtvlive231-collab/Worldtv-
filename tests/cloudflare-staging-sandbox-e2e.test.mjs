@@ -6,6 +6,8 @@ import { resolve } from "node:path";
 import { hashSessionToken } from "../functions/_lib/staging-auth.js";
 import { onRequestPost as checkout } from "../functions/api/staging/payment/checkout-draft.js";
 import { onRequestPost as webhook } from "../functions/api/staging/payment/paystack-sandbox-webhook.js";
+import { onRequestGet as testCode } from "../functions/api/staging/subscriptions/test-code.js";
+import { activationCodeHash } from "../functions/_lib/staging-entitlements.js";
 
 const HOST = "https://worldtv-preview.pages.dev";
 const token = "u".repeat(43);
@@ -65,6 +67,7 @@ function ctx(req, api, extraFlags = {}) {
     WORLDTV_STAGING_TEST_CHECKOUT_ENABLED: "true",
     WORLDTV_STAGING_PAYSTACK_VALIDATION_ENABLED: "true",
     WORLDTV_STAGING_FULFILLMENT_ENABLED: "true",
+    WORLDTV_STAGING_CODE_RETRIEVAL_ENABLED: "true",
     WORLDTV_PAYSTACK_TEST_SECRET: signSecret,
     WORLDTV_STAGING_CODE_HMAC_SECRET: codeSecret,
     ...extraFlags
@@ -78,6 +81,11 @@ function checkoutRequest(body = { plan_slug: "annual" }) {
       cookie: "__Host-worldtv_staging=" + token
     }, body: JSON.stringify(body)
   });
+}
+
+function codeRequest(reference, cookie = "__Host-worldtv_staging=" + token) {
+  return new Request(HOST + "/api/staging/subscriptions/test-code?reference=" +
+    encodeURIComponent(reference), { headers: cookie ? { cookie } : {} });
 }
 
 async function signedWebhook(ref, attrs = {}) {
@@ -137,6 +145,31 @@ test("signed sandbox test webhook fulfills only a linked pending order once", as
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM subscription_codes").get().n, 1);
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM subscriptions").get().n, 0);
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM payment_events").get().n, 1);
+
+  const codeResponse = await testCode(ctx(codeRequest(reference), api));
+  assert.equal(codeResponse.status, 200);
+  const codeBody = await codeResponse.json();
+  assert.equal(codeBody.status, "unused");
+  assert.match(codeBody.activation_code, /^WTV-[0-9A-F]{32}$/);
+  assert.equal(await activationCodeHash(codeBody.activation_code),
+    sqlite.prepare("SELECT code_hash FROM subscription_codes").get().code_hash);
+
+  const noSession = await testCode(ctx(codeRequest(reference, ""), api));
+  assert.equal(noSession.status, 401);
+  const disabled = await testCode(ctx(codeRequest(reference), api, {
+    WORLDTV_STAGING_CODE_RETRIEVAL_ENABLED: "false"
+  }));
+  assert.equal(disabled.status, 404);
+
+  // A different signed-in customer must not be able to retrieve this code.
+  const otherToken = "w".repeat(43);
+  sqlite.prepare("INSERT INTO users(name,email,password_hash) VALUES('Other','other@example.invalid','hash')").run();
+  sqlite.prepare("INSERT INTO customer_sessions(token_hash,user_id,expires_at) VALUES(?,2,datetime('now','+1 day'))")
+    .run(await hashSessionToken(otherToken));
+  const foreign = await testCode(ctx(codeRequest(
+    reference, "__Host-worldtv_staging=" + otherToken
+  ), api));
+  assert.equal(foreign.status, 404);
 
   const replay = await webhook(ctx(await signedWebhook(reference), api));
   assert.equal(replay.status, 200);
