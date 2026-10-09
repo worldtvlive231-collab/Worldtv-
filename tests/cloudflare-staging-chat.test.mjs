@@ -128,7 +128,8 @@ test("customers can start chat and exchange own messages, not see another accoun
     .run(conversationId, "Admin response");
   assert.equal(sqlite.prepare("SELECT unread_customer FROM live_chat_conversations").get().unread_customer, 1);
   const counters = sqlite.prepare("SELECT unread_admin,unread_customer FROM live_chat_conversations").get();
-  assert.deepEqual(counters, { unread_admin: 2, unread_customer: 1 });
+  assert.equal(counters.unread_admin, 2);
+  assert.equal(counters.unread_customer, 1);
 
 
   const foreignCookie = otherAuthCookie + "; " + chatCookie;
