@@ -47,4 +47,4 @@ for filename in ("001_core.sql", "002_operations.sql"):
 
 assert db.execute("SELECT COUNT(*) FROM plans").fetchone()[0] == 1
 assert db.execute("PRAGMA foreign_key_check").fetchall() == []
-print("PASS: 20 application tables, empty customer data, unique constraints and repeat-safe schema.")
+print("PASS: 19 application tables, empty customer data, unique constraints and repeat-safe schema.")
