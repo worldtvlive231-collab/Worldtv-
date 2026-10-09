@@ -81,8 +81,14 @@ export async function requireStagingAdmin(context, { write = false, fetchJwks } 
       context.env?.WORLDTV_STAGING_ADMIN_ENABLED !== "true") {
     return { response: reply({ error: "Not found" }, 404) };
   }
-  if (write && context.request.headers.get("origin") !== url.origin) {
-    return { response: reply({ error: "Forbidden" }, 403) };
+  if (write) {
+    if (context.request.headers.get("origin") !== url.origin) {
+      return { response: reply({ error: "Forbidden" }, 403) };
+    }
+    const contentType = context.request.headers.get("content-type") || "";
+    if (!/^application\/json(?:\s*;|$)/i.test(contentType)) {
+      return { response: reply({ error: "Expected JSON" }, 415) };
+    }
   }
   if (!context.env?.DB || typeof context.env.DB.prepare !== "function") {
     return { response: reply({ error: "Unavailable" }, 503) };
