@@ -6,7 +6,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parent
 db = sqlite3.connect(":memory:")
 db.execute("PRAGMA foreign_keys = ON")
-for filename in ("001_core.sql", "002_operations.sql", "003_user_guards.sql"):
+for filename in ("001_core.sql", "002_operations.sql", "003_user_guards.sql", "004_chat_message_counters.sql"):
     db.executescript((root / filename).read_text(encoding="utf-8"))
 
 tables = {row[0] for row in db.execute(
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 """)
-for filename in ("001_core.sql", "002_operations.sql", "003_user_guards.sql"):
+for filename in ("001_core.sql", "002_operations.sql", "003_user_guards.sql", "004_chat_message_counters.sql"):
     manual.executescript((root / filename).read_text(encoding="utf-8"))
 assert manual.execute("PRAGMA foreign_key_check").fetchall() == []
 assert {row[0] for row in manual.execute(
