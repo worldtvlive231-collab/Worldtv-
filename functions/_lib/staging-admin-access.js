@@ -50,7 +50,11 @@ export async function verifyAccessIdentity(jwt, { teamDomain, audience, fetchJwk
     }
 
     const email = normalizeEmail(payload.email);
-    if (!email) return null;
+    // Cloudflare Access identities must have a stable, nonempty subject.
+    // Never authorize using an email-only or malformed signed claim.
+    if (!email || typeof payload.sub !== "string" ||
+        payload.sub.length < 1 || payload.sub.length > 256 ||
+        /[\u0000-\u001f\u007f]/.test(payload.sub)) return null;
     const res = await fetchJwks(teamDomain + "/cdn-cgi/access/certs", {
       headers: { accept: "application/json" }, redirect: "error"
     });

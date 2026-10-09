@@ -144,3 +144,12 @@ test("admin write operations require same-origin JSON even with a valid Access t
   }, { write: true, fetchJwks });
   assert.deepEqual(correct.account, { id: 91, email: EMAIL });
 });
+
+test("Access identity rejects missing, empty and malformed signed subjects", async () => {
+  for (const sub of [null, "", 17, "bad" + String.fromCharCode(10) + "subject"]) {
+    const { jwt, fetchJwks } = await keysAndJwt({ sub });
+    assert.equal(await verifyAccessIdentity(jwt, {
+      teamDomain: TEAM, audience: AUD, fetchJwks
+    }), null);
+  }
+});
