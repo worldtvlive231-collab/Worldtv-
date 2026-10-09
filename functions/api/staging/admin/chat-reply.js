@@ -20,18 +20,12 @@ export async function onRequestPost(context) {
     return reply({ error: "Invalid reply" }, 400);
   }
   try {
-    const [sent] = await context.env.DB.batch([
-      context.env.DB.prepare(
-        "INSERT INTO live_chat_messages(conversation_id,sender,source,body) " +
-        "SELECT id,'admin','human',? FROM live_chat_conversations " +
-        "WHERE id=? AND status='open'"
-      ).bind(message, id),
-      context.env.DB.prepare(
-        "UPDATE live_chat_conversations SET unread_customer=unread_customer+1, " +
-        "last_message_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP " +
-        "WHERE id=? AND status='open'"
-      ).bind(id)
-    ]);
+    // Database trigger increments unread_customer when the message is inserted.
+    const sent = await context.env.DB.prepare(
+      "INSERT INTO live_chat_messages(conversation_id,sender,source,body) " +
+      "SELECT id,'admin','human',? FROM live_chat_conversations " +
+      "WHERE id=? AND status='open'"
+    ).bind(message, id).run();
     if (sent?.meta?.changes !== 1) return reply({ error: "Conversation unavailable" }, 404);
     return reply({ status: "sent", environment: "staging" });
   } catch {
