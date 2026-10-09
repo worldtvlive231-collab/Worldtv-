@@ -9,6 +9,7 @@ on:
       - 'functions/**'
       - 'tests/cloudflare-pages-health.test.mjs'
       - 'tests/cloudflare-staging-auth.test.mjs'
+      - 'tests/cloudflare-staging-subscriptions.test.mjs'
       - '.github/workflows/cloudflare-preview-check.yml'
   workflow_dispatch:
 
@@ -29,6 +30,8 @@ jobs:
         run: node --test tests/cloudflare-pages-health.test.mjs
       - name: Test disabled-by-default Cloudflare staging account authentication
         run: node --test tests/cloudflare-staging-auth.test.mjs
+      - name: Test disabled-by-default subscriptions and activation SQL
+        run: node --test tests/cloudflare-staging-subscriptions.test.mjs
       - name: Build preview without secrets
         run: node cloudflare/build-preview.mjs
       - name: Check output is read-only and contains no backend sources
