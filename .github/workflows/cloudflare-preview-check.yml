@@ -6,6 +6,8 @@ on:
       - 'cloudflare/**'
       - 'index.html'
       - 'assets/**'
+      - 'functions/**'
+      - 'tests/cloudflare-pages-health.test.mjs'
       - '.github/workflows/cloudflare-preview-check.yml'
   workflow_dispatch:
 
@@ -22,6 +24,8 @@ jobs:
           node-version: '22'
       - name: Validate builder syntax
         run: node --check cloudflare/build-preview.mjs
+      - name: Test Cloudflare read-only D1 health probe
+        run: node --test tests/cloudflare-pages-health.test.mjs
       - name: Build preview without secrets
         run: node cloudflare/build-preview.mjs
       - name: Check output is read-only and contains no backend sources
