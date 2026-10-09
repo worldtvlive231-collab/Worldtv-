@@ -19,7 +19,7 @@ required = {
     "reseller_sales", "live_chat_conversations", "live_chat_messages",
     "products", "product_orders", "site_settings", "notifications", "audit_logs"
 }
-assert required <= tables, f"Missing tables: {required - tables}"
+assert tables == required, f"Unexpected schema tables: missing={required-tables}, extra={tables-required}"
 assert db.execute("PRAGMA foreign_key_check").fetchall() == []
 assert db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
 assert db.execute("SELECT COUNT(*) FROM orders").fetchone()[0] == 0
@@ -47,4 +47,44 @@ for filename in ("001_core.sql", "002_operations.sql"):
 
 assert db.execute("SELECT COUNT(*) FROM plans").fetchone()[0] == 1
 assert db.execute("PRAGMA foreign_key_check").fetchall() == []
-print("PASS: 20 application tables, empty customer data, unique constraints and repeat-safe schema.")
+
+# Recreate the users table exactly as it was manually installed from the dashboard.
+# The setup must keep that table and add missing permission guards without deleting rows.
+manual = sqlite3.connect(":memory:")
+manual.execute("PRAGMA foreign_keys = ON")
+manual.executescript("""
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL COLLATE NOCASE UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'customer',
+  status TEXT NOT NULL DEFAULT 'active',
+  email_verified_at TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+""")
+for filename in ("001_core.sql", "002_operations.sql", "003_user_guards.sql"):
+    manual.executescript((root / filename).read_text(encoding="utf-8"))
+assert manual.execute("PRAGMA foreign_key_check").fetchall() == []
+assert {row[0] for row in manual.execute(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+)} == required
+for statement in [
+    "INSERT INTO users(name,email,password_hash,role) VALUES('Invalid','bad@example.invalid','hash','superadmin')",
+    "INSERT INTO users(name,email,password_hash,status) VALUES('Invalid','bad@example.invalid','hash','unknown')",
+]:
+    try:
+        manual.execute(statement)
+        raise AssertionError("Invalid user role/status was accepted")
+    except sqlite3.IntegrityError:
+        pass
+manual.execute("INSERT INTO users(name,email,password_hash) VALUES('Valid','valid@example.invalid','hash')")
+try:
+    manual.execute("UPDATE users SET role='superadmin' WHERE email='valid@example.invalid'")
+    raise AssertionError("Invalid role update was accepted")
+except sqlite3.IntegrityError:
+    pass
+
+print("PASS: 20 application tables, empty accounts, replay-safe schema and manually-created users compatibility.")
