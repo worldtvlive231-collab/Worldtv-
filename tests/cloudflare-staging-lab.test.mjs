@@ -27,7 +27,7 @@ test("authorized preview lab has restrictive response headers and no payment for
   assert.equal(enabled.headers.get("cache-control"), "no-store");
   const html = await enabled.text();
   assert.match(html, /TEST ACCOUNTS ONLY/);
-  assert.match(html, /payment_url/);
+  assert.match(html, /Create test checkout/);
   assert.match(html, //api/staging/subscriptions/test-code/);
   assert.doesNotMatch(html, /paystack\.shop\/pay\/|api\/transaction\/initialize/);
   assert.doesNotMatch(html, /<script nonce="__NONCE__"/);
