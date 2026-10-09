@@ -118,9 +118,9 @@ test("invalid amount, wrong currency or missing order never marks anything paid 
   const { sqlite, api } = db();
   seedOrder(sqlite);
   for (const testChange of [
-    { amountMinor: 1200, eventId: "charge.success:101" },
-    { currency: "GHS", eventId: "charge.success:102" },
-    { reference: "WTV-UNRECOGNIZED", eventId: "charge.success:103" }
+    { amountMinor: 1200, transactionId: 101, eventId: "charge.success:101" },
+    { currency: "GHS", transactionId: 102, eventId: "charge.success:102" },
+    { reference: "WTV-UNRECOGNIZED", transactionId: 103, eventId: "charge.success:103" }
   ]) {
     const result = await sandboxFulfillInD1Batch(api, { ...base, ...testChange });
     assert.equal(result.code_issued, false);
