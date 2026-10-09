@@ -21,6 +21,10 @@ export function reply(body, status = 200, extraHeaders = {}) {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
       "x-robots-tag": "noindex, nofollow",
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "no-referrer",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+      "permissions-policy": "camera=(), microphone=(), geolocation=()",
       ...extraHeaders
     }
   });
