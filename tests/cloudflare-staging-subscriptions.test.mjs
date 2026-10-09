@@ -15,7 +15,7 @@ const otherCode = "WTV-DEMO-5555-6666-ABCD";
 function memoryDb() {
   const db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys = ON;");
-  for (const file of ["001_core.sql", "002_operations.sql", "003_user_guards.sql"]) {
+  for (const file of ["001_core.sql", "002_operations.sql", "003_user_guards.sql", "004_chat_message_counters.sql"]) {
     db.exec(readFileSync(resolve("cloudflare/d1", file), "utf8"));
   }
   db.prepare("INSERT INTO users(name,email,password_hash) VALUES(?,?,?)")
