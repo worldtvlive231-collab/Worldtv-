@@ -15,6 +15,7 @@
 - [x] Staging-only functions are disabled unless specific per-feature flags are explicitly configured.
 - [x] Offline integration tests cover atomic unread chat counters and duplicate-text handling using D1 migration 004.
 - [x] Offline sandbox-only issuance helper derives a code hash using HMAC, ties an authenticated event to an existing paid order, and tests duplicate event/amount/currency protection. **There is no public issuance route or email code delivery.**
+- [x] Offline signed Paystack **test-domain** webhook simulation now covers a synthetic pending checkout -> pending order -> verified event -> one reserved activation code -> paid order/checkout. New endpoints remain disabled by default and no real Paystack calls or code delivery occur.
 
 ## Not done: required engineering
 
@@ -26,7 +27,7 @@
 - [ ] Build and configure the complete live-chat UI and notifications; staged chat APIs currently accept **signed-in test customers only**, not anonymous website visitors. Add AI auto-replies only after retrieval, guardrails, human handoff and budget checks are validated.
 - [ ] Implement reliable, signed payment-provider webhooks, secret management, persistent order references and durable idempotent activation-code issuance. The current Paystack handler is **validation-only** and cannot charge or fulfill.
 - [ ] Decide how to replace any external hosted Paystack link with a transaction flow that supplies a verified per-customer order reference. Do not infer a customer from payment amount or a redirect.
-- [ ] Build encrypted queued code/email delivery, payment retries, refund/chargeback/cancellation handling, admin audits, and recovery for failed email.
+- [ ] Build authenticated code retrieval plus encrypted queued code/email delivery, payment retries, refund/chargeback/cancellation handling, admin audits, and recovery for failed email.
 - [ ] Obtain payment provider sandbox access and complete successful/failed/duplicate/out-of-order/mismatch test transactions for customer, reseller and Ghana/wider-world flows.
 - [ ] Reconcile current subscriptions, customer accounts and codes on Railway with the decision **not to import Railway records**. Prepare a truthful re-registration, re-issue and uninterrupted-entitlement policy for existing customers.
 - [ ] Verify legitimate rights to any channels, films, or live sports being distributed.
@@ -58,8 +59,11 @@ All functions require the correct preview domain plus their flags:
 - `WORLDTV_STAGING_ADMIN_EMAILS`: explicit list of approved admin emails.
 - `WORLDTV_STAGING_PAYSTACK_VALIDATION_ENABLED=true`: non-fulfilling, signed **test** Paystack validation endpoint only.
 - `WORLDTV_PAYSTACK_TEST_SECRET`: Cloudflare secret, **sandbox only**, never committed.
+- `WORLDTV_STAGING_TEST_CHECKOUT_ENABLED=true`: double-gated, test-only checkout reference creator that NEVER charges or returns a payment link.
+- `WORLDTV_STAGING_FULFILLMENT_ENABLED=true`: triple-gated signed Paystack test-domain webhook that reserves one hashed code but never delivers it.
+- `WORLDTV_STAGING_CODE_HMAC_SECRET`: Cloudflare test-only encrypted secret (at least 32 characters) required for deterministic code derivation. Never commit or share it.
 
-**Do not enable any of these features yet.** Current auth and chat prototypes still need rate limiting and operational protections; signed payment validation does NOT mean payment integration is ready.
+See `cloudflare/SANDBOX_CHECKOUT.md` for the mock end-to-end transaction, limitations and verification requirements. **Do not enable any of these features yet.** Current auth and chat prototypes still need rate limiting and operational protections; signed payment validation does NOT mean payment integration is ready.
 
 ## Owner-facing safe verification
 
