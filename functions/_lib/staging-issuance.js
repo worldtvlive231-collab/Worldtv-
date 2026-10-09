@@ -39,7 +39,8 @@ export const STAGING_FULFILL_SQL = Object.freeze({
     "AND amount_minor=? AND currency=? " +
     "AND EXISTS(SELECT 1 FROM subscription_codes WHERE order_id=orders.id AND code_hash=?) " +
     "AND EXISTS(SELECT 1 FROM payment_events WHERE provider='paystack' " +
-    "AND provider_event_id=? AND verification_status='verified')",
+    "AND provider_event_id=? AND provider_reference=? AND payload_sha256=? " +
+    "AND verification_status='verified')",
 
   issueCode:
     "INSERT INTO subscription_codes(code_hash,code_hint,plan_id,user_id,order_id,status) " +
@@ -47,10 +48,11 @@ export const STAGING_FULFILL_SQL = Object.freeze({
     "JOIN plans p ON p.id=o.plan_id AND p.active=1 " +
     "JOIN users u ON u.id=o.user_id AND u.status='active' AND u.role='customer' " +
     "WHERE o.reference=? AND o.provider='paystack' AND o.status='pending' " +
-    "AND o.provider_reference=? AND o.amount_minor=? AND o.currency=? " +
+    "AND o.amount_minor=? AND o.currency=? " +
     "AND NOT EXISTS(SELECT 1 FROM subscription_codes c WHERE c.order_id=o.id) " +
     "AND EXISTS(SELECT 1 FROM payment_events e WHERE e.provider='paystack' " +
-    "AND e.provider_event_id=? AND e.verification_status='verified') " +
+    "AND e.provider_event_id=? AND e.provider_reference=o.reference " +
+    "AND e.payload_sha256=? AND e.verification_status='verified') " +
     "ON CONFLICT DO NOTHING"
 });
 
@@ -67,6 +69,9 @@ export async function sandboxFulfillInD1Batch(db, {
       !/^[0-9a-f]{64}$/.test(payloadSha256 || "")) {
     throw new Error("Invalid verified payment input");
   }
+  if (eventId !== "charge.success:" + String(transactionId)) {
+    throw new Error("Event ID does not match provider transaction");
+  }
   const { code_hash, code_hint } = await derivedActivationCode(reference, issuanceSecret);
   // D1.batch executes atomically. A verified event first reserves exactly
   // one code for a pending order, and only then marks that order paid if the
@@ -76,9 +81,9 @@ export async function sandboxFulfillInD1Batch(db, {
     db.prepare(STAGING_FULFILL_SQL.insertEvent).bind(
       eventId, reference, payloadSha256),
     db.prepare(STAGING_FULFILL_SQL.issueCode).bind(
-      code_hash, code_hint, reference, String(transactionId), amountMinor, currency, eventId),
+      code_hash, code_hint, reference, amountMinor, currency, eventId, payloadSha256),
     db.prepare(STAGING_FULFILL_SQL.payPendingOrder).bind(
-      String(transactionId), reference, amountMinor, currency, code_hash, eventId)
+      String(transactionId), reference, amountMinor, currency, code_hash, eventId, reference, payloadSha256)
   ]);
   const changes = (results || []).map(row => row?.meta?.changes ?? 0);
   return {
