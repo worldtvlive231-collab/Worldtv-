@@ -68,7 +68,7 @@ function request(path, { method = "GET", payload, cookie, origin = BASE } = {}) 
   return new Request(BASE + path, { method, headers, body: payload ? JSON.stringify(payload) : undefined });
 }
 function context(db, req, enabled = "true") {
-  return { request: req, env: { DB: db, WORLDTV_STAGING_AUTH_ENABLED: enabled, WORLDTV_STAGING_REGISTRATION_ENABLED: "true" } };
+  return { request: req, env: { DB: db, WORLDTV_STAGING_AUTH_ENABLED: enabled, WORLDTV_STAGING_REGISTRATION_ENABLED: "true", WORLDTV_TURNSTILE_SECRET: "test-secret-not-real" }, data: { turnstileTestVerify: async () => ({ ok: true, json: async () => ({ success: true }) }) } };
 }
 
 test("staging auth is disabled by default and on non-preview hosts", async () => {
@@ -97,7 +97,7 @@ test("password hashing is salted and rejects wrong passwords", async () => {
 test("registration, login, cookie-backed session and logout work in staging mocks", async () => {
   const db = new FakeD1();
   const created = await register(context(db, request("/api/staging/auth/register", {
-    method: "POST", payload: { name: "Sample User", email: email.toUpperCase(), password }
+    method: "POST", payload: { name: "Sample User", email: email.toUpperCase(), password, turnstileToken: "staging-fake-token" }
   })));
   assert.equal(created.status, 201);
   assert.equal(db.users.length, 1);
@@ -105,7 +105,7 @@ test("registration, login, cookie-backed session and logout work in staging mock
   assert.ok(!db.users[0].password_hash.includes(password));
 
   const duplicated = await register(context(db, request("/api/staging/auth/register", {
-    method: "POST", payload: { name: "Sample User", email, password }
+    method: "POST", payload: { name: "Sample User", email, password, turnstileToken: "staging-fake-token" }
   })));
   assert.equal(duplicated.status, 409);
   assert.equal(db.users.length, 1);
@@ -167,11 +167,28 @@ test("staging auth responses carry browser security and no-cache headers", async
 test("staging registration stays disabled unless separately approved", async () => {
   const db = new FakeD1();
   const req = request("/api/staging/auth/register", {
-    method: "POST", payload: { name: "Sample User", email, password }
+    method: "POST", payload: { name: "Sample User", email, password, turnstileToken: "staging-fake-token" }
   });
   const disabled = context(db, req);
   disabled.env.WORLDTV_STAGING_REGISTRATION_ENABLED = "false";
   const response = await register(disabled);
   assert.equal(response.status, 404);
   assert.equal(db.users.length, 0);
+});
+
+test("registration denies invalid Turnstile even when staging signup is enabled", async () => {
+  const db = new FakeD1();
+  const ctx = context(db, request("/api/staging/auth/register", {
+    method: "POST", payload: { name: "Sample User", email, password,
+      turnstileToken: "staging-fake-token" }
+  }));
+  ctx.data.turnstileTestVerify = async () => ({ ok: true, json: async () => ({ success: false }) });
+  const response = await register(ctx);
+  assert.equal(response.status, 403);
+  assert.equal(db.users.length, 0);
+  ctx.env.WORLDTV_TURNSTILE_SECRET = undefined;
+  assert.equal((await register(context(db, request("/api/staging/auth/register", {
+    method: "POST", payload: { name: "Sample User", email, password,
+      turnstileToken: "short" }
+  })))).status, 403);
 });
