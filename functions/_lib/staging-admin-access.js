@@ -86,7 +86,7 @@ export async function requireStagingAdmin(context, { write = false, fetchJwks } 
       return { response: reply({ error: "Forbidden" }, 403) };
     }
     const contentType = context.request.headers.get("content-type") || "";
-    if (!/^application\\/json(?:\\s*;|$)/i.test(contentType)) {
+    if (!/^application\/json(?:\s*;|$)/i.test(contentType)) {
       return { response: reply({ error: "Expected JSON" }, 415) };
     }
   }
