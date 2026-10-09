@@ -44,6 +44,10 @@ jobs:
         run: node --test tests/cloudflare-staging-chat.test.mjs
       - name: Test read-only signed payment dry-run route
         run: node --test tests/cloudflare-staging-paystack-route.test.mjs
+      - name: Syntax-check read-only Cloudflare smoke scripts
+        run: |
+          node --check cloudflare/check-public-preview.mjs
+          bash -n cloudflare/check-remote.sh
       - name: Build preview without secrets
         run: node cloudflare/build-preview.mjs
       - name: Check output is read-only and contains no backend sources
