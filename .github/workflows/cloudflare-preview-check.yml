@@ -13,6 +13,7 @@ on:
       - 'tests/cloudflare-staging-paystack.test.mjs'
       - 'tests/cloudflare-staging-admin-access.test.mjs'
       - 'tests/cloudflare-staging-chat.test.mjs'
+      - 'tests/cloudflare-staging-paystack-route.test.mjs'
       - '.github/workflows/cloudflare-preview-check.yml'
   workflow_dispatch:
 
@@ -41,6 +42,8 @@ jobs:
         run: node --test tests/cloudflare-staging-admin-access.test.mjs
       - name: Test customer live chat isolation with D1 schema
         run: node --test tests/cloudflare-staging-chat.test.mjs
+      - name: Test read-only signed payment dry-run route
+        run: node --test tests/cloudflare-staging-paystack-route.test.mjs
       - name: Build preview without secrets
         run: node cloudflare/build-preview.mjs
       - name: Check output is read-only and contains no backend sources
