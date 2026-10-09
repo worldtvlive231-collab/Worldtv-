@@ -60,6 +60,9 @@ npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$DB" --remote --yes --file=cl
 echo "Installing compatibility rules for the existing manually created users table..."
 npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$DB" --remote --yes --file=cloudflare/d1/003_user_guards.sql
 
+echo "Installing atomic chat unread counter triggers (idempotent)..."
+npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$DB" --remote --yes --file=cloudflare/d1/004_chat_message_counters.sql
+
 echo
 echo "Verifying application tables (should be 20, plus Cloudflare's internal table)..."
 npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$DB" --remote --command="SELECT COUNT(*) AS worldtv_tables FROM sqlite_master WHERE type='table' AND name IN ('users','plans','customer_sessions','password_reset_tokens','checkout_requests','orders','payment_events','subscription_codes','subscriptions','resellers','reseller_sessions','reseller_code_allocation','reseller_sales','live_chat_conversations','live_chat_messages','products','product_orders','site_settings','notifications','audit_logs');"
