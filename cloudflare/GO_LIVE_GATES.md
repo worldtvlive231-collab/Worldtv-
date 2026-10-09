@@ -13,6 +13,8 @@
 - [x] A Cloudflare read-only static preview exists at `worldtv-preview.pages.dev`.
 - [x] GitHub unit/integration tests exercise D1 schema, staging auth, subscription code validation, signed Paystack dry-run validation, Access-admin JWT signature checking, and account-isolated chat.
 - [x] Staging-only functions are disabled unless specific per-feature flags are explicitly configured.
+- [x] Offline integration tests cover atomic unread chat counters and duplicate-text handling using D1 migration 004.
+- [x] Offline sandbox-only issuance helper derives a code hash using HMAC, ties an authenticated event to an existing paid order, and tests duplicate event/amount/currency protection. **There is no public issuance route or email code delivery.**
 
 ## Not done: required engineering
 
@@ -31,6 +33,17 @@
 - [ ] Audit production dependencies and security vulnerabilities. Several old Node/Express bootstrap modules are not supported by Cloudflare's JavaScript runtime.
 - [ ] Conduct real preview E2E checks: registration, login/logout, concurrency, duplicate webhook prevention, activation, admin isolation, chat, all pages, mobile layouts, localization, email, fees, tax/currency, and rollback.
 - [ ] Set up domain/DNS migration and rollback plan; execute **only after explicit approval**. Keep the Railway volume until old customer entitlements are resolved.
+
+## One remaining staged database migration
+
+The original 20 application tables are installed, but the new **chat trigger migration 004 is NOT verified remotely**. It only adds two triggers and does not delete or copy customer data. Use the already authorized GitHub Codespaces terminal:
+
+```bash
+git pull --ff-only
+bash cloudflare/d1/apply-004-remote.sh
+```
+
+Type `worldtv-fresh` when prompted, then confirm two trigger names are returned. Do not enable live chat until this succeeds and production-grade rate limiting and the admin Access policy are ready. Even after installation this will NOT enable the chat APIs automatically.
 
 ## Environment feature flags in staging (currently NOT set by this PR)
 
