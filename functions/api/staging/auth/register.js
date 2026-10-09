@@ -1,3 +1,4 @@
+import { verifyTurnstile } from "../../../_lib/staging-turnstile.js";
 import { gate, readBody, normalizeEmail, validPassword, hashPassword, reply } from "../../../_lib/staging-auth.js";
 
 export async function onRequestPost(context) {
@@ -19,6 +20,12 @@ export async function onRequestPost(context) {
       !email || !validPassword(input?.password)) {
     return reply({ error: "Check your name, email, and password (minimum 12 characters)" }, 400);
   }
+
+  const verified = await verifyTurnstile(input?.turnstileToken, {
+    secret: context.env?.WORLDTV_TURNSTILE_SECRET,
+    remoteip: context.request.headers.get("cf-connecting-ip") || undefined
+  });
+  if (!verified) return reply({ error: "Verification required" }, 403);
 
   try {
     const encodedPassword = await hashPassword(input.password);
