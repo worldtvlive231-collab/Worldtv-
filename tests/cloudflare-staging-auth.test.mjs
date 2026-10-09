@@ -76,7 +76,7 @@ test("staging auth is disabled by default and on non-preview hosts", async () =>
   const req = request("/api/staging/auth/register", {
     method: "POST", payload: { name: "Sample", email, password }
   });
-  const response = await register(context(db, req, undefined));
+  const response = await register(context(db, req, "false"));
   assert.equal(response.status, 404);
   assert.equal(db.users.length, 0);
 
