@@ -55,10 +55,14 @@ function seedOrder(sqlite, { status = "pending", userStatus = "active", amount =
   sqlite.prepare(
     "INSERT INTO users(name,email,password_hash,status) VALUES('Buyer','buyer@example.invalid','hash',?)"
   ).run(userStatus);
+  const checkout = sqlite.prepare(
+    "INSERT INTO checkout_requests(reference,user_id,plan_id,provider,amount_minor,currency,status) " +
+    "VALUES(?,1,1,'paystack',?,?,'pending')"
+  ).run(ref, amount, currency);
   sqlite.prepare(
-    "INSERT INTO orders(reference,user_id,plan_id,provider,amount_minor,currency,status) " +
-    "VALUES(?,1,1,'paystack',?,?,?)"
-  ).run(ref, amount, currency, status);
+    "INSERT INTO orders(reference,user_id,plan_id,checkout_request_id,provider,amount_minor,currency,status) " +
+    "VALUES(?,1,1,?,'paystack',?,?,?)"
+  ).run(ref, checkout.lastInsertRowid, amount, currency, status);
 }
 function codeCount(sqlite) {
   return sqlite.prepare("SELECT COUNT(*) AS n FROM subscription_codes").get().n;
@@ -86,6 +90,7 @@ test("trusted test-order + signed-event input can stage exactly one paid code", 
   assert.deepEqual(first, { newly_paid: true, code_issued: true,
     duplicate: false, code_hint: (await derivedActivationCode(reference, secret)).code_hint });
   assert.equal(orderStatus(sqlite), "paid");
+  assert.equal(sqlite.prepare("SELECT status FROM checkout_requests").get().status, "paid");
   assert.equal(codeCount(sqlite), 1);
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM payment_events").get().n, 1);
   const code = sqlite.prepare("SELECT code_hash,code_hint,user_id,order_id,status FROM subscription_codes").get();
