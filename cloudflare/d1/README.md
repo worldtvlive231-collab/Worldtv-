@@ -15,9 +15,9 @@ The user's Mac runs macOS 11.7 and cannot run current Wrangler officially, so a 
 bash cloudflare/d1/setup-remote.sh
 ```
 
-The setup script checks the schema locally, checks Cloudflare D1 access, opens an OAuth browser login if needed, asks you to confirm `worldtv-fresh`, applies the three prepared SQL files in order, and queries the table counts. **Do not paste Cloudflare API tokens, passwords, or private records into ChatGPT or GitHub.**
+The setup script checks the schema locally, checks Cloudflare D1 access, and uses Wrangler's browserless OAuth **device login** if required. If asked, visit https://dash.cloudflare.com/oauth2/device **in your own browser** and enter the short code shown in Codespaces within its time limit. No Codespaces browser opener, `xdg-open` or port forwarding is needed. It then asks you to confirm `worldtv-fresh`, applies the three prepared SQL files in order, and queries the table counts. **Do not paste Cloudflare API tokens, passwords, or private records into ChatGPT or GitHub.**
 
-**Safety:** If Codespaces is not enabled or the browser cannot finish the Wrangler OAuth callback, run this task in **ChatGPT Work mode**, which has a Cloud Browser that can navigate the Cloudflare dashboard, or follow the manual Wrangler instructions below. A GitHub connection in the normal chat does not grant Cloudflare API access. Codespaces may incur costs beyond your included GitHub allowance; check GitHub usage before proceeding.
+**Safety:** If Codespaces is not enabled or device authorization cannot finish, run this task in **ChatGPT Work mode**, which has a Cloud Browser that can navigate the Cloudflare dashboard, or follow the manual Wrangler instructions below. A GitHub connection in the normal chat does not grant Cloudflare API access. Codespaces may incur costs beyond your included GitHub allowance; check GitHub usage before proceeding.
 
 The schema setup is not the production backend migration. It does not enable login, chats, payments or subscription codes until Workers APIs are implemented and tested.
 
