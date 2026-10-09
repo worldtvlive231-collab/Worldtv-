@@ -6,7 +6,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parent
 db = sqlite3.connect(":memory:")
 db.execute("PRAGMA foreign_keys = ON")
-for filename in ("001_core.sql", "002_operations.sql"):
+for filename in ("001_core.sql", "002_operations.sql", "003_user_guards.sql"):
     db.executescript((root / filename).read_text(encoding="utf-8"))
 
 tables = {row[0] for row in db.execute(
@@ -47,4 +47,4 @@ for filename in ("001_core.sql", "002_operations.sql"):
 
 assert db.execute("SELECT COUNT(*) FROM plans").fetchone()[0] == 1
 assert db.execute("PRAGMA foreign_key_check").fetchall() == []
-print("PASS: 19 application tables, empty customer data, unique constraints and repeat-safe schema.")
+print("PASS: 20 application tables, empty customer data, unique constraints and repeat-safe schema.")
