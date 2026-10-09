@@ -18,5 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Validate remote setup script syntax
+        run: bash -n cloudflare/d1/setup-remote.sh
       - name: Verify fresh D1 tables, foreign keys, duplicate payment protection
         run: python cloudflare/d1/test_schema.py
