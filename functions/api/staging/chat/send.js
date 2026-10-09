@@ -16,21 +16,13 @@ export async function onRequestPost(context) {
     const token = chatToken(context.request);
     if (!customer || !token) return reply({ error: "Not authenticated" }, 401);
     const digest = await chatTokenHash(token);
-    const [created] = await context.env.DB.batch([
-      context.env.DB.prepare(
-        "INSERT INTO live_chat_messages(conversation_id,sender,source,body) " +
-        "SELECT c.id,'customer','human',? FROM live_chat_conversations c " +
-        "WHERE c.visitor_token_hash=? AND c.email=? AND c.status='open'"
-      ).bind(message, digest, customer.email),
-      context.env.DB.prepare(
-        "UPDATE live_chat_conversations SET unread_admin=unread_admin+1, " +
-        "last_message_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP " +
-        "WHERE visitor_token_hash=? AND email=? AND status='open' AND " +
-        "EXISTS (SELECT 1 FROM live_chat_messages m " +
-        "WHERE m.conversation_id=live_chat_conversations.id AND m.body=? AND " +
-        "m.sender='customer' AND m.created_at >= datetime('now','-10 seconds'))"
-      ).bind(digest, customer.email, message)
-    ]);
+    // The D1 message-insert triggers update unread_admin atomically.
+    // Do NOT increment counters using a separate recent-text lookup.
+    const created = await context.env.DB.prepare(
+      "INSERT INTO live_chat_messages(conversation_id,sender,source,body) " +
+      "SELECT c.id,'customer','human',? FROM live_chat_conversations c " +
+      "WHERE c.visitor_token_hash=? AND c.email=? AND c.status='open'"
+    ).bind(message, digest, customer.email).run();
     if (created?.meta?.changes !== 1) return reply({ error: "Conversation unavailable" }, 404);
     return reply({ status: "sent", environment: "staging" });
   } catch {
