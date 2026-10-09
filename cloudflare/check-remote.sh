@@ -18,6 +18,9 @@ node --test tests/cloudflare-staging-paystack.test.mjs
 node --test tests/cloudflare-staging-admin-access.test.mjs
 node --test tests/cloudflare-staging-chat.test.mjs
 node --test tests/cloudflare-staging-paystack-route.test.mjs
+node --test tests/cloudflare-staging-issuance.test.mjs
+node --test tests/cloudflare-staging-sandbox-e2e.test.mjs
+node --test tests/cloudflare-staging-lab.test.mjs
 echo "Checking deployment health and default-disabled endpoints (read-only)..."
 node cloudflare/check-public-preview.mjs
 echo "Checking signed-in Cloudflare Wrangler access to fresh D1..."
