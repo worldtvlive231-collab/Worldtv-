@@ -7,6 +7,7 @@ const origin = "https://worldtv-preview.pages.dev";
 const paths = [
   "/api/staging/auth/me",
   "/api/staging/subscriptions",
+  "/api/staging/subscriptions/test-code",
   "/api/staging/admin/overview",
   "/api/staging/chat/messages",
   "/api/staging/admin/chats"
