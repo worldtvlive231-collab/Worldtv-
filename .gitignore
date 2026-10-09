@@ -1,0 +1,28 @@
+# Local secrets and private runtime data (never commit)
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+
+# Installed dependencies and generated build outputs
+node_modules/
+.npm/
+cloudflare/preview-dist/
+.wrangler/
+.cache/
+
+# Local SQLite database and journals (tracked historical files must be
+# separately reviewed; .gitignore does not untrack an already committed file)
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Runtime uploads and generated files
+uploads/
+*.log
+.DS_Store

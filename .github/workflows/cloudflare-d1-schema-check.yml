@@ -1,0 +1,24 @@
+name: Cloudflare D1 schema validation
+
+on:
+  pull_request:
+    paths:
+      - 'cloudflare/d1/**'
+      - '.github/workflows/cloudflare-d1-schema-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sqlite-schema-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate remote setup script syntax
+        run: bash -n cloudflare/d1/setup-remote.sh
+      - name: Verify fresh D1 tables, foreign keys, duplicate payment protection
+        run: python cloudflare/d1/test_schema.py

@@ -1,0 +1,74 @@
+name: Cloudflare preview safety check
+
+on:
+  pull_request:
+    paths:
+      - 'cloudflare/**'
+      - 'index.html'
+      - 'assets/**'
+      - 'functions/**'
+      - 'tests/cloudflare-pages-health.test.mjs'
+      - 'tests/cloudflare-staging-auth.test.mjs'
+      - 'tests/cloudflare-staging-subscriptions.test.mjs'
+      - 'tests/cloudflare-staging-paystack.test.mjs'
+      - 'tests/cloudflare-staging-admin-access.test.mjs'
+      - 'tests/cloudflare-staging-chat.test.mjs'
+      - 'tests/cloudflare-staging-paystack-route.test.mjs'
+      - 'tests/cloudflare-staging-issuance.test.mjs'
+      - 'tests/cloudflare-staging-sandbox-e2e.test.mjs'
+      - 'tests/cloudflare-staging-lab.test.mjs'
+      - '.github/workflows/cloudflare-preview-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-static-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate builder syntax
+        run: node --check cloudflare/build-preview.mjs
+      - name: Test Cloudflare read-only D1 health probe
+        run: node --test tests/cloudflare-pages-health.test.mjs
+      - name: Test disabled-by-default Cloudflare staging account authentication
+        run: node --test tests/cloudflare-staging-auth.test.mjs
+      - name: Test disabled-by-default subscriptions and activation SQL
+        run: node --test tests/cloudflare-staging-subscriptions.test.mjs
+      - name: Test Paystack signature validation (offline only)
+        run: node --test tests/cloudflare-staging-paystack.test.mjs
+      - name: Test staging admin JWT authorization
+        run: node --test tests/cloudflare-staging-admin-access.test.mjs
+      - name: Test customer live chat isolation with D1 schema
+        run: node --test tests/cloudflare-staging-chat.test.mjs
+      - name: Test read-only signed payment dry-run route
+        run: node --test tests/cloudflare-staging-paystack-route.test.mjs
+      - name: Syntax-check read-only Cloudflare smoke scripts
+        run: |
+          node --check cloudflare/check-public-preview.mjs
+          bash -n cloudflare/check-remote.sh
+          bash -n cloudflare/d1/apply-004-remote.sh
+      - name: Test sandbox-only idempotent code issuance transaction
+        run: node --test tests/cloudflare-staging-issuance.test.mjs
+      - name: Test mock signed Paystack checkout-to-code sandbox flow
+        run: node --test tests/cloudflare-staging-sandbox-e2e.test.mjs
+      - name: Test disabled preview-only customer lab interface
+        run: node --test tests/cloudflare-staging-lab.test.mjs
+      - name: Build preview without secrets
+        run: node cloudflare/build-preview.mjs
+      - name: Check output is read-only and contains no backend sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f cloudflare/preview-dist/index.html
+          test -f cloudflare/preview-dist/_headers
+          grep -q "CLOUDFLARE PREVIEW ONLY" cloudflare/preview-dist/index.html
+          test ! -f cloudflare/preview-dist/server.js
+          test ! -f cloudflare/preview-dist/.env
+          test ! -f cloudflare/preview-dist/data/worldtv.sqlite
+          test ! -d cloudflare/preview-dist/public/apps
+          echo "Safe read-only preview output produced."
