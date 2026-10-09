@@ -3,6 +3,11 @@ import { gate, readBody, normalizeEmail, validPassword, hashPassword, reply } fr
 export async function onRequestPost(context) {
   const blocked = gate(context, { write: true });
   if (blocked) return blocked;
+  // Registration must be approved independently of staging login.
+  // Leave this false until email verification and abuse defenses are configured.
+  if (context.env?.WORLDTV_STAGING_REGISTRATION_ENABLED !== "true") {
+    return reply({ error: "Not found" }, 404);
+  }
 
   let input;
   try { input = await readBody(context.request); }
