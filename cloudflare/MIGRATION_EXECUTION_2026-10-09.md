@@ -61,7 +61,7 @@ Railway. The observed registration failure does not prove Railway data is gone.
 
 | Area | Current state / required evidence |
 | --- | --- |
-| Cloudflare runtime | Existing PBKDF2 requests 310,000 iterations. Cloudflare workerd has a configurable iteration cap that has historically defaulted to 100,000 in hosted Workers. Test the actual deployment; do not reduce work factor just to pass. Runtime-compatible strong KDF/identity service and CPU/load measurements are required. Node tests are insufficient. |
+| Cloudflare runtime | Password derivation now pre-hashes with a required server-held pepper and performs one 100,000-round PBKDF2 call within the hosted runtime limit. Test compatibility and CPU on the actual deployment; Node tests are insufficient. Keep the pepper backed up securely because changing it invalidates staging passwords. |
 | Configuration/access | No authenticated Cloudflare deployment capability or credentials were supplied. Need authorized Pages/D1 configuration access; do not paste secrets into chat. |
 | Identity/email | Apply 005, configure mailer service, sandbox sender/domain, allowlisted test recipients, Turnstile widget/sitekey/secret, rate secret, monitoring and flags. Prove inbox receipt, expiry, resend, reset and abuse controls in staging. |
 | Admin | Existing Access JWT gate and overview/chat APIs have offline tests. Full dashboard, audit/inventory parity and actual Access policy/role/browser validation are unfinished. |
@@ -103,7 +103,8 @@ Railway. The observed registration failure does not prove Railway data is gone.
    2xx only after accepting delivery. It must redact links/tokens from logs, enforce
    its own sender/recipient sandbox policy, and expose delivery/failure metrics.
 6. Provision secrets through Cloudflare secret management, never GitHub/source:
-   `WORLDTV_AUTH_RATE_SECRET` (random >=32 characters), `WORLDTV_TURNSTILE_SECRET`.
+   `WORLDTV_AUTH_RATE_SECRET` (random >=32 characters), `WORLDTV_PASSWORD_PEPPER`
+   (random >=32 bytes), and `WORLDTV_TURNSTILE_SECRET`.
    Set nonsecret `WORLDTV_TURNSTILE_SITEKEY` and exact comma-separated
    `WORLDTV_STAGING_EMAIL_ALLOWLIST`. Restrict widget hostnames and use action `register`.
 7. Deploy the PR revision to an isolated preview; verify the deployed SHA, D1

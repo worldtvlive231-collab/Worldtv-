@@ -9,6 +9,7 @@ import { onRequestPost as logout } from "../functions/api/staging/auth/logout.js
 const BASE = "https://worldtv-preview.pages.dev";
 const email = "sample@example.invalid";
 const password = "Strong-Staging-Test-Password-42";
+const pepper = "test-only-password-pepper-32-bytes-minimum";
 
 import { TestD1 as FakeD1 } from './helpers/d1.mjs';
 
@@ -22,7 +23,7 @@ function request(path, { method = "GET", payload, cookie, origin = BASE } = {}) 
   return new Request(BASE + path, { method, headers, body: payload ? JSON.stringify(payload) : undefined });
 }
 function context(db, req, enabled = "true") {
-  return { request: req, env: { DB: db, WORLDTV_STAGING_AUTH_ENABLED: enabled, WORLDTV_STAGING_REGISTRATION_ENABLED: "true", WORLDTV_STAGING_IDENTITY_ENABLED: "true", WORLDTV_AUTH_RATE_SECRET: "x".repeat(32), WORLDTV_STAGING_EMAIL_ALLOWLIST: email, WORLDTV_AUTH_MAILER: { fetch: async () => new Response("", {status:202}) }, WORLDTV_TURNSTILE_SECRET: "test-secret-not-real" }, data: { turnstileTestVerify: async () => ({ ok: true, json: async () => ({ success: true, hostname: "worldtv-preview.pages.dev", action: "register" }) }) } };
+  return { request: req, env: { DB: db, WORLDTV_STAGING_AUTH_ENABLED: enabled, WORLDTV_STAGING_REGISTRATION_ENABLED: "true", WORLDTV_STAGING_IDENTITY_ENABLED: "true", WORLDTV_AUTH_RATE_SECRET: "x".repeat(32), WORLDTV_PASSWORD_PEPPER: pepper, WORLDTV_STAGING_EMAIL_ALLOWLIST: email, WORLDTV_AUTH_MAILER: { fetch: async () => new Response("", {status:202}) }, WORLDTV_TURNSTILE_SECRET: "test-secret-not-real" }, data: { turnstileTestVerify: async () => ({ ok: true, json: async () => ({ success: true, hostname: "worldtv-preview.pages.dev", action: "register" }) }) } };
 }
 
 test("staging auth is disabled by default and on non-preview hosts", async () => {
@@ -40,12 +41,14 @@ test("staging auth is disabled by default and on non-preview hosts", async () =>
 });
 
 test("password hashing is salted and rejects wrong passwords", async () => {
-  const a = await hashPassword(password);
-  const b = await hashPassword(password);
+  const a = await hashPassword(password, pepper);
+  const b = await hashPassword(password, pepper);
   assert.notEqual(a, b);
-  assert.equal(await verifyPassword(password, a), true);
-  assert.equal(await verifyPassword("different-password", a), false);
-  assert.equal(await verifyPassword(password, "malformed"), false);
+  assert.equal(await verifyPassword(password, a, pepper), true);
+  assert.equal(await verifyPassword("different-password", a, pepper), false);
+  assert.equal(await verifyPassword(password, "malformed", pepper), false);
+  assert.equal(await verifyPassword(password, a, "wrong-pepper-but-long-enough-to-use"), false);
+  assert.equal(await verifyPassword(password, a), false);
 });
 
 test("registration, verified login, cookie-backed session and logout work with local SQLite", async () => {

@@ -1,7 +1,6 @@
 /**
- * Build a SAFE, READ-ONLY Cloudflare Pages preview of the public landing page.
- * This is not the production migration: APIs, customer logins, subscriptions,
- * downloads, payments, live chat and database still run on the current host.
+ * Build the safe Cloudflare staging shell. Customer actions are linked only to
+ * gated Pages Functions on the preview host. Payment remains test-only.
  *
  * Run: node cloudflare/build-preview.mjs
  * Cloudflare Pages build command: node cloudflare/build-preview.mjs
@@ -62,34 +61,45 @@ if (!/<body(?:\s|>)/i.test(home)) throw new Error('Cannot find body of index.htm
 const banner = [
   '<div role="status" style="position:sticky;top:0;z-index:999999;background:#fff2b2;color:#1c1808;',
   'padding:12px 20px;font:700 14px system-ui,sans-serif;text-align:center;border-bottom:2px solid #bb8a04">',
-  'CLOUDFLARE PREVIEW ONLY — This copy does not process accounts, payments or subscriptions. ',
-  '<a href="https://myworldtvlive.com/" style="color:#063c92;text-decoration:underline">Open the live WORLD TV website</a>',
+  'WORLD TV STAGING — Test accounts only. Real payments are disabled. ',
+  '<a href="/staging-account" style="color:#063c92;text-decoration:underline">Open staging account</a>',
   '</div>',
 ].join('');
 
-const safePreviewScript = [
-  '<script>',
-  '(function(){',
-  'document.addEventListener("submit",function(event){event.preventDefault();alert("Preview only. Use myworldtvlive.com for customer actions.");},true);',
-  'document.addEventListener("click",function(event){',
-  'var link=event.target.closest&&event.target.closest("a[href]");if(!link)return;',
-  'try{var url=new URL(link.href);if(url.origin===location.origin){',
-  'event.preventDefault();location.href="https://myworldtvlive.com"+url.pathname+url.search+url.hash;',
-  '}}catch(e){}',
-  '},true);',
-  '})();',
-  '</script>',
-].join('');
+function stagingLinks(html) {
+  return html
+    .replace(/href="\/(?:login|register|account|forgot-password|reset-password)\.html(?:\?[^"#]*)?(?:#[^"]*)?"/gi,
+      'href="/staging-account"')
+    .replace(/href="\/subscribe\.html(?:\?[^"#]*)?(?:#[^"]*)?"/gi,
+      'href="/staging-lab"')
+    .replace(/href="\/download\.html(?:\?[^"#]*)?(?:#[^"]*)?"/gi,
+      'href="/staging-download"')
+    .replace(/href="\/products\.html(?:\?[^"#]*)?(?:#[^"]*)?"/gi,
+      'href="/staging-products"');
+}
 
+home = stagingLinks(home);
 home = home.replace(/<head>/i, '<head>\n<meta name="robots" content="noindex,nofollow">');
-home = home.replace(/<body([^>]*)>/i, '<body$1>' + banner + safePreviewScript);
+home = home.replace(/<body([^>]*)>/i, '<body$1>' + banner);
 await writeFile(join(outputRoot, 'index.html'), home);
 await writeFile(join(outputRoot, '_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  Cache-Control: no-store\n');
+
+for (const file of ['about.html', 'terms.html', 'privacy.html', 'refund.html']) {
+  try {
+    let page = await readFile(join(projectRoot, file), 'utf8');
+    page = stagingLinks(page)
+      .replace(/<head>/i, '<head>\n<meta name="robots" content="noindex,nofollow">')
+      .replace(/<body([^>]*)>/i, '<body$1>' + banner);
+    await writeFile(join(outputRoot, file), page);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+}
 
 await copyAssets(join(projectRoot, 'assets'), join(outputRoot, 'assets'));
 for (const file of ['world-tv-logo.png', 'favicon.ico', 'manifest.webmanifest', 'robots.txt']) {
   await copyIfExists(join(projectRoot, file), join(outputRoot, file));
 }
 
-console.log('Read-only Pages preview built at ' + outputRoot);
-console.log('Do NOT attach myworldtvlive.com to this preview. Production API and database are not migrated.');
+console.log('Cloudflare staging shell built at ' + outputRoot);
+console.log('Production DNS and live payments remain separate until acceptance tests pass.');

@@ -15,7 +15,8 @@ export async function onRequestPost(context) {
     return reply({ error: 'Invalid request' }, 400);
   }
   try {
-    const passwordHash = input.purpose === 'reset' ? await hashPassword(input.password) : undefined;
+    const passwordHash = input.purpose === 'reset' ?
+      await hashPassword(input.password, context.env.WORLDTV_PASSWORD_PEPPER) : undefined;
     if (!await consumeIdentityToken(context, input.token, input.purpose, passwordHash)) {
       return reply({ error: 'Invalid or expired link' }, 400);
     }

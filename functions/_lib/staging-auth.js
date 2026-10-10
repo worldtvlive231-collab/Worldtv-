@@ -3,15 +3,15 @@
  * Deliberately disabled until WORLDTV_STAGING_AUTH_ENABLED='true' is set
  * AND the request is made on the worldtv-preview.pages.dev hostname.
  *
- * Not production ready: identity routes require migration 005 and mailer;
- * validate KDF compatibility/CPU on the actual Cloudflare runtime before enabling.
+ * Identity routes require migration 005, a mailer, and a server-side password
+ * pepper. The PBKDF2 call stays within the hosted Workers per-call limit.
  * No Railway records or live payment integrations are used here.
  */
 
 const STAGING_HOST = "worldtv-preview.pages.dev";
 const SESSION_COOKIE = "__Host-worldtv_staging";
 const COOKIE_SECONDS = 60 * 60 * 24 * 7;
-const PBKDF2_ITERATIONS = 310000;
+const PBKDF2_ITERATIONS = 100000;
 const encoder = new TextEncoder();
 
 export function reply(body, status = 200, extraHeaders = {}) {
@@ -99,9 +99,21 @@ function decodeBase64Url(value) {
   return Uint8Array.from(binary, ch => ch.charCodeAt(0));
 }
 
-async function derivePassword(password, salt, iterations = PBKDF2_ITERATIONS) {
+function validPepper(pepper) {
+  return typeof pepper === "string" && encoder.encode(pepper).length >= 32 &&
+    encoder.encode(pepper).length <= 256;
+}
+
+async function derivePassword(password, salt, pepper, iterations = PBKDF2_ITERATIONS) {
+  if (!validPepper(pepper)) throw new Error("password service unavailable");
+  const pepperKey = await crypto.subtle.importKey(
+    "raw", encoder.encode(pepper), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const passwordMaterial = await crypto.subtle.sign(
+    "HMAC", pepperKey, encoder.encode(password)
+  );
   const key = await crypto.subtle.importKey(
-    "raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]
+    "raw", passwordMaterial, "PBKDF2", false, ["deriveBits"]
   );
   const bits = await crypto.subtle.deriveBits(
     { name: "PBKDF2", hash: "SHA-256", salt, iterations },
@@ -110,27 +122,27 @@ async function derivePassword(password, salt, iterations = PBKDF2_ITERATIONS) {
   return new Uint8Array(bits);
 }
 
-export async function hashPassword(password) {
-  if (!validPassword(password)) throw new Error("invalid password");
+export async function hashPassword(password, pepper) {
+  if (!validPassword(password) || !validPepper(pepper)) throw new Error("invalid password configuration");
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const hash = await derivePassword(password, salt);
-  return "pbkdf2_sha256$" + PBKDF2_ITERATIONS + "$" +
+  const hash = await derivePassword(password, salt, pepper);
+  return "pbkdf2_sha256_pepper$" + PBKDF2_ITERATIONS + "$" +
     encodeBase64Url(salt) + "$" + encodeBase64Url(hash);
 }
 
-export async function verifyPassword(password, stored) {
-  if (!validPassword(password) || typeof stored !== "string") return false;
+export async function verifyPassword(password, stored, pepper) {
+  if (!validPassword(password) || typeof stored !== "string" || !validPepper(pepper)) return false;
   const fields = stored.split("$");
-  if (fields.length !== 4 || fields[0] !== "pbkdf2_sha256") return false;
+  if (fields.length !== 4 || fields[0] !== "pbkdf2_sha256_pepper") return false;
   const iterations = Number(fields[1]);
-  if (!Number.isSafeInteger(iterations) || iterations < 100000 || iterations > 1000000) {
+  if (iterations !== PBKDF2_ITERATIONS) {
     return false;
   }
   try {
     const salt = decodeBase64Url(fields[2]);
     const expected = decodeBase64Url(fields[3]);
     if (salt.length !== 16 || expected.length !== 32) return false;
-    const actual = await derivePassword(password, salt, iterations);
+    const actual = await derivePassword(password, salt, pepper, iterations);
     let difference = 0;
     for (let i = 0; i < expected.length; i++) difference |= actual[i] ^ expected[i];
     return difference === 0;

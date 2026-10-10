@@ -62,15 +62,19 @@ jobs:
         run: node --test tests/cloudflare-staging-identity.test.mjs
       - name: Build preview without secrets
         run: node cloudflare/build-preview.mjs
+      - name: Test staging navigation build
+        run: node --test tests/cloudflare-preview-build.test.mjs
       - name: Check output is read-only and contains no backend sources
         shell: bash
         run: |
           set -euo pipefail
           test -f cloudflare/preview-dist/index.html
           test -f cloudflare/preview-dist/_headers
-          grep -q "CLOUDFLARE PREVIEW ONLY" cloudflare/preview-dist/index.html
+          grep -q "WORLD TV STAGING" cloudflare/preview-dist/index.html
+          grep -q 'href="/staging-account"' cloudflare/preview-dist/index.html
+          grep -q 'href="/staging-lab"' cloudflare/preview-dist/index.html
           test ! -f cloudflare/preview-dist/server.js
           test ! -f cloudflare/preview-dist/.env
           test ! -f cloudflare/preview-dist/data/worldtv.sqlite
           test ! -d cloudflare/preview-dist/public/apps
-          echo "Safe read-only preview output produced."
+          echo "Safe Cloudflare staging output produced."

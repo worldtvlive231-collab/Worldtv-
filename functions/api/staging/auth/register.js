@@ -36,7 +36,7 @@ export async function onRequestPost(context) {
   if (!verified) return reply({ error: "Verification required" }, 403);
 
   try {
-    const encodedPassword = await hashPassword(input.password);
+    const encodedPassword = await hashPassword(input.password, context.env.WORLDTV_PASSWORD_PEPPER);
     await context.env.DB.prepare(
       "INSERT INTO users(name, email, password_hash, role, status) VALUES(?, ?, ?, 'customer', 'active')"
     ).bind(name, email, encodedPassword).run();

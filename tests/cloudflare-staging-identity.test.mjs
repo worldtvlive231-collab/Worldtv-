@@ -12,12 +12,14 @@ import { onRequestGet as accountPage } from '../functions/staging-account.js';
 const origin = 'https://worldtv-preview.pages.dev';
 const email = 'security@example.invalid';
 const password = 'Secure-Test-Password-777';
+const pepper = 'test-only-password-pepper-32-bytes-minimum';
 function setup() {
   const db = new TestD1();
   const deliveries = [];
   const env = { DB: db, WORLDTV_STAGING_AUTH_ENABLED: 'true', WORLDTV_STAGING_REGISTRATION_ENABLED: 'true',
     WORLDTV_STAGING_IDENTITY_ENABLED: 'true', WORLDTV_AUTH_RATE_SECRET: 'test-rate-secret'.repeat(4),
-    WORLDTV_TURNSTILE_SECRET: 'test-turnstile-secret', WORLDTV_STAGING_EMAIL_ALLOWLIST: email,
+    WORLDTV_TURNSTILE_SECRET: 'test-turnstile-secret', WORLDTV_PASSWORD_PEPPER: pepper,
+    WORLDTV_STAGING_EMAIL_ALLOWLIST: email,
     WORLDTV_AUTH_MAILER: { fetch: async request => { deliveries.push(await request.json()); return new Response('', {status:202}); } } };
   const context = (payload, overrides = {}) => ({ env, ...overrides, request: new Request(origin + '/api/staging/auth/test', {
     method: 'POST', headers: { origin, 'content-type': 'application/json', 'cf-connecting-ip': '192.0.2.9' }, body: JSON.stringify(payload)
@@ -43,7 +45,7 @@ test('registration requires verification; token is hashed, purpose bound and sin
 test('recovery changes verified account password and revokes all sessions; replay fails', async () => {
   const { db, deliveries, context } = setup();
   db.sqlite.prepare('INSERT INTO users(name,email,password_hash,email_verified_at) VALUES(?,?,?,CURRENT_TIMESTAMP)')
-    .run('Test', email, await hashPassword(password));
+    .run('Test', email, await hashPassword(password, pepper));
   assert.equal((await login(context({ email, password }))).status, 200);
   assert.equal((await login(context({ email, password }))).status, 200);
   assert.equal(db.sessions.length, 2);
@@ -54,14 +56,14 @@ test('recovery changes verified account password and revokes all sessions; repla
   assert.equal(result.status, 200);
   assert.match(result.headers.get('set-cookie'), /Max-Age=0/);
   assert.equal(db.sessions.length, 0);
-  assert.equal(await verifyPassword(changed, db.users[0].password_hash), true);
-  assert.equal(await verifyPassword(password, db.users[0].password_hash), false);
+  assert.equal(await verifyPassword(changed, db.users[0].password_hash, pepper), true);
+  assert.equal(await verifyPassword(password, db.users[0].password_hash, pepper), false);
   assert.equal((await completeEmail(context({ purpose: 'reset', token, password }))).status, 400);
 });
 
 test('unknown and ineligible accounts have identical recovery response', async () => {
   const { db, deliveries, context } = setup();
-  db.sqlite.prepare('INSERT INTO users(name,email,password_hash) VALUES(?,?,?)').run('Test', email, await hashPassword(password));
+  db.sqlite.prepare('INSERT INTO users(name,email,password_hash) VALUES(?,?,?)').run('Test', email, await hashPassword(password, pepper));
   const existing = await requestEmail(context({ email, purpose: 'reset' }));
   const absent = await requestEmail(context({ email: 'absent@example.invalid', purpose: 'reset' }));
   assert.equal(existing.status, absent.status);
@@ -71,7 +73,7 @@ test('unknown and ineligible accounts have identical recovery response', async (
 
 test('expired, disabled and superseded tokens cannot verify accounts', async () => {
   const { db, deliveries, context } = setup();
-  db.sqlite.prepare('INSERT INTO users(name,email,password_hash) VALUES(?,?,?)').run('Test', email, await hashPassword(password));
+  db.sqlite.prepare('INSERT INTO users(name,email,password_hash) VALUES(?,?,?)').run('Test', email, await hashPassword(password, pepper));
   await requestEmail(context({ email, purpose: 'verify' }));
   const old = deliveredToken(deliveries);
   await requestEmail(context({ email, purpose: 'verify' }));
@@ -132,7 +134,7 @@ test('body reader bounds a streaming request before collecting oversized payload
 
 test('concurrent verification consumes exactly one token in serialized transactional batches', async () => {
   const { db, deliveries, context } = setup();
-  db.sqlite.prepare('INSERT INTO users(name,email,password_hash) VALUES(?,?,?)').run('Test', email, await hashPassword(password));
+  db.sqlite.prepare('INSERT INTO users(name,email,password_hash) VALUES(?,?,?)').run('Test', email, await hashPassword(password, pepper));
   await requestEmail(context({ email, purpose:'verify' }));
   const token = deliveredToken(deliveries);
   const responses = await Promise.all([completeEmail(context({token,purpose:'verify'})), completeEmail(context({token,purpose:'verify'}))]);

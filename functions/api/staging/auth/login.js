@@ -27,7 +27,8 @@ export async function onRequestPost(context) {
 
     // Perform the same password derivation for absent and ineligible accounts.
     const valid = await verifyPassword(input.password, user?.password_hash ||
-      'pbkdf2_sha256$310000$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+      'pbkdf2_sha256_pepper$100000$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      context.env.WORLDTV_PASSWORD_PEPPER);
     if (!user || !user.email_verified_at || user.status !== "active" || !valid) {
       return reply({ error: "Invalid email or password" }, 401);
     }
