@@ -60,8 +60,10 @@ async function createCustomers(sqlite) {
     .run("Customer A", "a@example.invalid", "only-test-hash");
   sqlite.prepare("INSERT INTO users(name,email,password_hash) VALUES(?,?,?)")
     .run("Customer B", "b@example.invalid", "only-test-hash");
+  sqlite.exec("UPDATE users SET email_verified_at=CURRENT_TIMESTAMP");
   sqlite.prepare("INSERT INTO customer_sessions(token_hash,user_id,expires_at) VALUES(?,1,datetime('now','+1 day'))")
     .run(await hashSessionToken(accountToken));
+  sqlite.exec("UPDATE users SET email_verified_at=CURRENT_TIMESTAMP");
   sqlite.prepare("INSERT INTO customer_sessions(token_hash,user_id,expires_at) VALUES(?,2,datetime('now','+1 day'))")
     .run(await hashSessionToken(alternateToken));
 }

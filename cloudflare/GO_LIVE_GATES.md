@@ -1,3 +1,7 @@
+> Current execution status: **NO-GO**. See
+> [2026-10-09 execution report](MIGRATION_EXECUTION_2026-10-09.md).
+> Identity code has advanced; live browser/provider/runtime/continuity gates have not passed.
+
 # WORLD TV – Cloudflare launch readiness and remaining gates
 
 **Migration branch:** `migration/cloudflare-preview-2026-10`
@@ -53,6 +57,9 @@ Type `worldtv-fresh` when prompted, then confirm two trigger names are returned.
 All functions require the correct preview domain plus their flags:
 
 - `WORLDTV_STAGING_AUTH_ENABLED=true`: experimental register/login/subscription endpoints.
+- `WORLDTV_PASSWORD_PEPPER`: secret random value of at least 32 bytes used before the
+  Cloudflare-compatible password derivation. Losing or changing it prevents every
+  staging password from verifying; store it only in Cloudflare secret management.
 - `WORLDTV_STAGING_REDEMPTION_ENABLED=true`: in addition to auth flag, experimental code redemption.
 - `WORLDTV_STAGING_CHAT_ENABLED=true`: in addition to auth flag, experimental account-bound live chat; admin routes also require admin flag.
 - `WORLDTV_STAGING_ADMIN_ENABLED=true`: admin route also checks Cloudflare Access signed JWT, email allowlist and D1 `role='admin'`.

@@ -1,3 +1,8 @@
+> Update 2026-10-09: PR #162 adds gated identity verification/recovery and D1 rate
+> limits in migration 005. These remain unconfigured and undeployed. See
+> [execution report](MIGRATION_EXECUTION_2026-10-09.md) for current behavior, blockers,
+> evidence and rollback. The historical prototype notes below describe earlier phases.
+
 # WORLD TV Cloudflare staged customer authentication
 
 **Status: code added to migration branch; DISABLED BY DEFAULT; not production-ready.**
@@ -23,7 +28,8 @@ A first isolated customer authentication API has now been implemented as a *deve
 
 Security measures in the prototype:
 - Parameterized D1 queries; duplicate-email protection via unique DB index.
-- Password hashing with PBKDF2-SHA256 and per-user random salt; plain passwords are never written to D1.
+- Password hashing with a server-held pepper, PBKDF2-SHA256 at the hosted Workers
+  per-call ceiling, and a per-user random salt; plain passwords are never written to D1.
 - Session tokens generated with cryptographic randomness and stored only as SHA-256 hashes, with a 7-day expiration.
 - HttpOnly Secure SameSite=Strict host-only session cookie.
 - POST requests must have a matching Origin and application/json content type.

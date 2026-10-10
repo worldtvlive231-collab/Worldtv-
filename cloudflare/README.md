@@ -2,6 +2,11 @@
 
 > **Status: IN PROGRESS — live site stays on Railway until the backend, data, and payments have passed production-equivalent tests.**
 > Do **not** connect `myworldtvlive.com` to the preview or cancel Railway yet.
+>
+> Update for PR #162: the build now keeps ordinary navigation on the Cloudflare
+> preview and routes account/subscription links to disabled-by-default staging
+> Functions. Information pages are copied into the preview. Payments remain test-only;
+> downloads and products show explicit staging status pages until their backends pass.
 
 ## What the repository actually runs
 
@@ -13,9 +18,14 @@
 
 **Cloudflare Pages cannot run the current Express server and local SQLite database unchanged.** The Worker runtime is not a persistent Node filesystem/VM. Port database calls to asynchronous Cloudflare D1 bindings, background work to Cron/Queues, uploads to R2, and session handling to durable storage. Port all relevant API routes and startup patches. Preserve hashed passwords, permissions and payment idempotency.
 
-## Part 1: read-only preview — safe to try now
+## Part 1: gated staging shell
 
-This branch includes `cloudflare/build-preview.mjs`. It copies only the public landing page, a carefully allowlisted `assets/` directory, and a few optional public icons/manifest files into `cloudflare/preview-dist/`. It does **not** copy backend source, `.env` or the SQLite database. It adds an unmistakable preview-only banner, no-index headers, and routes internal landing-page links to the live website.
+This branch includes `cloudflare/build-preview.mjs`. It copies the public landing
+page, selected legal/information pages, an allowlisted `assets/` directory, and public
+icons into `cloudflare/preview-dist/`. It does **not** copy backend source, `.env` or
+the SQLite database. It adds a staging banner and no-index headers. Account,
+subscription, download and product links remain on the preview host and lead to
+gated staging routes.
 
 With a Cloudflare account, create a separate **Cloudflare Pages** project connected to this GitHub branch.
 
