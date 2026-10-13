@@ -40,6 +40,21 @@ test('manual Pocketi confirmation gives a real support-email workflow without fa
   assert.match(page, /A receipt or screenshot alone does not prove a payment was successful/);
 });
 
+test('every Gmail link prefills non-sensitive receipt verification fields', () => {
+  const links = [...page.matchAll(/href="(mailto:worldtvlive231@gmail\\.com\\?[^"]+)"/g)];
+  assert.equal(links.length, 3);
+  for (const [, htmlHref] of links) {
+    const url = new URL(htmlHref.replaceAll('&amp;', '&'));
+    assert.equal(url.pathname, 'worldtvlive231@gmail.com');
+    assert.equal(url.searchParams.get('subject'), 'WORLD TV Pocketi payment verification');
+    const body = url.searchParams.get('body') || '';
+    for (const field of ['Pocketi transaction reference:', 'Amount paid in GHS:', 'Payment date:', 'Registered WORLD TV account email:']) {
+      assert.ok(body.includes(field), 'Missing field: ' + field);
+    }
+    assert.match(body, /not share card numbers, payment PINs, passwords or one-time codes/i);
+  }
+});
+
 test('old Ghana in-page payment modal, API initialization, and polling were retired', () => {
   assert.doesNotMatch(page, /id="pocketi-modal"|id="pocketi-form"/);
   assert.doesNotMatch(page, /openPocketi\(|pollPocketi\(/);
