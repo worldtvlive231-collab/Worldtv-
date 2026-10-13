@@ -18,7 +18,8 @@ function memoryDb() {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec("PRAGMA foreign_keys=ON");
   for (const file of ["001_core.sql", "002_operations.sql",
-    "003_user_guards.sql", "004_chat_message_counters.sql"]) {
+    "003_user_guards.sql", "004_chat_message_counters.sql",
+    "005_account_security.sql", "006_payment_delivery.sql"]) {
     sqlite.exec(readFileSync(resolve("cloudflare/d1", file), "utf8"));
   }
   const api = {
@@ -139,13 +140,14 @@ test("signed sandbox test webhook fulfills only a linked pending order once", as
   assert.equal(result.status, 200);
   assert.deepEqual(await result.json(), {
     status: "accepted", environment: "staging",
-    fulfillment: "code_reserved_no_delivery"
+    fulfillment: "code_reserved", delivery: "disabled"
   });
   assert.equal(sqlite.prepare("SELECT status FROM orders").get().status, "paid");
   assert.equal(sqlite.prepare("SELECT status FROM checkout_requests").get().status, "paid");
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM subscription_codes").get().n, 1);
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM subscriptions").get().n, 0);
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM payment_events").get().n, 1);
+  assert.equal(sqlite.prepare("SELECT status FROM activation_deliveries").get().status, "pending");
 
   const codeResponse = await testCode(ctx(codeRequest(reference), api));
   assert.equal(codeResponse.status, 200);
@@ -175,7 +177,9 @@ test("signed sandbox test webhook fulfills only a linked pending order once", as
 
   const replay = await webhook(ctx(await signedWebhook(reference), api));
   assert.equal(replay.status, 200);
-  assert.equal((await replay.json()).duplicate, true);
+  assert.deepEqual(await replay.json(), {
+    status: "accepted", environment: "staging", duplicate: true, delivery: "disabled"
+  });
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM subscription_codes").get().n, 1);
 });
 

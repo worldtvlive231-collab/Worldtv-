@@ -1,44 +1,34 @@
-# WORLD TV: owner acceptance and safe cutover test matrix
+# WORLD TV owner acceptance matrix
 
-Status: **NOT APPROVED FOR PRODUCTION**. Review alongside `GO_LIVE_GATES.md`.
+**Status: NOT APPROVED FOR PRODUCTION.** Automated staging tests are green; every
+row below still needs real staging evidence against the reviewed deployment SHA.
 
-## Non-negotiable constraints
+| Area | Positive evidence | Required negative/failure evidence | Status |
+| --- | --- | --- | --- |
+| Registration/auth | Register, receive email, verify, login/logout, reset password | Invalid Turnstile, wrong password, expired/replayed token, revoked session, rate limit | Blocked: provider/browser |
+| Existing customers | Approved active entitlement restored with original expiry | Wrong email, duplicate claim, expired/revoked record, active-subscription collision | Blocked: Railway inventory/approval |
+| Admin | Access login, overview, audits, chat/delivery/continuity operations | Bad JWT/audience, unlisted email, non-admin role, CSRF/IDOR attempts | Blocked: Access configuration |
+| Reseller | Create, allocate, login, generate, redeem, usage accounting, suspend/logout | Over-quota, cross-reseller access, suspended login/session, duplicate redemption | Blocked: browser staging |
+| Subscription | Status, one-time redemption, ownership and expiry | Invalid/wrong-owner/paid-state/concurrent duplicate claims | Offline pass; real D1 blocked |
+| Paystack | Test initialization, success and exact reconciliation | Live key, decline/cancel, bad HMAC/domain/amount/currency/reference, duplicate/out-of-order | Blocked: test credentials/webhook |
+| Activation email | One allowlisted delivery and visible status | Mailer outage, retry, max-attempt dead state, mismatched code/recipient, log leakage | Blocked: mailer/inbox |
+| Chat | Customer/admin exchange, unread count, mobile layout | Anonymous/cross-account access, invalid payload, abuse/rate limit | Blocked: browser/operations |
+| APK | R2 metadata, checksum, full/range download, install | Wrong key/hash/version, missing object, unsupported range/device | Blocked: approved APK/R2/device |
+| UI/accessibility | Desktop/mobile journeys; English/French/Spanish/Portuguese/Arabic | Broken links, keyboard/screen-reader/layout and RTL regressions | Blocked: browser/device matrix |
+| Operations | Alerts, D1 backup/restore, deployment and DNS rollback rehearsal | Simulated outage/data mismatch/payment duplication | Blocked: Cloudflare access/change window |
+| Legal/commercial | Rights, privacy, refund/chargeback, retention and notices approved | Unlicensed content or unresolved customer terms | Blocked: owner/legal review |
 
-- Fresh D1 `worldtv-fresh`: **no Railway rows imported**. Existing subscriptions must be honored through an explicit continuity/reissue process, not assumed missing.
-- Do not change `myworldtvlive.com` DNS, switch payment links, remove Railway storage, or turn on real processing before explicit owner approval.
-- Protect all privileged paths with verified Cloudflare Access identity and appropriate server-side role checks; never assume a client-side admin flag is secure.
-- Do not put Paystack/Cloudflare tokens, customer passwords or SQLite production data into GitHub, browser bundles, public Pages files or screenshots.
+## Evidence record for each test
 
-## Required production acceptance evidence
+Record the timestamp, exact git SHA and Pages deployment ID, tester, environment,
+sanitized account/reference, expected result, actual result, screenshot/log link and
+cleanup performed. Never capture secrets, raw activation codes, passwords or customer data.
 
-| Area | Required positive and negative scenarios | Blocked until |
-| --- | --- | --- |
-| Customer identity | Signup; email verify; login/logout; wrong password; reset; expired/revoked cookie; rate-limit and Turnstile abuse | Verified registration and recovery/security controls |
-| Existing accounts | Known active customer re-registration / entitlement restoration, expiry correctness, duplicates and customer notices | Owner-approved reissue/continuity process |
-| Admin and resellers | Strongly authenticated Access; role boundaries; no IDOR; audit log; code inventory; impersonation attempts denied | Tested dashboard feature parity |
-| Subscription codes | One issued per verified paid order; expiry; wrong owner; duplicate / concurrent redemptions; refund/chargeback | Transactional allocation and verified payment provenance |
-| Payments | Paystack test-mode success/failure/duplicate/out-of-order; exact currency + amount + reference; webhook HMAC; delivery retry | Sandbox credentials, webhooks, reconciliation, no trust in redirect |
-| Live chat | Anonymous/registered policy; cross-account isolation; unread counts; admin reply and handoff; notification privacy | Abuse controls, real browser & mobile tests |
-| Download and assets | APK and permitted assets stored in appropriate object storage; download flow; supported Android devices | R2/storage, signed links where needed |
-| Email and notifications | Verification, password reset, receipt, activation-code delivery, bounce/retry, no leaked code in logs | Provider configuration and operational monitoring |
-| UI and localization | English, French, Spanish, Portuguese, Arabic; mobile/desktop; accessibility; all links and forms | Browser and device regression |
-| Legal and operations | Distribution rights, privacy and refunds, monitoring, backups and restore, deployment rollback rehearsal | Owner review and signed-off checklist |
+## Cutover rule
 
-## Final cutover runbook (do not execute yet)
+All rows must pass, Railway must remain available as rollback, and the owner must
+approve the precise DNS/payment/change-window plan after reviewing the evidence.
+Earlier approval to build or stage is not production authorization.
 
-1. Obtain green automated tests **and** witnessed staging browser tests, including isolated test identities and sandbox transactions.
-2. Capture deployment artifact SHA, D1 migration state and restore/rollback procedure. Confirm Cloudflare feature flags and Access settings.
-3. Establish customer-entitlement continuity and notify affected existing customers.
-4. Obtain explicit owner approval for the precise domain, time window and payment mode.
-5. Change production configuration only in the approved window, monitor critical workflows, and retain the Railway volume until continuity is confirmed.
-6. Roll back on authentication, payment, code issuance, or account-entitlement discrepancies.
-
-## Current evidence (2026-10-09)
-
-- Read-only Pages preview automatically deployed from the migration branch; last owner-confirmed preview commit `92f000e`.
-- D1 connection and 20 application tables confirmed in earlier owner-provided CLI screenshots. Chat triggers were also returned by a CLI query.
-- GitHub preview safety and schema workflows passed for `92f000e`.
-- Owner set `WORLDTV_STAGING_AUTH_ENABLED=false` before the preview re-deployment.
-- **No real payment, customer signup, admin dashboard or live chat E2E certification exists yet.**
-
-The read-only landing page must remain visibly marked preview-only until cutover is independently approved.
+Deployment and rollback steps are in
+[MIGRATION_EXECUTION_2026-10-13.md](MIGRATION_EXECUTION_2026-10-13.md).

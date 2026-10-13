@@ -13,6 +13,7 @@
 import { reply } from "../../../_lib/staging-auth.js";
 import { verifyPaystackSignature, validatePaidCharge } from "../../../_lib/staging-paystack-verify.js";
 import { sandboxFulfillInD1Batch } from "../../../_lib/staging-issuance.js";
+import { attemptActivationDelivery } from "../../../_lib/staging-delivery.js";
 
 const encoder = new TextEncoder();
 
@@ -62,7 +63,7 @@ export async function onRequestPost(context) {
   try {
     // Order MUST originate from a server-created, matching checkout request.
     const order = await context.env.DB.prepare(
-      "SELECT o.reference,o.provider,o.amount_minor,o.currency,o.status,o.provider_reference " +
+      "SELECT o.id,o.reference,o.provider,o.amount_minor,o.currency,o.status,o.provider_reference " +
       "FROM orders o JOIN checkout_requests co ON co.id=o.checkout_request_id " +
       "AND co.reference=o.reference AND co.user_id=o.user_id " +
       "AND co.plan_id=o.plan_id AND co.provider=o.provider " +
@@ -75,9 +76,12 @@ export async function onRequestPost(context) {
     // Replays are harmless and do not re-issue. A different transaction must
     // not silently fulfill a paid order.
     if (order.status === "paid") {
-      return order.provider_reference === String(event.data.id) ?
-        reply({ status: "accepted", environment: "staging", duplicate: true }) :
-        reply({ error: "Already fulfilled" }, 409);
+      if (order.provider_reference !== String(event.data.id)) {
+        return reply({ error: "Already fulfilled" }, 409);
+      }
+      const delivery = await attemptActivationDelivery(context, order.id);
+      return reply({ status: "accepted", environment: "staging", duplicate: true,
+        delivery: delivery.status });
     }
     if (order.status !== "pending") return reply({ error: "Unmatched test order" }, 400);
 
@@ -96,10 +100,12 @@ export async function onRequestPost(context) {
     if (!result.newly_paid || !result.code_issued) {
       return reply({ error: "Test fulfillment pending review" }, 409);
     }
+    const delivery = await attemptActivationDelivery(context, order.id);
     return reply({
       status: "accepted",
       environment: "staging",
-      fulfillment: "code_reserved_no_delivery"
+      fulfillment: "code_reserved",
+      delivery: delivery.status
     });
   } catch {
     return reply({ error: "Service unavailable" }, 503);

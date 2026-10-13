@@ -28,6 +28,25 @@ export async function derivedActivationCode(orderReference, issuanceSecret) {
   return { code, code_hash: await activationCodeHash(code), code_hint: hex.slice(-4) };
 }
 
+export async function derivedResellerCode(grantReference, issuanceSecret) {
+  if (typeof grantReference !== 'string' ||
+      !/^WTVRG-[A-Za-z0-9_-]{16,40}$/.test(grantReference) ||
+      typeof issuanceSecret !== 'string' || issuanceSecret.length < 32) {
+    throw new Error('Invalid reseller grant or issuance key');
+  }
+  const key = await crypto.subtle.importKey(
+    'raw', encoder.encode(issuanceSecret), { name: 'HMAC', hash: 'SHA-256' },
+    false, ['sign']
+  );
+  const bytes = new Uint8Array(await crypto.subtle.sign(
+    'HMAC', key, encoder.encode('worldtv-staging-reseller-code-v1:' + grantReference)
+  ));
+  const hex = Array.from(bytes.slice(0, 12),
+    byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
+  const code = 'WTV-R-' + hex;
+  return { code, code_hash: await activationCodeHash(code), code_hint: hex.slice(-4) };
+}
+
 export const STAGING_FULFILL_SQL = Object.freeze({
   insertEvent:
     "INSERT INTO payment_events(provider,provider_event_id,provider_reference,payload_sha256,verification_status,processed_at) " +
@@ -65,7 +84,13 @@ export const STAGING_FULFILL_SQL = Object.freeze({
     "WHERE reference=? AND status='pending' AND EXISTS(" +
     "SELECT 1 FROM orders o JOIN subscription_codes code ON code.order_id=o.id " +
     "WHERE o.checkout_request_id=checkout_requests.id AND o.status='paid' " +
-    "AND o.provider_reference=? AND code.status='unused')"
+    "AND o.provider_reference=? AND code.status='unused')",
+
+  queueDelivery:
+    "INSERT INTO activation_deliveries(order_id,user_id,status) " +
+    "SELECT o.id,o.user_id,'pending' FROM orders o JOIN subscription_codes code ON code.order_id=o.id " +
+    "WHERE o.reference=? AND o.status='paid' AND code.status='unused' " +
+    "ON CONFLICT(order_id) DO NOTHING"
 });
 
 export async function sandboxFulfillInD1Batch(db, {
@@ -96,12 +121,14 @@ export async function sandboxFulfillInD1Batch(db, {
       code_hash, code_hint, reference, amountMinor, currency, eventId, payloadSha256),
     db.prepare(STAGING_FULFILL_SQL.payPendingOrder).bind(
       String(transactionId), reference, amountMinor, currency, code_hash, eventId, reference, payloadSha256),
-    db.prepare(STAGING_FULFILL_SQL.markCheckoutPaid).bind(reference, String(transactionId))
+    db.prepare(STAGING_FULFILL_SQL.markCheckoutPaid).bind(reference, String(transactionId)),
+    db.prepare(STAGING_FULFILL_SQL.queueDelivery).bind(reference)
   ]);
   const changes = (results || []).map(row => row?.meta?.changes ?? 0);
   return {
     newly_paid: changes[2] === 1 && changes[3] === 1,
     code_issued: changes[1] === 1 && changes[2] === 1 && changes[3] === 1,
+    delivery_queued: changes[4] === 1,
     duplicate: changes[1] !== 1 && changes[2] !== 1 && changes[3] !== 1,
     code_hint: changes[1] === 1 && changes[2] === 1 && changes[3] === 1 ? code_hint : null
   };

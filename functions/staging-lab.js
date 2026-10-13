@@ -24,14 +24,16 @@ button.alt{background:#393342;color:#f4ecdb;border:1px solid #60556d}.buttons{di
 <div class="grid">
 <section><h2>Test account</h2><p>Create, verify or recover your staging account before using the lab.</p><div class="buttons"><a class="button-link" href="/staging-account">Open staging account</a></div></section>
 <section><h2>Sign in</h2><form id="login"><input name="email" type="email" placeholder="Test email" autocomplete="username" required><input name="password" type="password" autocomplete="current-password" placeholder="Test password" required><button>Sign in</button></form><div class="buttons"><button class="alt" id="profile">My test account</button><button class="alt" id="logout">Sign out</button></div></section>
-<section><h2>Subscription preview</h2><p>Read your own entitlements or generate a draft checkout with no payment URL.</p><div class="buttons"><button id="subscriptions">My subscriptions</button><button class="alt" id="checkout">Create test checkout</button></div><form id="code"><input name="reference" placeholder="WTVTEST- order reference" required><button>Retrieve my unused test code</button></form></section>
+<section><h2>Subscription preview</h2><p>Read your own entitlements, test continuity or run a Paystack sandbox checkout.</p><div class="buttons"><button id="subscriptions">My subscriptions</button><button class="alt" id="continuity">Existing-customer status</button><button class="alt" id="claim-continuity">Restore approved entitlement</button><button class="alt" id="checkout">Create test checkout</button></div><form id="sandbox"><input name="reference" placeholder="WTVTEST- reference from checkout" required><button>Initialize Paystack test payment</button></form><p><a id="payment-link" class="button-link" hidden rel="noopener noreferrer">Continue to Paystack sandbox</a></p><form id="code"><input name="reference" placeholder="WTVTEST- order reference" required><button>Retrieve my unused test code</button></form></section>
 <section><h2>Support chat preview</h2><p>Send and read messages isolated to your own staging account.</p><div class="buttons"><button id="start-chat">Start test chat</button><button class="alt" id="refresh-chat">Read my messages</button></div><form id="chat"><input name="message" placeholder="Message for test support" maxlength="2000" required><button>Send message</button></form></section>
 </div>
 <section style="margin-top:16px"><h2>Staging API response</h2><p>The test API may return 404 while a feature is disabled.</p><pre role="status" aria-live="polite" id="response">No request sent yet.</pre></section>
+<p><a href="/staging-reseller">Reseller staging</a> · <a href="/staging-admin">Admin staging</a></p>
 </main><script nonce="__NONCE__">
 (function(){
   'use strict';
   var output=document.getElementById('response');
+  var paymentLink=document.getElementById('payment-link');
   function formData(id){return Object.fromEntries(new FormData(document.getElementById(id)));}
   async function send(path,method,data){
     output.textContent='Working...';
@@ -41,16 +43,23 @@ button.alt{background:#393342;color:#f4ecdb;border:1px solid #60556d}.buttons{di
       var response=await fetch(path,options);
       var body=await response.json().catch(function(){return {error:'No JSON response'};});
       output.textContent='HTTP '+response.status+'\n'+JSON.stringify(body,null,2);
+      paymentLink.hidden=true;paymentLink.removeAttribute('href');
+      if(response.ok&&typeof body.payment_url==='string'){
+        try{var paymentUrl=new URL(body.payment_url);if(paymentUrl.protocol==='https:'&&paymentUrl.hostname==='checkout.paystack.com'&&!paymentUrl.username&&!paymentUrl.password){paymentLink.href=paymentUrl.href;paymentLink.hidden=false;}}catch(ignore){}
+      }
     }catch(error){output.textContent='Request failed: '+String(error);}
   }
   function onForm(id,path){document.getElementById(id).addEventListener('submit',function(event){event.preventDefault();send(path,'POST',formData(id));});}
   onForm('login','/api/staging/auth/login');
   onForm('chat','/api/staging/chat/send');
+  onForm('sandbox','/api/staging/payment/paystack-sandbox-initialize');
   document.getElementById('code').addEventListener('submit',function(event){event.preventDefault();send('/api/staging/subscriptions/test-code?reference='+encodeURIComponent(formData('code').reference),'GET');});
   [
     ['profile','/api/staging/auth/me','GET'],
     ['logout','/api/staging/auth/logout','POST'],
     ['subscriptions','/api/staging/subscriptions','GET'],
+    ['continuity','/api/staging/continuity/status','GET'],
+    ['claim-continuity','/api/staging/continuity/claim','POST',{}],
     ['checkout','/api/staging/payment/checkout-draft','POST',{plan_slug:'annual'}],
     ['start-chat','/api/staging/chat/start','POST',{page_path:'/staging-lab'}],
     ['refresh-chat','/api/staging/chat/messages','GET']

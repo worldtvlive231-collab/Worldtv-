@@ -1,6 +1,6 @@
 > Update 2026-10-09: PR #162 adds gated identity verification/recovery and D1 rate
 > limits in migration 005. These remain unconfigured and undeployed. See
-> [execution report](MIGRATION_EXECUTION_2026-10-09.md) for current behavior, blockers,
+> [execution report](MIGRATION_EXECUTION_2026-10-13.md) for current behavior, blockers,
 > evidence and rollback. The historical prototype notes below describe earlier phases.
 
 # WORLD TV Cloudflare staged customer authentication
@@ -42,7 +42,8 @@ Security measures in the prototype:
 - A D1 transactional batch claims the unused code and creates one active subscription for the plan's configured duration. Expired, pre-assigned to another user, revoked/redeemed codes and codes tied to unpaid orders are rejected.
 - Existing active subscriptions block redemption to avoid forfeiting remaining days. Renewal/stacking behavior requires a product decision.
 - Only a D1 `orders.status='paid'` database flag is checked, **not Paystack or Pocketi's payment gateway**. Trusted, signed webhooks and checked amounts/currencies must be implemented before any order can safely be marked paid or any code can be issued.
-- Code issuance and customer-facing activation UI are **not implemented**. No codes or customer records were inserted during this stage.
+- Sandbox code issuance/redemption and automatic activation delivery are implemented
+  behind separate flags. No real customer records or payments are used by offline tests.
 - SQLite-backed integration tests simulate claims, repeated redemption, ownership, expiry, paid orders and active subscriptions. They **do not prove live Cloudflare concurrency, end-to-end fulfillment, or payment safety**.
 
 **Important limitations:**

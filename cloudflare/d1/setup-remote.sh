@@ -63,12 +63,24 @@ npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$DB" --remote --yes --file=cl
 echo "Installing atomic chat unread counter triggers (idempotent)..."
 npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$DB" --remote --yes --file=cloudflare/d1/004_chat_message_counters.sql
 
+echo "Installing account verification and recovery guards..."
+npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$DB" --remote --yes --file=cloudflare/d1/005_account_security.sql
+
+echo "Installing sandbox-payment initialization and activation delivery outbox..."
+npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$DB" --remote --yes --file=cloudflare/d1/006_payment_delivery.sql
+
+echo "Installing reseller code-generation audit tables..."
+npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$DB" --remote --yes --file=cloudflare/d1/007_reseller_security.sql
+
+echo "Installing existing-customer continuity staging tables..."
+npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$DB" --remote --yes --file=cloudflare/d1/008_customer_continuity.sql
+
 echo
-echo "Verifying application tables (should be 20, plus Cloudflare's internal table)..."
-npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$DB" --remote --command="SELECT COUNT(*) AS worldtv_tables FROM sqlite_master WHERE type='table' AND name IN ('users','plans','customer_sessions','password_reset_tokens','checkout_requests','orders','payment_events','subscription_codes','subscriptions','resellers','reseller_sessions','reseller_code_allocation','reseller_sales','live_chat_conversations','live_chat_messages','products','product_orders','site_settings','notifications','audit_logs');"
+echo "Verifying application tables (should be 28, plus Cloudflare's internal table)..."
+npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$DB" --remote --command="SELECT COUNT(*) AS worldtv_tables FROM sqlite_master WHERE type='table' AND name IN ('users','plans','customer_sessions','password_reset_tokens','checkout_requests','orders','payment_events','subscription_codes','subscriptions','resellers','reseller_sessions','reseller_code_allocation','reseller_sales','live_chat_conversations','live_chat_messages','products','product_orders','site_settings','notifications','audit_logs','identity_tokens','auth_rate_limits','payment_initializations','activation_deliveries','reseller_generation_batches','reseller_code_grants','continuity_import_batches','continuity_entitlements');"
 echo
 echo "Checking that all customer accounts and payment tables remain empty..."
 npx --yes "wrangler@$WRANGLER_VERSION" d1 execute "$DB" --remote --command="SELECT (SELECT COUNT(*) FROM users) AS users, (SELECT COUNT(*) FROM orders) AS orders, (SELECT COUNT(*) FROM subscription_codes) AS subscription_codes, (SELECT COUNT(*) FROM resellers) AS resellers;"
 echo
-echo "Finished sending D1 schema commands. Review count above; expected WORLD TV tables: 20."
+echo "Finished sending D1 schema commands. Review count above; expected WORLD TV tables: 28."
 echo "Cloudflare Pages is still a preview. Do not switch DNS or enable payments yet."

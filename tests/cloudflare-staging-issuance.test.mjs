@@ -24,7 +24,8 @@ function db() {
   sqlite.exec("PRAGMA foreign_keys=ON");
   for (const file of [
     "001_core.sql", "002_operations.sql",
-    "003_user_guards.sql", "004_chat_message_counters.sql"
+    "003_user_guards.sql", "004_chat_message_counters.sql",
+    "005_account_security.sql", "006_payment_delivery.sql"
   ]) sqlite.exec(readFileSync(resolve("cloudflare/d1", file), "utf8"));
   const api = {
     prepare(sql) {
@@ -88,11 +89,13 @@ test("trusted test-order + signed-event input can stage exactly one paid code", 
   seedOrder(sqlite);
   const first = await sandboxFulfillInD1Batch(api, base);
   assert.deepEqual(first, { newly_paid: true, code_issued: true,
-    duplicate: false, code_hint: (await derivedActivationCode(reference, secret)).code_hint });
+    delivery_queued: true, duplicate: false,
+    code_hint: (await derivedActivationCode(reference, secret)).code_hint });
   assert.equal(orderStatus(sqlite), "paid");
   assert.equal(sqlite.prepare("SELECT status FROM checkout_requests").get().status, "paid");
   assert.equal(codeCount(sqlite), 1);
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM payment_events").get().n, 1);
+  assert.equal(sqlite.prepare("SELECT status FROM activation_deliveries").get().status, "pending");
   const code = sqlite.prepare("SELECT code_hash,code_hint,user_id,order_id,status FROM subscription_codes").get();
   assert.equal(code.code_hash, (await derivedActivationCode(reference, secret)).code_hash);
   assert.equal(code.user_id, 1);
@@ -100,7 +103,8 @@ test("trusted test-order + signed-event input can stage exactly one paid code", 
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM subscriptions").get().n, 0);
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table'").get().n >= 20, true);
   assert.deepEqual(await sandboxFulfillInD1Batch(api, base),
-    { newly_paid: false, code_issued: false, duplicate: true, code_hint: null });
+    { newly_paid: false, code_issued: false, delivery_queued: false,
+      duplicate: true, code_hint: null });
   assert.equal(codeCount(sqlite), 1);
   assert.equal(sqlite.prepare("SELECT COUNT(*) AS n FROM payment_events").get().n, 1);
 });

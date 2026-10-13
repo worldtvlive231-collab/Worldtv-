@@ -134,7 +134,7 @@ function mockDB() {
     },
     batch: async statements => {
       batchCalls.push(statements);
-      return [{ meta: { changes: 1 } }, { meta: { changes: 1 } }];
+      return statements.map(() => ({ meta: { changes: 1 } }));
     }
   };
   return { db, prepared, batchCalls };
@@ -167,7 +167,7 @@ test("redemption is account-bound and sends SHA256 hash, not plaintext, to D1", 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { status: "activated", environment: "staging" });
   assert.equal(batchCalls.length, 1);
-  assert.equal(batchCalls[0].length, 2);
+  assert.equal(batchCalls[0].length, 4);
   assert.ok(prepared.some(item => item.query.startsWith("SELECT u.id")));
   assert.ok(prepared.every(item => !JSON.stringify(item).includes(rawCode)));
   assert.ok(prepared.filter(item => /(?:UPDATE subscription_codes|INSERT INTO subscriptions)/.test(item.query))
