@@ -8,12 +8,14 @@ const HOST = 'https://worldtv-preview.pages.dev';
 const bytes = new TextEncoder().encode('test-apk-bytes');
 function setup(overrides = {}) {
   const bucket = {
-    head: async key => key === 'apk/worldtv-8.2.8.apk' ? { size: bytes.length,
+    head: async key => key === 'apk/worldtv-8.2.8.apk' ? { size: bytes.length, etag: 'verified-etag',
       customMetadata: { sha256: 'a'.repeat(64), version: '8.2.8' } } : null,
     get: async (key, options) => {
       if (key !== 'apk/worldtv-8.2.8.apk') return null;
       const range = options?.range;
-      return { body: range ? bytes.slice(range.offset, range.offset + range.length) : bytes };
+      return { size: bytes.length, etag: 'verified-etag',
+        customMetadata: { sha256: 'a'.repeat(64), version: '8.2.8' },
+        body: range ? bytes.slice(range.offset, range.offset + range.length) : bytes };
     }
   };
   return { WORLDTV_STAGING_DOWNLOAD_ENABLED: 'true', WORLDTV_APK_BUCKET: bucket,
@@ -65,4 +67,23 @@ test('APK endpoints fail closed on unsafe metadata or missing object', async () 
       customMetadata: { sha256: 'b'.repeat(64), version: '8.2.8' } }) };
   assert.equal((await download({ request: new Request(HOST + '/api/staging/app/download'),
     env: mismatch })).status, 503);
+});
+
+test('APK streaming rejects replacement or metadata changes after HEAD', async () => {
+  for (const altered of [
+    { etag: 'replaced-object-etag' },
+    { size: bytes.length + 1 },
+    { customMetadata: { sha256: 'b'.repeat(64), version: '8.2.8' } }
+  ]) {
+    const env = setup();
+    const originalGet = env.WORLDTV_APK_BUCKET.get;
+    env.WORLDTV_APK_BUCKET = {
+      ...env.WORLDTV_APK_BUCKET,
+      get: async (...args) => ({ ...(await originalGet(...args)), ...altered })
+    };
+    const response = await download({
+      request: new Request(HOST + '/api/staging/app/download'), env
+    });
+    assert.equal(response.status, 503);
+  }
 });
