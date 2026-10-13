@@ -25,6 +25,12 @@ button.alt{background:#393342;color:#f4ecdb;border:1px solid #60556d}.buttons{di
 <section><h2>Test account</h2><p>Create, verify or recover your staging account before using the lab.</p><div class="buttons"><a class="button-link" href="/staging-account">Open staging account</a></div></section>
 <section><h2>Sign in</h2><form id="login"><input name="email" type="email" placeholder="Test email" autocomplete="username" required><input name="password" type="password" autocomplete="current-password" placeholder="Test password" required><button>Sign in</button></form><div class="buttons"><button class="alt" id="profile">My test account</button><button class="alt" id="logout">Sign out</button></div></section>
 <section><h2>Subscription preview</h2><p>Read your own entitlements, test continuity or run a Paystack sandbox checkout.</p><div class="buttons"><button id="subscriptions">My subscriptions</button><button class="alt" id="continuity">Existing-customer status</button><button class="alt" id="claim-continuity">Restore approved entitlement</button><button class="alt" id="checkout">Create test checkout</button></div><form id="sandbox"><input name="reference" placeholder="WTVTEST- reference from checkout" required><button>Initialize Paystack test payment</button></form><p><a id="payment-link" class="button-link" hidden rel="noopener noreferrer">Continue to Paystack sandbox</a></p><form id="code"><input name="reference" placeholder="WTVTEST- order reference" required><button>Retrieve my unused test code</button></form></section>
+<section><h2>Pocketi Ghana payment — manual review (TEST ONLY)</h2>
+<p>In production the Ghana button opens the separate Pocketi hosted payment page. This staging form accepts a fabricated WTVTEST-POCKETI- reference only. Do not make real payments or enter real receipt numbers here.</p>
+<form id="pocketi-claim"><input name="reference" placeholder="WTVTEST-POCKETI-SAMPLE123" pattern="WTVTEST-POCKETI-[A-Za-z0-9_-]{6,64}" required><button>Submit test reference for review</button></form>
+<div class="buttons"><button class="alt" id="pocketi-my-reports">My test payment reports</button></div>
+<p>A submitted claim does not confirm payment or activate WORLD TV. An authorized operator must check the Pocketi merchant records independently and manually issue a code after verification.</p>
+</section>
 <section><h2>Support chat preview</h2><p>Send and read messages isolated to your own staging account.</p><div class="buttons"><button id="start-chat">Start test chat</button><button class="alt" id="refresh-chat">Read my messages</button></div><form id="chat"><input name="message" placeholder="Message for test support" maxlength="2000" required><button>Send message</button></form></section>
 </div>
 <section style="margin-top:16px"><h2>Staging API response</h2><p>The test API may return 404 while a feature is disabled.</p><pre role="status" aria-live="polite" id="response">No request sent yet.</pre></section>
@@ -53,11 +59,13 @@ button.alt{background:#393342;color:#f4ecdb;border:1px solid #60556d}.buttons{di
   onForm('login','/api/staging/auth/login');
   onForm('chat','/api/staging/chat/send');
   onForm('sandbox','/api/staging/payment/paystack-sandbox-initialize');
+  onForm('pocketi-claim','/api/staging/payment/pocketi-manual-report');
   document.getElementById('code').addEventListener('submit',function(event){event.preventDefault();send('/api/staging/subscriptions/test-code?reference='+encodeURIComponent(formData('code').reference),'GET');});
   [
     ['profile','/api/staging/auth/me','GET'],
     ['logout','/api/staging/auth/logout','POST'],
     ['subscriptions','/api/staging/subscriptions','GET'],
+    ['pocketi-my-reports','/api/staging/payment/pocketi-manual-report','GET'],
     ['continuity','/api/staging/continuity/status','GET'],
     ['claim-continuity','/api/staging/continuity/claim','POST',{}],
     ['checkout','/api/staging/payment/checkout-draft','POST',{plan_slug:'annual'}],
