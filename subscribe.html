@@ -413,10 +413,10 @@
               <li>Complete payment through the Ghana checkout page</li>
               <li>Subscription code sent after payment confirmation</li>
             </ul>
-            <a class="primary-cta payment-link" id="ghana-pay" href="#" data-payment-region="ghana">
+            <a class="primary-cta payment-link" id="ghana-pay" href="https://pocketi.shop/worldtv/p/worldtv-yearly-subscription" target="_blank" rel="noopener noreferrer" data-payment-region="ghana">
               <span>Continue to Ghana Payment</span><span class="cta-arrow">→</span>
             </a>
-            <p class="cta-help">Pocketi sends a secure Mobile Money payment request to your phone. Your code is issued automatically after payment.</p>
+            <p class="cta-help">Continue to the secure Pocketi checkout. Your payment must be verified by WORLD TV before a subscription code is issued.</p>
           </div>
 
         </article>
@@ -503,7 +503,7 @@
         <h2>Ready for a full year of entertainment?</h2>
         <p>Choose your payment route and take the next step toward activating WORLD TV today.</p>
         <div class="final-actions">
-          <a class="primary-cta payment-link" href="#" data-payment-region="ghana"><span>Pay from Ghana</span><span class="cta-arrow">→</span></a>
+          <a class="primary-cta payment-link" href="https://pocketi.shop/worldtv/p/worldtv-yearly-subscription" target="_blank" rel="noopener noreferrer" data-payment-region="ghana"><span>Pay from Ghana</span><span class="cta-arrow">→</span></a>
           <a class="secondary-cta payment-link" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer" data-payment-region="global"><span>Pay Worldwide</span><span class="cta-arrow">→</span></a>
         </div>
       </div>
@@ -691,8 +691,10 @@
       pocketiModal.addEventListener('click', event => { if (event.target === pocketiModal) closePocketi(); });
 
       document.querySelectorAll('.payment-link').forEach(link => link.addEventListener('click', event => {
+        // Ghana uses a hosted payment page in a new tab; never intercept its normal link.
+        if (link.dataset.paymentRegion === 'ghana') return;
         event.preventDefault();
-        link.dataset.paymentRegion === 'ghana' ? openPocketi() : startPaystack();
+        startPaystack();
       }));
 
       tabs.forEach(tab => tab.addEventListener('click', () => selectRegion(tab.dataset.region)));
@@ -726,7 +728,7 @@
         if (wasReturn) return;
         const requested = new URLSearchParams(location.search).get('pay');
         if (requested === 'global') startPaystack();
-        if (requested === 'ghana') openPocketi();
+        // Hosted Pocketi checkout requires an explicit customer click.
       });
 
       const pendingPocketi = localStorage.getItem('wtv_pending_pocketi_order');
