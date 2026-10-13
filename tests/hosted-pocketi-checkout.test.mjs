@@ -21,6 +21,17 @@ test('Ghana checkout is not intercepted by the old in-page Mobile Money modal', 
   assert.doesNotMatch(page, /if \(requested === 'ghana'\) openPocketi\(\);/);
 });
 
+test('sticky mobile checkout follows the selected Ghana/Worldwide tab', () => {
+  assert.match(page, /const pocketiUrl = 'https:\/\/pocketi\.shop\/worldtv\/p\/worldtv-yearly-subscription';/);
+  assert.match(page, /mobileCta\.dataset\.paymentRegion = region;[\s\S]*?mobileCta\.href = region === 'ghana' \? pocketiUrl : worldwideUrl;/);
+  assert.match(page, /if \(requested === 'ghana'\) selectRegion\('ghana'\);/);
+});
+
+test('hosted checkout instructions do not promise code delivery without verification', () => {
+  assert.match(page, /must verify the payment and match it to your customer account/);
+  assert.doesNotMatch(page, /After successful payment, your code is issued automatically/);
+});
+
 test('worldwide Paystack checkout remains available unchanged', () => {
   assert.match(page, /https:\/\/paystack\.shop\/pay\/x4sqejilmz/);
   assert.match(page, /const payment = await jsonRequest\('\/api\/payment\/paystack\/hosted-intent'/);
