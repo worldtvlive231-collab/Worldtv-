@@ -2,6 +2,7 @@
 
 **Status: NOT APPROVED FOR PRODUCTION.** Automated staging tests are green; every
 row below still needs real staging evidence against the reviewed deployment SHA.
+PR #162's external merge into `main` does not change this status.
 
 | Area | Positive evidence | Required negative/failure evidence | Status |
 | --- | --- | --- | --- |

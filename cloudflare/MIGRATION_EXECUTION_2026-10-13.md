@@ -1,6 +1,12 @@
 # WORLD TV Cloudflare migration execution report — 2026-10-13
 
-**Current decision: NO-GO for production. PR #162 must remain draft.**
+**Current decision: NO-GO for production.**
+
+Post-merge note: PR #162 was merged into `main` externally at
+2026-10-13 10:25:44 UTC as `cc0f53fc69d7ed3e6c13855ddf2d933b6c05635e`,
+after this report and the PR description explicitly said to keep it draft. The
+merge was not a production-cutover confirmation and did not authorize DNS,
+payments, Cloudflare feature flags, D1 migration, or Railway data changes.
 
 This revision completes the disabled-by-default Cloudflare staging implementation
 for the requested launch journeys. It does not authorize or perform a production
@@ -47,10 +53,17 @@ real Cloudflare D1, inbox, Paystack, R2, Access or Android-device certification.
 
 ## Real staging evidence and blockers
 
-The prior deployed preview homepage rendered successfully in a real browser with
+The deployed preview homepage rendered successfully in a real browser with
 the visible `WORLD TV STAGING` banner and preview-local navigation. All feature
-routes correctly returned 404 while their Cloudflare flags were disabled. The
-new revision still needs deployment and real-provider tests.
+routes correctly returned JSON 404 while their Cloudflare flags were disabled.
+Cloudflare reported successful deployment of commit `2ab7a64` at the PR preview
+and the canonical `worldtv-preview.pages.dev` deployment subsequently served the
+new disabled routes. Real-provider tests are still blocked.
+
+At 2026-10-13 10:27 UTC, Railway still listed `myworldtvlive.com` on the existing
+production service and retained the `/app/data` volume. No new Railway deployment
+for the merge existed. The public domain returned Railway's `Application not found`
+404, which is a pre-cutover production outage/blocker, not evidence that data is gone.
 
 | Launch-critical gate | State | Required next evidence |
 | --- | --- | --- |
@@ -67,7 +80,8 @@ new revision still needs deployment and real-provider tests.
 
 ## Staging deployment procedure
 
-1. Keep PR #162 draft and verify the reviewed head has green GitHub workflows.
+1. Use reviewed commit `2ab7a64` as the staging artifact and verify its three
+   GitHub workflows remain green. Do not treat the later `main` merge as cutover approval.
 2. Record the current `worldtv-preview` deployment ID, environment variables,
    bindings and `worldtv-fresh` schema. Export D1 to restricted storage and prove
    restoration into an isolated database. Do not commit the export.
