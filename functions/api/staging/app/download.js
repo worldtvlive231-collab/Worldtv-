@@ -18,6 +18,7 @@ export async function onRequestGet(context) {
       range ? { range: { offset: range.offset, length: range.length } } : {});
     // Recheck the fetched object: a replacement between HEAD and GET must fail closed.
     if (!object?.body || !validApkHead(object, config) ||
+        object.size !== head.size ||
         (head.etag && head.etag !== object.etag)) {
       return reply({ error: 'Download unavailable' }, 503);
     }
