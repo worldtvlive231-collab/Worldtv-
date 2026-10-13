@@ -57,6 +57,7 @@ export async function onRequestPost(context) {
     const customer = await stagingCustomer(context);
     if (!customer) return reply({ error: "Not authenticated" }, 401);
     const codeHash = await activationCodeHash(code);
+    const countToken = crypto.randomUUID();
 
     // Cloudflare D1 .batch runs the statements sequentially as one transaction.
     // Both guard the requested account: no browser-supplied user or plan IDs.
@@ -64,7 +65,17 @@ export async function onRequestPost(context) {
       context.env.DB.prepare(CLAIM_SQL)
         .bind(customer.id, codeHash, customer.id, customer.id, customer.id),
       context.env.DB.prepare(CREATE_SUBSCRIPTION_SQL)
-        .bind(customer.id, codeHash, customer.id, customer.id)
+        .bind(customer.id, codeHash, customer.id, customer.id),
+      context.env.DB.prepare(
+        "UPDATE reseller_code_grants SET status='redeemed',customer_user_id=?," +
+        "count_token=?,used_at=CURRENT_TIMESTAMP WHERE subscription_code_id IN " +
+        "(SELECT id FROM subscription_codes WHERE code_hash=?) " +
+        "AND status='issued' AND count_token IS NULL"
+      ).bind(customer.id, countToken, codeHash),
+      context.env.DB.prepare(
+        "UPDATE reseller_code_allocation SET used_count=used_count+1,updated_at=CURRENT_TIMESTAMP " +
+        "WHERE reseller_id IN (SELECT reseller_id FROM reseller_code_grants WHERE count_token=?)"
+      ).bind(countToken)
     ];
     const results = await context.env.DB.batch(statements);
     if (results?.[0]?.meta?.changes === 1 && results?.[1]?.meta?.changes === 1) {

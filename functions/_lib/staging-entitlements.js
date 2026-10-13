@@ -16,7 +16,7 @@ export async function stagingCustomer(context) {
     "SELECT u.id, u.name, u.email FROM customer_sessions AS s " +
     "JOIN users AS u ON u.id = s.user_id " +
     "WHERE s.token_hash = ? AND s.expires_at > CURRENT_TIMESTAMP " +
-    "AND u.status = 'active' AND u.role = 'customer' LIMIT 1"
+    "AND u.email_verified_at IS NOT NULL AND u.status = 'active' AND u.role = 'customer' LIMIT 1"
   ).bind(await hashSessionToken(token)).first();
 
   return user || null;

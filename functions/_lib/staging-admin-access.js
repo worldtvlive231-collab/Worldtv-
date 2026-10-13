@@ -101,7 +101,8 @@ export async function requireStagingAdmin(context, { write = false, fetchJwks } 
   const identity = await verifyAccessIdentity(token, {
     teamDomain: context.env.WORLDTV_ACCESS_TEAM_DOMAIN,
     audience: context.env.WORLDTV_ACCESS_AUD,
-    ...(fetchJwks ? { fetchJwks } : {})
+    ...((fetchJwks || context.data?.accessJwksFetch) ?
+      { fetchJwks: fetchJwks || context.data.accessJwksFetch } : {})
   });
   if (!identity) return { response: reply({ error: "Forbidden" }, 403) };
 

@@ -14,7 +14,7 @@ test("staging lab remains unreachable by default and on the live domain", async 
   });
   assert.equal(wrongDomain.status, 404);
 });
-test("authorized preview lab has restrictive response headers and no payment form", async () => {
+test("authorized preview lab has restrictive headers and sandbox-only payment controls", async () => {
   const enabled = await onRequestGet({
     request: new Request(path),
     env: { WORLDTV_STAGING_AUTH_ENABLED: "true", WORLDTV_STAGING_UI_ENABLED: "true" }
@@ -28,6 +28,9 @@ test("authorized preview lab has restrictive response headers and no payment for
   const html = await enabled.text();
   assert.match(html, /TEST ACCOUNTS ONLY/);
   assert.match(html, /Create test checkout/);
+  assert.match(html, /Initialize Paystack test payment/);
+  assert.match(html, /\/api\/staging\/payment\/paystack-sandbox-initialize/);
+  assert.match(html, /checkout\.paystack\.com/);
   assert.equal(html.includes("/api/staging/subscriptions/test-code"), true);
   assert.equal(html.includes("paystack.shop/pay/"), false);
   assert.equal(html.includes("api/transaction/initialize"), false);

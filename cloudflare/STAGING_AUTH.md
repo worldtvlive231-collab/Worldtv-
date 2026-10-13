@@ -1,3 +1,8 @@
+> Update 2026-10-09: PR #162 adds gated identity verification/recovery and D1 rate
+> limits in migration 005. These remain unconfigured and undeployed. See
+> [execution report](MIGRATION_EXECUTION_2026-10-13.md) for current behavior, blockers,
+> evidence and rollback. The historical prototype notes below describe earlier phases.
+
 # WORLD TV Cloudflare staged customer authentication
 
 **Status: code added to migration branch; DISABLED BY DEFAULT; not production-ready.**
@@ -23,7 +28,8 @@ A first isolated customer authentication API has now been implemented as a *deve
 
 Security measures in the prototype:
 - Parameterized D1 queries; duplicate-email protection via unique DB index.
-- Password hashing with PBKDF2-SHA256 and per-user random salt; plain passwords are never written to D1.
+- Password hashing with a server-held pepper, PBKDF2-SHA256 at the hosted Workers
+  per-call ceiling, and a per-user random salt; plain passwords are never written to D1.
 - Session tokens generated with cryptographic randomness and stored only as SHA-256 hashes, with a 7-day expiration.
 - HttpOnly Secure SameSite=Strict host-only session cookie.
 - POST requests must have a matching Origin and application/json content type.
@@ -36,7 +42,8 @@ Security measures in the prototype:
 - A D1 transactional batch claims the unused code and creates one active subscription for the plan's configured duration. Expired, pre-assigned to another user, revoked/redeemed codes and codes tied to unpaid orders are rejected.
 - Existing active subscriptions block redemption to avoid forfeiting remaining days. Renewal/stacking behavior requires a product decision.
 - Only a D1 `orders.status='paid'` database flag is checked, **not Paystack or Pocketi's payment gateway**. Trusted, signed webhooks and checked amounts/currencies must be implemented before any order can safely be marked paid or any code can be issued.
-- Code issuance and customer-facing activation UI are **not implemented**. No codes or customer records were inserted during this stage.
+- Sandbox code issuance/redemption and automatic activation delivery are implemented
+  behind separate flags. No real customer records or payments are used by offline tests.
 - SQLite-backed integration tests simulate claims, repeated redemption, ownership, expiry, paid orders and active subscriptions. They **do not prove live Cloudflare concurrency, end-to-end fulfillment, or payment safety**.
 
 **Important limitations:**

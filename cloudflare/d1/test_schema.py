@@ -6,7 +6,13 @@ from pathlib import Path
 root = Path(__file__).resolve().parent
 db = sqlite3.connect(":memory:")
 db.execute("PRAGMA foreign_keys = ON")
-for filename in ("001_core.sql", "002_operations.sql", "003_user_guards.sql", "004_chat_message_counters.sql"):
+MIGRATIONS = (
+    "001_core.sql", "002_operations.sql", "003_user_guards.sql",
+    "004_chat_message_counters.sql", "005_account_security.sql",
+    "006_payment_delivery.sql", "007_reseller_security.sql",
+    "008_customer_continuity.sql",
+)
+for filename in MIGRATIONS:
     db.executescript((root / filename).read_text(encoding="utf-8"))
 
 tables = {row[0] for row in db.execute(
@@ -17,7 +23,11 @@ required = {
     "checkout_requests", "orders", "payment_events", "subscription_codes",
     "subscriptions", "resellers", "reseller_sessions", "reseller_code_allocation",
     "reseller_sales", "live_chat_conversations", "live_chat_messages",
-    "products", "product_orders", "site_settings", "notifications", "audit_logs"
+    "products", "product_orders", "site_settings", "notifications", "audit_logs",
+    "identity_tokens", "auth_rate_limits", "payment_initializations",
+    "activation_deliveries", "reseller_generation_batches",
+    "reseller_code_grants", "continuity_import_batches",
+    "continuity_entitlements",
 }
 assert tables == required, f"Unexpected schema tables: missing={required-tables}, extra={tables-required}"
 assert db.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -41,8 +51,8 @@ try:
 except sqlite3.IntegrityError:
     pass
 
-# Schema can be applied idempotently when intentionally bootstrapping a clean database.
-for filename in ("001_core.sql", "002_operations.sql"):
+# Every migration is additive or trigger-replacing and can be replayed safely.
+for filename in MIGRATIONS:
     db.executescript((root / filename).read_text(encoding="utf-8"))
 
 assert db.execute("SELECT COUNT(*) FROM plans").fetchone()[0] == 1
@@ -65,7 +75,7 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 """)
-for filename in ("001_core.sql", "002_operations.sql", "003_user_guards.sql", "004_chat_message_counters.sql"):
+for filename in MIGRATIONS:
     manual.executescript((root / filename).read_text(encoding="utf-8"))
 assert manual.execute("PRAGMA foreign_key_check").fetchall() == []
 assert {row[0] for row in manual.execute(
@@ -87,4 +97,4 @@ try:
 except sqlite3.IntegrityError:
     pass
 
-print("PASS: 20 application tables, empty accounts, replay-safe schema and manually-created users compatibility.")
+print("PASS: 28 application tables, empty accounts, replay-safe schema and manually-created users compatibility.")

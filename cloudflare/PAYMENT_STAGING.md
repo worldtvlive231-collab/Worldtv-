@@ -1,25 +1,64 @@
-# WORLD TV Cloudflare payment verification preparation
+# WORLD TV Paystack staging
 
-**Status:** Offline helper and unit tests only. No webhook route deployed, no payment processed, no customer charged, no activation code issued.
+**Status:** implementation and offline tests complete; real sandbox certification
+is still blocked. Live payments are not enabled or authorized.
 
-## Prepared on the migration branch
+## Staging flow
 
-- `functions/_lib/staging-paystack-verify.js` checks Paystack's `x-paystack-signature` using SHA-512 HMAC on the original raw webhook bytes.
-- Rejects wrong signatures, altered payloads, unexpected event types and incorrect transaction status.
-- `validatePaidCharge()` requires a trusted D1 order reference and exact provider, amount (minor units) and currency match.
-- Derives a deterministic Paystack event identifier for future duplicate prevention.
-- Automated unit tests use a fake, test-only key. No real Paystack credentials are used.
+1. A verified signed-in customer creates a server-priced annual checkout with
+   `POST /api/staging/payment/checkout-draft`.
+2. The customer initializes that reference with
+   `POST /api/staging/payment/paystack-sandbox-initialize`.
+3. The server accepts only a Cloudflare secret matching `sk_test_…`, sends the
+   stored email/amount/currency/reference to Paystack, and accepts only an HTTPS
+   URL on `checkout.paystack.com`.
+4. `POST /api/staging/payment/paystack-sandbox-webhook` verifies the SHA-512 HMAC
+   over the original bytes, requires `data.domain=test`, and matches the exact
+   pending order amount, currency and reference.
+5. One D1 batch records the unique event, derives and stores one hashed code,
+   marks the order/checkout paid and queues activation delivery.
+6. The service-bound mailer derives the same code, verifies its stored hash and
+   sends only to an allowlisted staging recipient. Retry/dead status is durable.
 
-## Not yet built / do not enable payments
+All routes require the exact `worldtv-preview.pages.dev` hostname and remain 404
+unless their separate flags are enabled. Browser redirects never mark an order paid.
 
-1. A secure per-customer checkout flow storing order reference, expected amount and currency in D1 before redirect. Verify the existing hosted Paystack link actually supports identifying an individual order.
-2. A Cloudflare secret for the real Paystack key; never store the secret in GitHub or browser code.
-3. A signed webhook endpoint that verifies the raw signature, loads the pending D1 order and performs idempotent event, payment status and activation-code issuance transactions.
-4. A retry-safe subscriber code delivery and recovery process. Never issue a code because a browser displays a payment success redirect.
-5. Refunded/chargeback and disputed order handling, admin and reseller security, and end-to-end staging payment tests.
-6. Separate renewal/reissue plan for old active Railway customers; the fresh D1 database contains none of the old records.
-7. Explicit review and approval before moving the production domain or live payments.
+## Required staging configuration
 
-Run tests: `node --test tests/cloudflare-staging-paystack.test.mjs`
+- `WORLDTV_STAGING_AUTH_ENABLED=true`
+- `WORLDTV_STAGING_TEST_CHECKOUT_ENABLED=true`
+- `WORLDTV_STAGING_PAYSTACK_INITIALIZE_ENABLED=true`
+- `WORLDTV_STAGING_PAYSTACK_VALIDATION_ENABLED=true`
+- `WORLDTV_STAGING_FULFILLMENT_ENABLED=true`
+- `WORLDTV_STAGING_DELIVERY_ENABLED=true`
+- Secret `WORLDTV_PAYSTACK_TEST_SECRET` beginning with `sk_test_`
+- Secret `WORLDTV_STAGING_CODE_HMAC_SECRET` (at least 32 characters)
+- Service binding `WORLDTV_ACTIVATION_MAILER`
+- Exact `WORLDTV_STAGING_EMAIL_ALLOWLIST`
 
-**This file does not enable or configure actual payments.**
+Do not configure a live key, production webhook, public secret, or real customer
+email for staging.
+
+## Required real sandbox tests
+
+- Success, declined/cancelled, retry and abandoned checkout.
+- Duplicate and out-of-order webhooks; tampered HMAC, amount, currency, domain and reference.
+- Initialization retry after provider outage and duplicate initialization.
+- Exactly one order, event, code and delivery for one paid reference.
+- Email accepted, retry and dead-letter/admin-retry behavior without code leakage in logs.
+- Reconciliation against Paystack test dashboard/API before declaring payment certification.
+- Refund, chargeback and cancellation design before any production enablement.
+
+## Automated tests
+
+```bash
+node --test --test-concurrency=1 \
+  tests/cloudflare-staging-paystack.test.mjs \
+  tests/cloudflare-staging-paystack-route.test.mjs \
+  tests/cloudflare-staging-paystack-initialize.test.mjs \
+  tests/cloudflare-staging-issuance.test.mjs \
+  tests/cloudflare-staging-sandbox-e2e.test.mjs \
+  tests/cloudflare-staging-delivery.test.mjs
+```
+
+These tests use doubles and never call Paystack or send email.

@@ -1,3 +1,4 @@
+import { limitAuth } from '../../../_lib/staging-account-security.js';
 import {
   gate, readBody, normalizeEmail, validPassword, verifyPassword,
   makeSessionToken, hashSessionToken, expiryDate, sessionCookie, reply
@@ -16,13 +17,19 @@ export async function onRequestPost(context) {
     return reply({ error: "Invalid email or password" }, 401);
   }
 
+  const limited = await limitAuth(context, 'login', email);
+  if (limited) return limited;
+
   try {
     const user = await context.env.DB.prepare(
-      "SELECT id, name, email, role, status, password_hash FROM users WHERE email = ? COLLATE NOCASE LIMIT 1"
+      "SELECT id, name, email, role, status, email_verified_at, password_hash FROM users WHERE email = ? COLLATE NOCASE LIMIT 1"
     ).bind(email).first();
 
-    if (!user || user.status !== "active" ||
-        !await verifyPassword(input.password, user.password_hash)) {
+    // Perform the same password derivation for absent and ineligible accounts.
+    const valid = await verifyPassword(input.password, user?.password_hash ||
+      'pbkdf2_sha256_pepper$100000$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      context.env.WORLDTV_PASSWORD_PEPPER);
+    if (!user || !user.email_verified_at || user.status !== "active" || !valid) {
       return reply({ error: "Invalid email or password" }, 401);
     }
 
