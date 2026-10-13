@@ -1,7 +1,8 @@
 # WORLD TV Cloudflare launch gates
 
-**NO-GO. Keep PR #162 draft. Do not merge to main, move
-`myworldtvlive.com`, enable live payments, or delete Railway data.**
+**NO-GO. PR #162 was merged externally on 2026-10-13, but that is not production
+cutover approval. Do not move `myworldtvlive.com`, enable live payments, apply
+production flags, or delete Railway data.**
 
 The staging implementation is complete behind disabled-by-default flags and the
 offline suite passes 80/80. Production remains blocked on real Cloudflare,
