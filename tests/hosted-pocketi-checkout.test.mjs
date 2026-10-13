@@ -41,7 +41,7 @@ test('manual Pocketi confirmation gives a real support-email workflow without fa
 });
 
 test('every Gmail link prefills non-sensitive receipt verification fields', () => {
-  const links = [...page.matchAll(/href="(mailto:worldtvlive231@gmail\\.com\\?[^"]+)"/g)];
+  const links = [...page.matchAll(/href="(mailto:worldtvlive231@gmail\.com\?[^"]+)"/g)];
   assert.equal(links.length, 3);
   for (const [, htmlHref] of links) {
     const url = new URL(htmlHref.replaceAll('&amp;', '&'));
