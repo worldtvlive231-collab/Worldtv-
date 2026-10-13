@@ -33,7 +33,7 @@ test('hosted checkout instructions do not promise code delivery without verifica
 });
 
 test('manual Pocketi confirmation gives a real support-email workflow without false activation promises', () => {
-  const mailto = 'mailto:support@myworldtvlive.com?subject=WORLD%20TV%20Pocketi%20payment%20verification';
+  const mailto = 'mailto:worldtvlive231@gmail.com?subject=WORLD%20TV%20Pocketi%20payment%20verification';
   assert.equal(page.split(mailto).length - 1, 3);
   assert.match(page, /WORLD TV will verify the payment in its Pocketi merchant records/);
   assert.match(page, /Never send card numbers, payment PINs, passwords or one-time codes/);
