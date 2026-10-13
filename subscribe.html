@@ -404,7 +404,7 @@
             <a class="secondary-cta payment-link" id="worldwide-pay" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer" data-payment-region="global">
               <span>Continue to Worldwide Payment</span><span class="cta-arrow">→</span>
             </a>
-            <p class="cta-help">Sign in, complete the secure Paystack payment link, and receive your code automatically after successful payment.</p>
+            <p class="cta-help">Sign in, then complete Paystack checkout. WORLD TV must verify your payment before delivering a subscription code.</p>
           </div>
 
           <div class="region-panel" id="ghana-panel" role="tabpanel" aria-labelledby="ghana-tab" hidden>
@@ -413,10 +413,10 @@
               <li>Complete payment through the Ghana checkout page</li>
               <li>Subscription code sent after payment confirmation</li>
             </ul>
-            <a class="primary-cta payment-link" id="ghana-pay" href="#" data-payment-region="ghana">
+            <a class="primary-cta payment-link" id="ghana-pay" href="https://pocketi.shop/worldtv/p/worldtv-yearly-subscription" target="_blank" rel="noopener noreferrer" data-payment-region="ghana">
               <span>Continue to Ghana Payment</span><span class="cta-arrow">→</span>
             </a>
-            <p class="cta-help">Pocketi sends a secure Mobile Money payment request to your phone. Your code is issued automatically after payment.</p>
+            <p class="cta-help">Complete payment on Pocketi, then keep your receipt or transaction reference. WORLD TV must verify the payment and match it to your customer account before issuing a subscription code.</p>
           </div>
 
         </article>
@@ -451,7 +451,7 @@
         <article class="step reveal" data-step="3">
           <div class="step-number">03</div>
           <h3>Receive and activate</h3>
-          <p>After successful payment, your code is issued automatically, emailed to you and saved in your WORLD TV account.</p>
+          <p>After payment, WORLD TV must verify the transaction and match it to your customer account before a subscription code can be issued.</p>
         </article>
       </div>
     </section>
@@ -485,7 +485,7 @@
         </details>
         <details>
           <summary>What happens after I make payment?</summary>
-          <p>Your payment is verified automatically. One unused one-year subscription code is assigned, emailed to you and saved in your WORLD TV account.</p>
+          <p>WORLD TV verifies eligible payments before assigning a one-year subscription code. Hosted-link payments may need additional account matching; do not treat the checkout confirmation alone as activation.</p>
         </details>
         <details>
           <summary>What if I need help?</summary>
@@ -503,7 +503,7 @@
         <h2>Ready for a full year of entertainment?</h2>
         <p>Choose your payment route and take the next step toward activating WORLD TV today.</p>
         <div class="final-actions">
-          <a class="primary-cta payment-link" href="#" data-payment-region="ghana"><span>Pay from Ghana</span><span class="cta-arrow">→</span></a>
+          <a class="primary-cta payment-link" href="https://pocketi.shop/worldtv/p/worldtv-yearly-subscription" target="_blank" rel="noopener noreferrer" data-payment-region="ghana"><span>Pay from Ghana</span><span class="cta-arrow">→</span></a>
           <a class="secondary-cta payment-link" href="https://paystack.shop/pay/x4sqejilmz" target="_blank" rel="noopener noreferrer" data-payment-region="global"><span>Pay Worldwide</span><span class="cta-arrow">→</span></a>
         </div>
       </div>
@@ -562,6 +562,7 @@
       const pocketiMessage = document.getElementById('pocketi-message');
       const pocketiSubmit = document.getElementById('pocketi-submit');
       const worldwideUrl = 'https://paystack.shop/pay/x4sqejilmz';
+      const pocketiUrl = 'https://pocketi.shop/worldtv/p/worldtv-yearly-subscription';
       let pocketiTimer = null;
 
       function customerToken() {
@@ -606,6 +607,8 @@
           panel.classList.toggle('active', active);
         });
         mobileCta.dataset.paymentRegion = region;
+        // The sticky mobile CTA must follow the same selected hosted checkout as the main card.
+        mobileCta.href = region === 'ghana' ? pocketiUrl : worldwideUrl;
         mobileCta.querySelector('span').textContent = region === 'ghana' ? 'Pay from Ghana' : 'Pay Worldwide';
       }
 
@@ -691,8 +694,10 @@
       pocketiModal.addEventListener('click', event => { if (event.target === pocketiModal) closePocketi(); });
 
       document.querySelectorAll('.payment-link').forEach(link => link.addEventListener('click', event => {
+        // Ghana uses a hosted payment page in a new tab; never intercept its normal link.
+        if (link.dataset.paymentRegion === 'ghana') return;
         event.preventDefault();
-        link.dataset.paymentRegion === 'ghana' ? openPocketi() : startPaystack();
+        startPaystack();
       }));
 
       tabs.forEach(tab => tab.addEventListener('click', () => selectRegion(tab.dataset.region)));
@@ -726,7 +731,7 @@
         if (wasReturn) return;
         const requested = new URLSearchParams(location.search).get('pay');
         if (requested === 'global') startPaystack();
-        if (requested === 'ghana') openPocketi();
+        if (requested === 'ghana') selectRegion('ghana'); // Explicit click is required for the hosted checkout.
       });
 
       const pendingPocketi = localStorage.getItem('wtv_pending_pocketi_order');
