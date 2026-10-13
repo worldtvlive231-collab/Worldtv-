@@ -28,7 +28,7 @@ test('sticky mobile checkout follows the selected Ghana/Worldwide tab', () => {
 });
 
 test('hosted checkout instructions do not promise code delivery without verification', () => {
-  assert.match(page, /must verify the payment and match it to your customer account/);
+  assert.match(page, /Staff must independently verify the merchant transaction before issuing your one-year code/);
   assert.doesNotMatch(page, /After successful payment, your code is issued automatically/);
 });
 
