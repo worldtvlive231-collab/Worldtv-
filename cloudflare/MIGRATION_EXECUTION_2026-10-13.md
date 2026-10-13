@@ -65,6 +65,23 @@ new revision still needs deployment and real-provider tests.
 | Browser/device matrix | **Blocked** | Complete desktop/mobile registration-through-activation journeys and accessibility/localization checks |
 | Operations/legal | **Blocked** | Monitoring/alerts, backup/restore rehearsal, refund/chargeback policy and content/distribution-rights review |
 
+## Pocketi hosted checkout — Ghana / manual review
+
+- Ghana checkout uses the existing external Pocketi link; worldwide Paystack remains unchanged.
+- The new Cloudflare manual-report queue is **test-only**, protected by
+  `WORLDTV_STAGING_POCKETI_MANUAL_ENABLED=true` **and** existing staging account/admin gates.
+  It accepts fabricated `WTVTEST-POCKETI-` references, not real receipts.
+- The administrator must independently check a real Pocketi merchant record and
+  amount before recording verification. Recording that status does **not** create
+  a paid order or send an activation code.
+- In the current live Railway workflow, a staff member must still look up the
+  Pocketi transaction in the merchant dashboard, match the customer's email and
+  reference, then issue the annual code using existing authorized admin tools.
+  Do not issue codes based on screenshots or an unverified user claim.
+- Migration `009_pocketi_manual_review.sql` is additive. Do not apply it remotely
+  until the D1 backup, migration tests, and customer continuity checks are ready.
+  Never enable the staging feature for real customer payments.
+
 ## Staging deployment procedure
 
 1. Keep PR #162 draft and verify the reviewed head has green GitHub workflows.
