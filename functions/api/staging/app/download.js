@@ -16,7 +16,11 @@ export async function onRequestGet(context) {
     }
     const object = await context.env.WORLDTV_APK_BUCKET.get(config.key,
       range ? { range: { offset: range.offset, length: range.length } } : {});
-    if (!object?.body) return reply({ error: 'Download unavailable' }, 503);
+    // Recheck the fetched object: a replacement between HEAD and GET must fail closed.
+    if (!object?.body || !validApkHead(object, config) ||
+        (head.etag && head.etag !== object.etag)) {
+      return reply({ error: 'Download unavailable' }, 503);
+    }
     const length = range ? range.length : head.size;
     const headers = {
       'content-type': 'application/vnd.android.package-archive',
