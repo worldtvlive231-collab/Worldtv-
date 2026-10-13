@@ -10,7 +10,7 @@ MIGRATIONS = (
     "001_core.sql", "002_operations.sql", "003_user_guards.sql",
     "004_chat_message_counters.sql", "005_account_security.sql",
     "006_payment_delivery.sql", "007_reseller_security.sql",
-    "008_customer_continuity.sql",
+    "008_customer_continuity.sql", "009_pocketi_manual_review.sql",
 )
 for filename in MIGRATIONS:
     db.executescript((root / filename).read_text(encoding="utf-8"))
@@ -27,7 +27,7 @@ required = {
     "identity_tokens", "auth_rate_limits", "payment_initializations",
     "activation_deliveries", "reseller_generation_batches",
     "reseller_code_grants", "continuity_import_batches",
-    "continuity_entitlements",
+    "continuity_entitlements", "pocketi_manual_reports",
 }
 assert tables == required, f"Unexpected schema tables: missing={required-tables}, extra={tables-required}"
 assert db.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -97,4 +97,4 @@ try:
 except sqlite3.IntegrityError:
     pass
 
-print("PASS: 28 application tables, empty accounts, replay-safe schema and manually-created users compatibility.")
+print("PASS: 29 application tables, empty accounts, replay-safe schema and manually-created users compatibility.")
