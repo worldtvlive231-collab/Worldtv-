@@ -1,6 +1,9 @@
-/login.html     / 302
-/register.html  / 302
-/account.html   / 302
-/subscribe.html / 302
-/download.html  / 302
-/admin.html     / 302
+/login.html /status.html 302
+/register.html /status.html 302
+/account.html /status.html 302
+/subscribe.html /status.html 302
+/download.html /status.html 302
+/admin.html /status.html 302
+/forgot-password.html /status.html 302
+/reset-password.html /status.html 302
+/reseller.html /status.html 302
